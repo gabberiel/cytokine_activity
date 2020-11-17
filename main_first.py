@@ -128,7 +128,7 @@ else:
 # ************************************************************
 
 
-run_KMeans = False
+run_KMeans = True
 if run_KMeans:
     print()
     print('Running KMeans on hpdp...')
@@ -140,16 +140,15 @@ else:
     print('Skipps over KMeans...')
     print()
 
-run_DBscan = True
+run_DBscan = False
 if run_DBscan:
     print()
     print('Running DBSCAN on hpdp...')
     print()
     dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)
     hpdp_latent_mean,_,_ = encoder.predict(hpdp)
-    
     dbscan.fit(hpdp_latent_mean)
-    labels = dbscan.labels_
+    labels = dbscan.labels_ #  Noisy samples are given the label -1
 else:
     print()
     print('Skipps over DBSCAN...')
@@ -163,7 +162,7 @@ if run_event_rate:
     print('Calculating Event rates...')
     event_rates, real_clusters = get_event_rates(ts_train,labels,bin_width=1)
     print(f'Real cluster (with mean event_rate over 0.5 is CAPs {real_clusters})')
-    plot_event_rates(event_rates,ts_train, conv_width=20)
+    plot_event_rates(event_rates,ts_train,saveas=save_figure+'_event_rate', conv_width=30)
 
 # ************************************************************
 # ******************** General PLOTTING ******************************

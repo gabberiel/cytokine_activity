@@ -8,7 +8,7 @@ def get_event_rates(timestamps,labels,bin_width=1):
     Parameters
     ----------
     timestaps : (number_of_waveforms, ) array_like 
-            Vector containing timestamp for each waveform. 
+            Vector containing timestamp for each waveform in seconds from started recording. 
             
     labels : (number_of_waveforms, ) array_like
             Integer valued vector -- encoding which custer each timestampt waveform belong to,
@@ -31,18 +31,17 @@ def get_event_rates(timestamps,labels,bin_width=1):
     bin_edges = np.arange(0,timestamps[-1]+1,1) # Must include rightmost edge in "np.histogram"
     event_rate_results = np.empty((bin_edges.shape[0]-1,clusters.shape[0]))
 
-    cluster_idx = 0
     real_clusters = []
-    for cluster in clusters:
+    for cluster_idx,cluster in enumerate(clusters):
         event_count = np.histogram(timestamps[labels==cluster],bin_edges)
         event_rate_results[:,cluster_idx] = event_count[0]
-        cluster_idx += 1
+        #cluster_idx += 1
         if np.mean(event_count[0]) > 0.5: # 0.1 in MATLAB
             real_clusters.append(cluster)
         
     return event_rate_results, real_clusters
 
-def plot_event_rates(event_rates,timestamps, saveas=None conv_width=100):
+def plot_event_rates(event_rates,timestamps, saveas=None, conv_width=100):
     '''
     Plots event rates by smoothing kernel average of width convolution_window.
     convolution done including boundary effects but returns vector of same size.
@@ -62,16 +61,16 @@ def plot_event_rates(event_rates,timestamps, saveas=None conv_width=100):
     #time_of_recording_in_seconds = event_rates[:,0].shape[0]
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
-    colors = ['r','k','g']
+    #colors = ['r','k','g']
     for i,ev in enumerate(event_rates.T):
         smothed_ev = np.convolve(ev,conv_kernel,'same')
-        plt.plot(time.T, smothed_ev, linestyle='--',lw=0.5, color=colors[i%3], label=f'CAP cluster {i}')
+        plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
     
     plt.xlabel('Time of recording (min)')
     plt.ylabel('Event rate (CAPs/second)') 
     plt.title('Event Rate')
     plt.legend() 
-    
+
     if saveas is not None:
             plt.savefig(saveas, dpi=150)
     plt.show()
