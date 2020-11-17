@@ -42,7 +42,7 @@ def get_event_rates(timestamps,labels,bin_width=1):
         
     return event_rate_results, real_clusters
 
-def plot_event_rates(event_rates, conv_width=100):
+def plot_event_rates(event_rates,timestamps, saveas=None conv_width=100):
     '''
     Plots event rates by smoothing kernel average of width convolution_window.
     convolution done including boundary effects but returns vector of same size.
@@ -57,19 +57,25 @@ def plot_event_rates(event_rates, conv_width=100):
     Returns
     -------
     '''
-
-    time_of_recording_in_seconds = event_rates[:,0].shape[0]
-    time = np.arange(0,time_of_recording_in_seconds) / 60 # To minutes
+    end_time = timestamps[-1]
+    number_of_obs = event_rates[:,0].shape[0]
+    #time_of_recording_in_seconds = event_rates[:,0].shape[0]
+    time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
     colors = ['r','k','g']
     for i,ev in enumerate(event_rates.T):
         smothed_ev = np.convolve(ev,conv_kernel,'same')
-        plt.plot(time, smothed_ev, linestyle='--',lw=0.5, color=colors[i%3], label=f'CAP cluster {i}')
+        plt.plot(time.T, smothed_ev, linestyle='--',lw=0.5, color=colors[i%3], label=f'CAP cluster {i}')
     
     plt.xlabel('Time of recording (min)')
     plt.ylabel('Event rate (CAPs/second)') 
     plt.title('Event Rate')
     plt.legend() 
+    
+    if saveas is not None:
+            plt.savefig(saveas, dpi=150)
+    plt.show()
+
 
 if __name__ == "__main__":
     '''

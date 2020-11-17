@@ -47,10 +47,11 @@ def load_waveforms(path_to_wf,matlab_key, standardize=False, verbose=1):
         std  = np.std(waveforms, axis=-1)  
         waveforms = waveforms - mean[:,None]
         waveforms = waveforms/std[:,None]
-        assert np.isnan(np.sum(waveforms))==False
+        assert np.isnan(np.sum(waveforms))==False, 'Nans in "waveforms"'
     
         return waveforms, mean, std
     else:
+        assert np.isnan(np.sum(waveforms))==False, 'Nans in "waveforms"'
         return waveforms, None, None
 
 def load_timestamps(path_to_ts,matlab_key,verbose=1):
@@ -93,6 +94,7 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
     encoder, decoder, vae : keras model classes.
 
     """
+    assert np.isnan(np.sum(data_train))==False, 'Nans in "data_train"'
     waveform_shape = data_train.shape[-1]
     encoder,decoder,vae = get_vae(waveform_shape,latent_dim)
     if path.isfile(path_to_weights+'.index'):
@@ -126,13 +128,25 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
 
 def __cluster__(vae,x,eta,gamma,m):
     ''' The Gradient decent loop used in "pdf_GD". '''
+    count = 0
+    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
     for i in range(m):
-        if i%100==0:
+        # Estimate time of loop, (ETA).
+        if i==0:
+            t0 = time.time()
+        elif i%100==0:
+            count += 1
+            ti = time.time()
+            ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
             print(f'Running pdf-GD, iteration={i}')
-        x_hat = x + eta*tf.random.normal(shape=x.shape)
-        #x_hat = x + eta*np.random.multivariate_normal(np.zeros((x.shape)))
+            print(f'ETA: {round(ETA_t)} seconds..')
+            print()
+
+        #x_hat = x + eta*tf.random.normal(shape=x.shape)
+        x_hat = x + eta * np.random.normal(size=x.shape)
         x_rec = vae.predict(x_hat)
         x = x - gamma*(x_hat-x_rec)
+
     return x
 
 def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
@@ -146,9 +160,14 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
 
     Parameters
     ----------
-    vae :
-
-    data_points : 
+    vae : kera.Model class_instance
+        Full trained VAE model. 
+    data_points : (number_of_wf, size_of_wf) array_like
+        Only used to initiate GD if "path_to_hpdp" does not exist.
+    m,gamma,eta : integer/floats 
+        Parameters for GD of pdf
+    path_to_hpdp : 'path/to/hpdp.npy'
+        If None then "data_points" is used to start GD.
 
     Returns
     -------
@@ -158,6 +177,8 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
 
 
     '''
+    
+
     if m>0:
         if path.isfile(path_to_hpdp+'.npy'):
             if verbose>0:
@@ -165,13 +186,17 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
                 print(f'Loading {path_to_hpdp} to continue pdf-GD...')
                 print()
             data_points = np.load(path_to_hpdp+'.npy')
+            assert np.isnan(np.sum(data_points))==False, 'NaNs in input data..'
+
             if verbose>0:
                 print(f'Saved clusters: "{path_to_hpdp}" loaded Succesfully...')
                 print()
                 print(f'Continues GD on file: {path_to_hpdp} for {m} iterations...')
             
             hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
+            assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x efter GD..'
             np.save(path_to_hpdp,hpdp_x)
+
             if verbose>0:
                 print()
                 print(f'High prob. data-points (hpdp): "{path_to_hpdp}" saved Succesfully...')
@@ -182,6 +207,7 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
                 print(f'Starting fresh for {m} iterations....')
                 print()
             hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
+            assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x after GD..'
             np.save(path_to_hpdp,hpdp_x)
             if verbose>0:
                 print()
@@ -189,13 +215,21 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
                 print()
         return hpdp_x 
     else:
-         if path.isfile(path_to_hpdp+'.npy'):
+        if path.isfile(path_to_hpdp+'.npy'):
             if verbose>0:
                 print()
-                print(f'Loading {path_to_hpdp} to continue pdf-GD...')
+                print(f'Loading {path_to_hpdp} as hpdp without performing GD...')
                 print()
             data_points = np.load(path_to_hpdp+'.npy')
-            return data_points
+            assert np.isnan(np.sum(data_points))==False, 'NaNs loaded hpdp...'
+            if verbose>0:
+                print()
+                print(f'High prob. data-points (hpdp): "{path_to_hpdp}" loaded Succesfully...')
+                print()
+        else:
+            raise Warning(f'{path_to_hpdp} not found and number of iterations set to 0. Returning input datapoints.')
+        
+        return data_points
 
 
 def plot_waveforms(waveforms,labels=None):
