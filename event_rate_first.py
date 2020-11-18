@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 def get_event_rates(timestamps,labels,bin_width=1):
     '''
     Calculates event rate of labeled waveforms. This by counting the number of occurances in sliding
@@ -41,7 +42,54 @@ def get_event_rates(timestamps,labels,bin_width=1):
         
     return event_rate_results, real_clusters
 
-def plot_event_rates(event_rates,timestamps, saveas=None, conv_width=100):
+def delta_ev_measure(event_rates):
+        '''
+        Calculates measure of how event-rate differs before and after injections. 
+        i.e changes as 30min and 60min into recording.
+
+        Could explore many differnt times of measures. especially take variance into account.
+        However mu/var for instance could end up with division by zero..
+        For now, a simple difference in mean of event-rates during each period will be considered.
+
+        TODO: Could add an input of "real clusters" to assure positive event rate to be able to 
+        divide by variance..
+
+        Parameters
+        ----------
+        event_rates : total_time_in_seconds, number_of_clusters) array_like 
+            Number of occurances of labeled waveforms in each one second window during time
+            of recording. 
+        
+        Returns
+        -------
+        delta_ev : (2, number_of_clusters) array_like
+                Changes in mean event rate after the two injections for each cluster.
+
+        ev_stats : (3, number_of_clusters) array_like
+                mean and variance of event rates for all three periods for each cluster.
+        
+        '''
+        num_intervals = 3
+        num_clusters = event_rates.shape[-1]
+        # OBS. recording last longer than 90 minutes. 
+        # Could change to end time but then intervals have different lengths.
+        injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
+        
+        interval_ev_means = np.empty((num_intervals, num_clusters))
+        interval_ev_var = np.empty((num_intervals, num_clusters))
+
+        for i in range(num_intervals):
+                interval_ev_means[i,:] = np.mean(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
+                interval_ev_var[i,:] = np.var(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
+        
+        # Could explore many differnt times of measures...
+        # For now, difference in mean event-rate will be considered.
+        delta_ev = interval_ev_means[1:,:] - interval_ev_means[:-1,:]
+
+        stats = [interval_ev_means, interval_ev_var]
+        return delta_ev, stats
+        
+def plot_event_rates(event_rates,timestamps, clusters=None, saveas=None, conv_width=100):
     '''
     Plots event rates by smoothing kernel average of width convolution_window.
     convolution done including boundary effects but returns vector of same size.
@@ -53,6 +101,10 @@ def plot_event_rates(event_rates,timestamps, saveas=None, conv_width=100):
             of recording. 
     conv_width: Integer_like
             Size of smoothing kernel window for plotting
+    clusters : (number_of_clusters, ) array_like
+        Contains integers encoding which cluster each event_rate corresponds to.
+        If "-1" is in clusters it is interpreted as noise.
+        If clusters is None all event_rates is plotted in the same way.. 
     Returns
     -------
     '''
@@ -91,8 +143,8 @@ if __name__ == "__main__":
     print()
     print('Loading matlab files...')
     print()
-    wf_name = 'matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
-    ts_name = 'matlab_files/gg_timestamps.mat'
+    wf_name = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
+    ts_name = '../matlab_files/gg_timestamps.mat'
 
     waveforms = loadmat(wf_name)
     #print(f' keys of matlab file: {waveforms.keys()}')
@@ -131,6 +183,6 @@ if __name__ == "__main__":
     print(f'event rates shape: {event_rates.shape}')
     print(f'Real clusters: {real_clusters}')
 
-    plot_event_rates(event_rates,conv_width=100)
+    plot_event_rates(event_rates,timestamps,conv_width=100)
     plt.show()
 
