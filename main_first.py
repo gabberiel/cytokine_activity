@@ -20,14 +20,14 @@ continue_train = False
 nr_epochs = 100 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
-view_vae_result = True # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
+view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
+view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
 
 run_DBscan = False
-run_KMeans = True
+run_KMeans = False
 
 
-verbose = 1
+verbose = 2
 
 # pdf GD params: 
 m=0 # Number of steps 
@@ -200,8 +200,6 @@ if verbose>1:
     print()
     plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
     plot_encoded(encoder, wf_train, saveas=save_figure+'_encoded', verbose=1)
-
-
 
 
 

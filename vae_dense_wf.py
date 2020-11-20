@@ -16,29 +16,31 @@ def sample_z(mu,sigma):
     eps       = keras.backend.random_normal(shape=(batch, dim))
     return mu + keras.backend.exp(sigma / 2) * eps
 
-class Add_kl_loss(layers.Layer):
-    '''
-    Layer instance which returns the the Kullbeck-Lieberg Divergence between latent distribution q(z|x) and prior p(z)= N(0,1).
-    '''
-    def call(self,inputs):
-        z_mean, z_log_var = inputs
-        kl_loss = -0.5 * tf.reduce_mean(z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1)
-        #self.add_loss(kl_loss + 27)
-        #self.add_metric(kl_loss, name='kl_loss', aggregation='mean')
-        return kl_loss
 
-class Add_GMM_kl_loss(layers.Layer):
-    '''
-    Layer instance which returns the the Kullbeck-Lieberg Divergence between latent distribution q(z|x) and GMM distribution p(z\gmm_params).
+# # class Add_kl_loss(layers.Layer):
+# #     '''
+# #     Layer instance which returns the the Kullbeck-Lieberg Divergence between latent distribution q(z|x) and prior p(z)= N(0,1).
+# #     '''
+# #     def call(self,inputs):
+# #         z_mean, z_log_var = inputs
+# #         kl_loss = -0.5 * tf.reduce_mean(z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1)
+# #         #self.add_loss(kl_loss + 27)
+# #         #self.add_metric(kl_loss, name='kl_loss', aggregation='mean')
+# #         return kl_loss
 
-    '''
-    def call(self,inputs):
-        z_mean_vae, z_mean_gmm, z_log_var_vae, z_log_var_gmm = inputs
+# # class Add_GMM_kl_loss(layers.Layer):
+# #     '''
+# #     Layer instance which returns the the Kullbeck-Lieberg Divergence between latent distribution q(z|x) and GMM distribution p(z\gmm_params).
 
-        gmm_kl_loss = - (tf.reduce_mean(z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1))
-        #self.add_loss(kl_loss + 27)
-        #self.add_metric(kl_loss, name='kl_loss', aggregation='mean')
-        return gmm_kl_loss
+# #     '''
+# #     def call(self,inputs):
+# #         z_mean_vae, z_mean_gmm, z_log_var_vae, z_log_var_gmm = inputs
+
+# #         gmm_kl_loss = - (tf.reduce_mean(z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1))
+# #         #self.add_loss(kl_loss + 27)
+# #         #self.add_metric(kl_loss, name='kl_loss', aggregation='mean')
+# #         return gmm_kl_loss
+
 
 def create_encoder(encoder_input,latent_dim):
     '''
@@ -66,8 +68,8 @@ def create_encoder(encoder_input,latent_dim):
 
     z = sample_z(z_mean,z_log_var)
 
-    # CALCULATE LOSSES:
-    kl_loss = Add_kl_loss()([z_mean,z_log_var])
+    # CALCULATE LOSSES: -- NOW done in train - loop 
+    #kl_loss = Add_kl_loss()([z_mean,z_log_var])
 
     # TODO: test to include GMM KL-loss:
     # 1. Update gmm means and variances using fit:
@@ -79,10 +81,10 @@ def create_encoder(encoder_input,latent_dim):
     # 2. GMM_kl_loss = Add_GMM_kl_loss()([z_mean, z_mean_gmm, z_log_var, z_log_var_gmm])
     
 
-    # Instantiate encoder
+    # Initiate encoder
     encoder = keras.Model(inputs=[encoder_input], outputs=[z_mean,z_log_var, z], name='encoder')
-    encoder.add_loss(kl_loss)
-    encoder.add_metric(kl_loss, name='kl_loss', aggregation='mean')
+    #encoder.add_loss(kl_loss)
+    #encoder.add_metric(kl_loss, name='kl_loss', aggregation='mean')
 
     # TODO: add gmm_KL_loss
     #encoder.add_loss(GMM_kl_loss)
@@ -144,12 +146,12 @@ class Gmm_Vae_Model(keras.Model):
 
             # KL-loss to prior of z:
             kl_loss = -0.5 * tf.reduce_mean(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var) )
-
+            gmm_z = tf.make_ndarray(z)
             # GMM_update and corresponding kl_loss
-            gmm.fit(z) # Potentially time consuming...
-            gmm_labels = gmm.classify(z)
-            gmm_var = gmm.get_gaussian_var()
-            gmm_means = gmm.get_gaussian_means()
+            self.gmm.fit(gmm_z) # Potentially time consuming...
+            gmm_labels = self.gmm.classify(z)
+            gmm_var = self.gmm.get_gaussian_var()
+            gmm_means = self.gmm.get_gaussian_means()
             acces_all_rows = np.arange(len(labels))
             z_mean_gmm = gmm_means[acces_all_rows,labels] # Correct syntax..?
             z_var_gmm = gmm_var[acces_all_rows,labels]
@@ -175,7 +177,7 @@ class Gmm_Vae_Model(keras.Model):
 
 
 
-def get_vae(waveform_shape,latent_dim):
+def get_gmm_vae(waveform_shape,latent_dim):
     '''
     TODO:
     Description....
@@ -193,10 +195,10 @@ def get_vae(waveform_shape,latent_dim):
     encoder = create_encoder(encoder_input, latent_dim)
     decoder = create_decoder(waveform_shape, latent_dim)
     
-    reconstruction = decoder(encoder(encoder_input)[2])
+    #reconstruction = decoder(encoder(encoder_input)[2])
     gmm = Latent_GMM(num_components=3, covariance_type='diag')
-    vae = keras.Model(encoder,decoder,gmm,inputs=encoder_input, outputs=reconstruction, name='vae')
-    vae.add_loss(encoder.losses)
+    vae = Gmm_Vae_Model(encoder,decoder,gmm)#,inputs=encoder_input, outputs=reconstruction, name='vae')
+    #vae.add_loss(encoder.losses)
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
     #reconstruction_loss = tf.keras.losses.MeanSquaredError(reconstruction, inp_layer)
     #vae.add_loss(reconstruction_loss)
@@ -205,26 +207,26 @@ def get_vae(waveform_shape,latent_dim):
     #vae.summary()
     return encoder,decoder,vae
 
-def reconstruction_loss(data,target):
-    '''
-    TODO:
-    Description....
+# # def reconstruction_loss(data,target):
+# #     '''
+# #     TODO:
+# #     Description....
 
-    Parameters
-    ----------
-    a : 
+# #     Parameters
+# #     ----------
+# #     a : 
 
-    Returns
-    -------
-    out : 
+# #     Returns
+# #     -------
+# #     out : 
 
-    '''
+# #     '''
 
-    reconstruction_loss = tf.reduce_mean(
-                keras.losses.mean_squared_error(data, target)
-            )
-    reconstruction_loss *= 141
-    return reconstruction_loss
+# #     reconstruction_loss = tf.reduce_mean(
+# #                 keras.losses.mean_squared_error(data, target)
+# #             )
+# #     reconstruction_loss *= 141
+# #     return reconstruction_loss
 
 class Latent_GMM():
     ''' 
@@ -359,14 +361,14 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------
     # --------------------- TEST FUNCTIONS: ----------------------------
     # ------------------------------------------------------------------------------------
-    Train = False
+    Train = True
     continue_train = False
-    nr_epochs = 50
-    saved_weights = 'models_tests/first_test'
-    save_figure = 'figures_tests/wf_latent_decoded'
+    nr_epochs = 10
+    saved_weights = 'models_tests/gmm_first_test'
+    save_figure = 'figures_tests/gmm_wf_latent_decoded'
     waveform_shape = waveforms.shape[-1]
-    encoder,decoder,vae = get_vae(waveform_shape,2)
-    xx = waveforms[1:30000,:]
+    encoder,decoder,gmm_vae = get_gmm_vae(waveform_shape,2)
+    xx = waveforms[1:10000,:]
     # Standardize input data.
     mean = np.mean(xx, axis=-1)
     std  = np.std(xx, axis=-1)  
@@ -378,7 +380,7 @@ if __name__ == "__main__":
     #x_train = tf.linalg.normalize(x_train, axis=-1)
     #print(x_train[0:300,:])
     if Train == True:
-        history = vae.fit(x_train , x_train, epochs=nr_epochs, batch_size=128,verbose=1)
+        history = gmm_vae.fit(x_train, epochs=nr_epochs, batch_size=128,verbose=1)
         vae.save_weights(saved_weights)
         plt.plot(history.history['loss'])
         plt.show() 
@@ -391,8 +393,8 @@ if __name__ == "__main__":
             print()
             print(f'Continue training for {nr_epochs} epochs...')
             print()
-            history = vae.fit(x_train , x_train, epochs=nr_epochs, batch_size=128,verbose=1)
-            vae.save_weights(saved_weights)
+            history = gmm_vae.fit(x_train , x_train, epochs=nr_epochs, batch_size=128,verbose=1)
+            gmm_vae.save_weights(saved_weights)
             plt.plot(history.history['loss'])
             plt.show() 
     #print()
