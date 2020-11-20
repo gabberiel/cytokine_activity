@@ -53,23 +53,6 @@ def create_encoder(encoder_input,latent_dim):
     -------
     out : 
 
-    See Also
-    --------
-        Ref to similar funtions...
-    
-    Notes
-    -----
-    More mathematicall description
-
-    References
-    ----------
-    .. [1] Wikipedia, "Convolution", http://en.wikipedia.org/wiki/Convolution.
-    Examples
-    --------
-    blabla
-    >>> np.convolve([1, 2, 3], [0, 1, 0.5])
-    array([ 0. ,  1. ,  2.5,  4. ,  1.5])
-    Only return the middle values of the convolution.
     '''
     #e_i    = layers.Input(shape=(waveform_shape, ), name='encoder_input')
     x      = layers.Dense(120, activation='relu')(encoder_input)
@@ -123,23 +106,6 @@ def create_decoder(waveform_shape,latent_dim):
     -------
     out : 
 
-    See Also
-    --------
-        Ref to similar funtions...
-    
-    Notes
-    -----
-    More mathematicall description
-
-    References
-    ----------
-    .. [1] Wikipedia, "Convolution", http://en.wikipedia.org/wiki/Convolution.
-    Examples
-    --------
-    blabla
-    >>> np.convolve([1, 2, 3], [0, 1, 0.5])
-    array([ 0. ,  1. ,  2.5,  4. ,  1.5])
-    Only return the middle values of the convolution.
     '''
 
     d_i    = layers.Input(shape=(latent_dim, ), name='decoder_input')
@@ -153,7 +119,62 @@ def create_decoder(waveform_shape,latent_dim):
 
     decoder = keras.Model(inputs=[d_i],outputs=o, name='decoder')
     return decoder
-    
+
+class Gmm_Vae_Model(keras.Model):
+    '''keras.Model subclass including GMM-training and loss in train.'''
+    def __init__(self,encoder,decoder,gmm):
+        super(Gmm_Vae_Model, self).__init__(name='Gmm_Vae') #name='Gmm_Vae', **kwargs)
+        self.encoder = encoder
+        self.decoder = decoder
+        self.gmm = gmm
+
+    '''
+    def call(self,input):
+        z_mean,z_log_var,zc = self.encoder(input)
+        X_rec = self.decoder(zc)
+        return X_rec
+    '''
+
+    def train_step(self, data):
+        if isinstance(data, tuple):
+            data = data[0]
+        with tf.GradientTape() as tape:
+            z_mean, z_log_var, z = self.encoder(data)
+            reconstruction = self.decoder(z)
+
+            # KL-loss to prior of z:
+            kl_loss = -0.5 * tf.reduce_mean(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var) )
+
+            # GMM_update and corresponding kl_loss
+            gmm.fit(z) # Potentially time consuming...
+            gmm_labels = gmm.classify(z)
+            gmm_var = gmm.get_gaussian_var()
+            gmm_means = gmm.get_gaussian_means()
+            acces_all_rows = np.arange(len(labels))
+            z_mean_gmm = gmm_means[acces_all_rows,labels] # Correct syntax..?
+            z_var_gmm = gmm_var[acces_all_rows,labels]
+
+            # add float to denominatior to avoid inf..
+            gmm_kl_loss = -(0.5 + z_log_var - tf.log(z_var_gmm) + (z_log_var_gmm + tf.square(z_mean_gmm - z_mean))/(2*tf.exp(z_log_var) + 1e-3))
+            gmm_kl_loss = - (tf.reduce_mean(gmm_kl_loss))
+
+            reconstruction_loss = tf.reduce_mean(
+                keras.losses.mean_squared_error(data, reconstruction)
+            )
+            #reconstruction_loss *= 141
+
+            total_loss = reconstruction_loss + kl_loss + gmm_kl_loss
+        grads = tape.gradient(total_loss, self.trainable_weights)
+        self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
+        return {
+            "loss": total_loss,
+            "reconstruction_loss": reconstruction_loss,
+            "kl_loss": kl_loss,
+            "gmm_kl_loss": gmm_kl_loss
+        }
+
+
+
 def get_vae(waveform_shape,latent_dim):
     '''
     TODO:
@@ -173,13 +194,14 @@ def get_vae(waveform_shape,latent_dim):
     decoder = create_decoder(waveform_shape, latent_dim)
     
     reconstruction = decoder(encoder(encoder_input)[2])
-    vae = keras.Model(inputs=encoder_input, outputs=reconstruction, name='vae')
+    gmm = Latent_GMM(num_components=3, covariance_type='diag')
+    vae = keras.Model(encoder,decoder,gmm,inputs=encoder_input, outputs=reconstruction, name='vae')
     vae.add_loss(encoder.losses)
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
     #reconstruction_loss = tf.keras.losses.MeanSquaredError(reconstruction, inp_layer)
     #vae.add_loss(reconstruction_loss)
     
-    vae.compile(optimizer,loss=reconstruction_loss)
+    vae.compile(optimizer) #,loss=reconstruction_loss)
     #vae.summary()
     return encoder,decoder,vae
 
