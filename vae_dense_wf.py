@@ -3,13 +3,13 @@ import tensorflow as tf
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
+from sklearn.mixture import GaussianMixture
 
 
 
 def sample_z(mu,sigma):
     '''
     TODO : 
-    
     '''
     batch     = keras.backend.shape(mu)[0]
     dim       = keras.backend.int_shape(mu)[1]
@@ -18,8 +18,7 @@ def sample_z(mu,sigma):
 
 class Add_kl_loss(layers.Layer):
     '''
-    Layer instance which returns the the Kullbeck-Lieberg Divergence.
-    
+    Layer instance which returns the the Kullbeck-Lieberg Divergence between latent distribution q(z|x) and prior p(z)= N(0,1).
     '''
     def call(self,inputs):
         z_mean, z_log_var = inputs
@@ -27,6 +26,19 @@ class Add_kl_loss(layers.Layer):
         #self.add_loss(kl_loss + 27)
         #self.add_metric(kl_loss, name='kl_loss', aggregation='mean')
         return kl_loss
+
+class Add_GMM_kl_loss(layers.Layer):
+    '''
+    Layer instance which returns the the Kullbeck-Lieberg Divergence between latent distribution q(z|x) and GMM distribution p(z\gmm_params).
+
+    '''
+    def call(self,inputs):
+        z_mean_vae, z_mean_gmm, z_log_var_vae, z_log_var_gmm = inputs
+
+        gmm_kl_loss = - (tf.reduce_mean(z_log_var - tf.square(z_mean) - tf.exp(z_log_var) + 1))
+        #self.add_loss(kl_loss + 27)
+        #self.add_metric(kl_loss, name='kl_loss', aggregation='mean')
+        return gmm_kl_loss
 
 def create_encoder(encoder_input,latent_dim):
     '''
@@ -70,12 +82,29 @@ def create_encoder(encoder_input,latent_dim):
     z_log_var   = layers.Dense(latent_dim, name='latent_sigma')(x)
 
     z = sample_z(z_mean,z_log_var)
+
+    # CALCULATE LOSSES:
     kl_loss = Add_kl_loss()([z_mean,z_log_var])
+
+    # TODO: test to include GMM KL-loss:
+    # 1. Update gmm means and variances using fit:
+    # GMM.fit(data) --- will have to change the class-train function..?
+    # z_mean_gmm = GMM.get_gaussian_means()
+    # z_var_gmm = GMM.get_gaussian_var()
+    # z_log_var_gmm = ... 
+    
+    # 2. GMM_kl_loss = Add_GMM_kl_loss()([z_mean, z_mean_gmm, z_log_var, z_log_var_gmm])
+    
 
     # Instantiate encoder
     encoder = keras.Model(inputs=[encoder_input], outputs=[z_mean,z_log_var, z], name='encoder')
     encoder.add_loss(kl_loss)
     encoder.add_metric(kl_loss, name='kl_loss', aggregation='mean')
+
+    # TODO: add gmm_KL_loss
+    #encoder.add_loss(GMM_kl_loss)
+    #encoder.add_metric(GMM_kl_loss, name='GMM_kl_loss', aggregation='mean')
+
     #encoder.summary()
     
     return encoder
@@ -138,23 +167,6 @@ def get_vae(waveform_shape,latent_dim):
     -------
     out : 
 
-    See Also
-    --------
-        Ref to similar funtions...
-    
-    Notes
-    -----
-    More mathematicall description
-
-    References
-    ----------
-    .. [1] Wikipedia, "Convolution", http://en.wikipedia.org/wiki/Convolution.
-    Examples
-    --------
-    blabla
-    >>> np.convolve([1, 2, 3], [0, 1, 0.5])
-    array([ 0. ,  1. ,  2.5,  4. ,  1.5])
-    Only return the middle values of the convolution.
     '''
     encoder_input = layers.Input(shape=(waveform_shape, ), name='encoder_input')
     encoder = create_encoder(encoder_input, latent_dim)
@@ -184,21 +196,6 @@ def reconstruction_loss(data,target):
     -------
     out : 
 
-    See Also
-    --------
-        Ref to similar funtions...
-    
-    Notes
-    -----
-    More mathematicall description
-
-    References
-    ----------
-    .. [1] Wikipedia, "Convolution", http://en.wikipedia.org/wiki/Convolution.
-    Examples
-    --------
-    blabla
-    >>> ...
     '''
 
     reconstruction_loss = tf.reduce_mean(
@@ -206,6 +203,97 @@ def reconstruction_loss(data,target):
             )
     reconstruction_loss *= 141
     return reconstruction_loss
+
+class Latent_GMM():
+    ''' 
+    Gaussian mixture model of latent space encoded by VAE.
+    Makes use of sklearn.mixture.GaussianMixture or sklearn.mixture.BayesianGaussianMixture
+    
+    Used to classify/label waveforms. The probability model is furthermore used to include 
+    a loss-term in the VAE-optimization as a KL-divergence: KL( p(z|gmm_params) || q(z|x) )
+
+    Attributes
+    ----------
+
+    Methods
+    -------
+        fit(data) : 
+        get_gaussian_means() : 
+        get_gaussian_var() :
+        soft_assignment() : 
+        classify() : 
+    References
+    ----------
+        Sckit documentation:
+            https://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html#sklearn.mixture.GaussianMixture
+            https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html#sklearn.mixture.BayesianGaussianMixture
+
+
+     '''
+    def __init__(self,num_components=5,covariance_type='diag'):
+        self.n_components = num_components
+        self.covariance_type = covariance_type
+        self.model = GaussianMixture(n_components=self.n_components, 
+                                                     covariance_type=self.covariance_type,
+                                                     warm_start=True)
+
+    def fit(self, data):
+        self.model.fit(data)
+    
+    def get_gaussian_means(self,):
+        '''
+        Get mean-vector of each gaussian component in model.
+
+        Returns
+        -------
+            means : (n_components, n_features) array-like
+                The mean of each mixture component.
+
+        '''
+        
+        return self.model.means_
+
+    def get_gaussian_var(self,):
+        '''
+        OBS: The shape depends on covariance_type
+        '''
+        return self.model.covariances_
+
+    def soft_assignment(self,data_points):
+        '''
+        Predict posterior probability of each component given the data.
+
+        Parameters
+        ----------
+            data_points : (n_samples, n_features) array_like
+
+        Returns
+        -------
+            X : array, shape:(n_samples, n_features)
+                Randomly generated sample
+
+            y : array, shape (nsamples,)
+                Component labels
+        '''
+        cluster_probs = self.model.predict_proba(data_points)
+        return cluster_probs
+        
+
+    def classify(self, data_points):
+        '''
+        Predict the labels for the data samples in X using trained model.
+
+        Parameters
+        ----------
+            data_points : (n_samples, n_features) array_like
+
+        Returns
+        -------
+            labels : (n_points,) array_like
+        '''
+        labels = self.model.predict(data_points)
+        return labels
+    
 
 if __name__ == "__main__":
     '''
@@ -223,8 +311,8 @@ if __name__ == "__main__":
     print()
     print('Loading matlab files...')
     print()
-    wf_name = 'matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
-    ts_name = 'matlab_files/gg_timestamps.mat'
+    wf_name = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
+    ts_name = '../matlab_files/gg_timestamps.mat'
 
     waveforms = loadmat(wf_name)
     waveforms = waveforms['waveforms']
@@ -252,8 +340,8 @@ if __name__ == "__main__":
     Train = False
     continue_train = False
     nr_epochs = 50
-    saved_weights = 'models/first_test'
-    save_figure = 'figures/wf_latent_decoded'
+    saved_weights = 'models_tests/first_test'
+    save_figure = 'figures_tests/wf_latent_decoded'
     waveform_shape = waveforms.shape[-1]
     encoder,decoder,vae = get_vae(waveform_shape,2)
     xx = waveforms[1:30000,:]
@@ -285,10 +373,30 @@ if __name__ == "__main__":
             vae.save_weights(saved_weights)
             plt.plot(history.history['loss'])
             plt.show() 
-    print()
-    print(f'Visualising decoded latent space...')
-    print()
-    plot_decoded_latent_2(decoder,saveas=save_figure+'_decoded',verbose=1)
-    plot_label_clusters(encoder, x_train, saveas=None, verbose=1)
+    #print()
+    #print(f'Visualising decoded latent space...')
+    #print()
+    #plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
+    #plot_encoded(encoder, x_train, saveas=None, verbose=1)
+    z_mean,_,zz = encoder.predict(x_train)
 
+    gmm_components = 5
+    Gmm = Latent_GMM(gmm_components,covariance_type='full')
+    Gmm.fit(zz)
+    g_means = Gmm.get_gaussian_means()
+    g_var = Gmm.get_gaussian_var()
+    probs = Gmm.soft_assignment(zz)
+    labels = Gmm.classify(zz)
 
+    def plot_gmm(data,labels):
+        print()
+        print(f'Visualising gaussian mixture model...')
+        print()
+        for ii in range(gmm_components):
+            plt.scatter(data[labels==ii][::2,0],data[labels==ii][::2,1])
+        
+        plt.show()
+
+    plot_gmm(zz,labels)
+
+    print('Done.')

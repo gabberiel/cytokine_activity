@@ -20,8 +20,8 @@ continue_train = False
 nr_epochs = 100 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
-view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
+view_vae_result = True # True => reqires user to give input if to continue the script to pdf-GD or not.. 
+view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 
 run_DBscan = False
 run_KMeans = True
@@ -54,7 +54,7 @@ save_figure = 'figures/18nov_train_from_all_data_203'
 # tf weight-file:
 path_to_weights = 'models/18_nov_train_from_all_data_203'
 # Numpy file:
-path_to_hpdp = "numpy_hpdp/18_nov_train_from_all_data_204"
+path_to_hpdp = "../numpy_files/numpy_hpdp/18_nov_train_from_all_data_204"
 
 # ************************************************************
 # ******************** Load Files ****************************

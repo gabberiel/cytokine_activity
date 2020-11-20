@@ -89,7 +89,7 @@ def delta_ev_measure(event_rates):
         stats = [interval_ev_means, interval_ev_var]
         return delta_ev, stats
         
-def plot_event_rates(event_rates,timestamps, clusters=None, saveas=None, conv_width=100):
+def plot_event_rates(event_rates,timestamps, conv_width=100, clusters=None, saveas=None):
     '''
     Plots event rates by smoothing kernel average of width convolution_window.
     convolution done including boundary effects but returns vector of same size.
