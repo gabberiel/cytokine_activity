@@ -146,6 +146,7 @@ class Gmm_Vae_Model(keras.Model):
 
             # KL-loss to prior of z:
             kl_loss = -0.5 * tf.reduce_mean(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var) )
+            
             gmm_z = tf.make_ndarray(z)
             # GMM_update and corresponding kl_loss
             self.gmm.fit(gmm_z) # Potentially time consuming...
