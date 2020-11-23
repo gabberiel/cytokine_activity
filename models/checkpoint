@@ -1,2 +1,2 @@
-model_checkpoint_path: "18_nov_train_from_all_data_203"
-all_model_checkpoint_paths: "18_nov_train_from_all_data_203"
+model_checkpoint_path: "21nov_first_full_training"
+all_model_checkpoint_paths: "21nov_first_full_training"

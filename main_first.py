@@ -17,14 +17,14 @@ from event_rate_first import *
 
 # VAE training params:
 continue_train = False
-nr_epochs = 100 # if all train data is used -- almost no loss-decrease after 100 batches..
+nr_epochs = 2000 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
-view_vae_result = True # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
+view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
+view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
 
 run_DBscan = False
-run_KMeans = True
+run_KMeans = False
 
 
 verbose = 1
@@ -32,12 +32,12 @@ verbose = 1
 # pdf GD params: 
 m=0 # Number of steps 
 gamma=0.01 # learning_rate
-eta=0.01 # Noise variable -- adds white noise with variance eta to datapoints during GD.
+eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
 
 # DBSCAN params
-db_eps = 0.2 # max_distance to be considered as neighbours 
-db_min_sample = 200 # Minimum members in neighbourhood to not be regarded as Noise.
+db_eps = 0.1 # max_distance to be considered as neighbours 
+db_min_sample = 35 # Minimum members in neighbourhood to not be regarded as Noise.
 
 # Shape of waveforms: (136259, 141)
 #training_idx = np.arange(10000) # initial testing
@@ -50,11 +50,11 @@ training_idx = np.arange(0,131000,10)
 path_to_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat' 
 path_to_ts = '../matlab_files/gg_timestamps.mat'
 
-save_figure = 'figures/18nov_train_from_all_data_203'
+save_figure = 'figures/21nov_first_full_training'
 # tf weight-file:
-path_to_weights = 'models/18_nov_train_from_all_data_203'
+path_to_weights = 'models/21nov_first_full_training'
 # Numpy file:
-path_to_hpdp = "../numpy_files/numpy_hpdp/18_nov_train_from_all_data_204"
+path_to_hpdp = "../numpy_files/numpy_hpdp/21nov_first_full_training"
 
 # ************************************************************
 # ******************** Load Files ****************************
@@ -111,7 +111,7 @@ if run_GD:
     print('Running pdf_GD to get hpdp...')
     print()
     # To easy computational load -- only every 20th data-point is used..
-    hpdp = pdf_GD(vae, wf_train[0::20], m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
+    hpdp = pdf_GD(vae, wf_train, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
     #hpdp = pdf_GD(vae, wf_train, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
 
     if view_GD_result:
@@ -171,34 +171,47 @@ else:
 # ************************************************************
 # ******************** Event Rate *****************
 # ************************************************************
-run_event_rate = True
+if 'labels' in locals():
+    run_event_rate = True
+else:
+    run_event_rate = False
+
 if run_event_rate:
     print('Calculating Event rates...')
-    event_rates, real_clusters = get_event_rates(ts_train[0::20],labels,bin_width=1)
-    delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps,labels)
+    event_rates, real_clusters = get_event_rates(ts_train,labels,bin_width=1)
+    delta_ev, ev_stats = delta_ev_measure(event_rates)
+    print(f'Delta_ev_measure : {delta_ev}')
 
     #event_rates, real_clusters = get_event_rates(ts_train,labels,bin_width=1)
     print(f'Real cluster (with mean event_rate over 0.5 is CAPs {real_clusters})')
-    plot_event_rates(event_rates,ts_train[0::20],saveas=save_figure+'_event_rate', conv_width=30)
+    plot_event_rates(event_rates,ts_train,saveas=save_figure+'_event_rate', conv_width=30)
     #plot_event_rates(event_rates,ts_train,saveas=save_figure+'_event_rate', conv_width=30)
 
 # ************************************************************
 # ******************** General PLOTTING ******************************
 # ************************************************************
-# Plot hpdp:
+
+X = waveforms[0:10,:]
+X_rec = vae.predict(X)
+plot_waveforms(X,labels=None)
+plt.show()
+plot_waveforms(X_rec,labels=None)
+plt.show()
+
+
 if verbose>1:
     print()
     print(f'Plotting waveforms of each cluster if labels are specified...')
     print()
-    plot_waveforms(hpdp,labels=None)
+    plot_waveforms(hpdp[0:10,:],labels=None)
     print()
     print(f'Visualising decoded latent space of hpdp...')
     print()
-    plot_encoded(encoder, hpdp, saveas=save_figure+'_hpdp_encoded', verbose=verbose)
+    plot_encoded(encoder, hpdp[0:1000,:], saveas=save_figure+'_hpdp_encoded', verbose=verbose)
     print()
     print(f'Visualising decoded latent space...')
     print()
-    plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
+    #plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
     plot_encoded(encoder, wf_train, saveas=save_figure+'_encoded', verbose=1)
 
 

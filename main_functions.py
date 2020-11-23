@@ -78,12 +78,12 @@ def load_timestamps(path_to_ts,matlab_key,verbose=1):
 def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_weights=None, 
                 continue_train=False, verbose=1):
     """
-    Initiates or continues training of vae-model depending on existance of path_to_weights-file.
+    Initiates or continues training of vae-model depending on existance of "path_to_weights"-file.
 
     Parameters
     ----------
     data_train : (num_train_data_pts, size_of_waveform) array_like
-    
+
     latent_dim : integer_like
             dimension of latent space.
     
@@ -91,7 +91,7 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
 
     Returns
     -------
-    encoder, decoder, vae : keras model classes.
+    encoder, decoder, vae : keras.Model classes.
 
     """
     assert np.isnan(np.sum(data_train))==False, 'Nans in "data_train"'
@@ -142,8 +142,8 @@ def __cluster__(vae,x,eta,gamma,m):
             print(f'ETA: {round(ETA_t)} seconds..')
             print()
 
-        #x_hat = x + eta*tf.random.normal(shape=x.shape)
-        x_hat = x + eta * np.random.normal(size=x.shape)
+        x_hat = x + eta*tf.random.normal(shape=x.shape)
+        #x_hat = x + eta * np.random.normal(size=x.shape)
         x_rec = vae.predict(x_hat)
         x = x - gamma*(x_hat-x_rec)
 

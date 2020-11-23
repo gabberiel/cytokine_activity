@@ -162,9 +162,9 @@ if __name__ == "__main__":
     first_injection_time = 30*60
     second_injection_time = 60*60
 
-    labels[timestamps[:,0] < first_injection_time] = 1;
-    labels[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] = 2;
-    labels[timestamps[:,0] > second_injection_time] = 3;
+    labels[timestamps[:,0] < first_injection_time] = 1
+    labels[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] = 2
+    labels[timestamps[:,0] > second_injection_time] = 3
 
 
     # Create test linear timestamps
