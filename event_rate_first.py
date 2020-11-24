@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def get_event_rates(timestamps,labels,bin_width=1):
+def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     '''
     Calculates event rate of labeled waveforms. This by counting the number of occurances in sliding
     one second window of the corresponding timestamps.
@@ -28,18 +28,28 @@ def get_event_rates(timestamps,labels,bin_width=1):
     '''
     assert timestamps.shape[0] == labels.shape[0], f'Missmatch of labels and timestamps shape: ts: {timestamps.shape} & lb: {labels.shape}'
     
-    clusters = np.unique(labels) # Get the different clusters for whcich to calculate event rate..
     bin_edges = np.arange(0,timestamps[-1]+1,1) # Must include rightmost edge in "np.histogram"
-    event_rate_results = np.empty((bin_edges.shape[0]-1,clusters.shape[0]))
+    if consider_only is None:
+        clusters = np.unique(labels) # Get the different clusters for whcich to calculate event rate..
+        event_rate_results = np.empty((bin_edges.shape[0]-1,clusters.shape[0]))
+        real_clusters = []
+        for cluster_idx,cluster in enumerate(clusters):
+                event_count = np.histogram(timestamps[labels==cluster],bin_edges)
+                event_rate_results[:,cluster_idx] = event_count[0]
+                #cluster_idx += 1
+                if np.mean(event_count[0]) > 0.5: # 0.1 in MATLAB
+                        real_clusters.append(cluster)
 
-    real_clusters = []
-    for cluster_idx,cluster in enumerate(clusters):
+    else:
+        cluster = np.array((consider_only))       
+        event_rate_results = np.empty((bin_edges.shape[0]-1,1))
+        real_clusters = []
         event_count = np.histogram(timestamps[labels==cluster],bin_edges)
-        event_rate_results[:,cluster_idx] = event_count[0]
+        event_rate_results[:,0] = event_count[0]
         #cluster_idx += 1
         if np.mean(event_count[0]) > 0.5: # 0.1 in MATLAB
-            real_clusters.append(cluster)
-        
+                real_clusters.append(cluster)
+
     return event_rate_results, real_clusters
 
 def delta_ev_measure(event_rates):
@@ -66,7 +76,7 @@ def delta_ev_measure(event_rates):
                 Changes in mean event rate after the two injections for each cluster.
 
         ev_stats : (3, number_of_clusters) array_like
-                mean and variance of event rates for all three periods for each cluster.
+                mean and standard deviation of event rates for all three periods for each cluster.
         
         '''
         num_intervals = 3
@@ -76,20 +86,20 @@ def delta_ev_measure(event_rates):
         injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
         
         interval_ev_means = np.empty((num_intervals, num_clusters))
-        interval_ev_var = np.empty((num_intervals, num_clusters))
+        interval_ev_std = np.empty((num_intervals, num_clusters))
 
         for i in range(num_intervals):
                 interval_ev_means[i,:] = np.mean(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
-                interval_ev_var[i,:] = np.var(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
+                interval_ev_std[i,:] = np.std(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
         
         # Could explore many differnt times of measures...
         # For now, difference in mean event-rate will be considered.
         delta_ev = interval_ev_means[1:,:] - interval_ev_means[:-1,:]
 
-        stats = [interval_ev_means, interval_ev_var]
+        stats = [interval_ev_means, interval_ev_std]
         return delta_ev, stats
         
-def plot_event_rates(event_rates,timestamps, conv_width=100, clusters=None, saveas=None):
+def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True):
     '''
     Plots event rates by smoothing kernel average of width convolution_window.
     convolution done including boundary effects but returns vector of same size.
@@ -101,10 +111,10 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, clusters=None, save
             of recording. 
     conv_width: Integer_like
             Size of smoothing kernel window for plotting
-    clusters : (number_of_clusters, ) array_like
-        Contains integers encoding which cluster each event_rate corresponds to.
-        If "-1" is in clusters it is interpreted as noise.
-        If clusters is None all event_rates is plotted in the same way.. 
+    noise :  integer_like
+        Integers encoding which cluster is to be considered as noise.
+       ((( qqq: old If "-1" is in clusters it is interpreted as noise. )))
+        If noise is None, then all event_rates is plotted in the same way..
     Returns
     -------
     '''
@@ -113,10 +123,19 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, clusters=None, save
     #time_of_recording_in_seconds = event_rates[:,0].shape[0]
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
+
+    plt.figure()
     #colors = ['r','k','g']
-    for i,ev in enumerate(event_rates.T):
-        smothed_ev = np.convolve(ev,conv_kernel,'same')
-        plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
+    if noise is not None:
+        for i,ev in enumerate(event_rates.T):
+            if i != noise:
+                smothed_ev = np.convolve(ev,conv_kernel,'same')
+                plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
+
+    else:
+        for i,ev in enumerate(event_rates.T):
+            smothed_ev = np.convolve(ev,conv_kernel,'same')
+            plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
     
     plt.xlabel('Time of recording (min)')
     plt.ylabel('Event rate (CAPs/second)') 
@@ -124,8 +143,11 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, clusters=None, save
     plt.legend() 
 
     if saveas is not None:
-            plt.savefig(saveas, dpi=150)
-    plt.show()
+        plt.savefig(saveas, dpi=150)
+    if verbose:
+        plt.show()
+    plt.close()    
+
 
 
 if __name__ == "__main__":
