@@ -67,37 +67,91 @@ def delta_ev_measure(event_rates):
         Parameters
         ----------
         event_rates : total_time_in_seconds, number_of_clusters) array_like 
-            Number of occurances of labeled waveforms in each one second window during time
-            of recording. 
-        
+                Number of occurances of labeled waveforms in each one second window during time
+                of recording. 
+
         Returns
         -------
-        delta_ev : (2, number_of_clusters) array_like
+        delta_ev : (number_of_injections, number_of_clusters) array_like
                 Changes in mean event rate after the two injections for each cluster.
 
-        ev_stats : (3, number_of_clusters) array_like
+        ev_stats :[interval_ev_means, interval_ev_std] python_list
+            interval_ev_means: (3, number_of_clusters) array_like
+            interval_ev_std : (3, number_of_clusters) array_like
                 mean and standard deviation of event rates for all three periods for each cluster.
-        
+
         '''
         num_intervals = 3
         num_clusters = event_rates.shape[-1]
         # OBS. recording last longer than 90 minutes. 
         # Could change to end time but then intervals have different lengths.
         injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
-        
+
         interval_ev_means = np.empty((num_intervals, num_clusters))
         interval_ev_std = np.empty((num_intervals, num_clusters))
 
         for i in range(num_intervals):
                 interval_ev_means[i,:] = np.mean(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
                 interval_ev_std[i,:] = np.std(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
-        
+
         # Could explore many differnt times of measures...
         # For now, difference in mean event-rate will be considered.
         delta_ev = interval_ev_means[1:,:] - interval_ev_means[:-1,:]
 
         stats = [interval_ev_means, interval_ev_std]
         return delta_ev, stats
+
+def ev_label(delta_ev,ev_stats,n_std=1):
+    '''
+    Give waveform a label encoding how the event rate change at time of injection.
+    The label is vector with 3 dimensions. The three values corresponds 
+    to "increase after first injection", "increase after second injection", "consant" -- respectively.
+
+    Parameters
+    ----------
+    delta_ev : (number_of_injections, number_of_clusters) array_like
+                Changes in mean event rate after the two injections for each cluster.
+                (This function will only need/get "number_of_clusters" = 1.)
+    ev_stats :[interval_ev_means, interval_ev_std] python_list
+        interval_ev_means: (3, number_of_clusters) array_like
+        interval_ev_std : (3, number_of_clusters) array_like
+            mean and standard deviation of event rates for all three periods for each cluster.
+    n_std : float
+        number of standard deviations that mean hase to change after injection for it to be 
+        considered as increase/decrease
+    Returns
+    -------
+        label : () array_like
+
+    Example
+    -------
+        label = [0,1,0] corresponds to increase in activity after second injection. 
+        label = [1,1,0] corresponds to increase in activity after both injections. 
+    '''
+    # TODO OBS for now it only accepts one label and one delta_ev..
+    interval_ev_std = ev_stats[1][:2] #.reshape((-1,2)) # Get standard deviation for first two periods.
+
+    # Define baseline standard deviation for second injection as mean of first two periods of recording..
+    interval_ev_std[-1] = (interval_ev_std[0] + interval_ev_std[1])/2
+
+    ev_label = np.zeros((3,delta_ev.shape[-1]))
+
+    # Find if there is a sufficient increase in event rates after injections: 
+    is_increase = delta_ev > n_std*interval_ev_std
+    if True in is_increase:
+        is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
+        ev_label[is_increase] = 1
+        #print(ev_label)
+    else:
+        ev_label[-1] = 1
+        #print(ev_label)
+
+    return ev_label
+
+
+
+
+
         
 def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True):
     '''
@@ -127,12 +181,14 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
     plt.figure()
     #colors = ['r','k','g']
     if noise is not None:
+        print('Noise...')
         for i,ev in enumerate(event_rates.T):
             if i != noise:
                 smothed_ev = np.convolve(ev,conv_kernel,'same')
                 plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
 
     else:
+        print('No given noise..')
         for i,ev in enumerate(event_rates.T):
             smothed_ev = np.convolve(ev,conv_kernel,'same')
             plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]

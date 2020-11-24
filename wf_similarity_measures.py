@@ -38,6 +38,7 @@ def wf_correlation(main_idx,std_waveforms):
         correlations : (number_of_std_waveforms, 1) array_like
             Corr(wf, std_waveforms) 
     '''
+    
     correlations = np.matmul(std_waveforms,std_waveforms[main_idx,:].T) / (std_waveforms.shape[-1]-1)
     
     assert np.isnan(np.sum(std_waveforms))==False, 'Nans in "waveforms"'
@@ -95,7 +96,7 @@ def plot_correlated_wf(original_idx,waveforms,bool_labels,threshold,saveas=None,
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
     plt.title(f'Waveforms such that corr > {threshold} to "Original" ')
-    plt.legend()
+    plt.legend(loc='upper right')
     if saveas is not None:
         plt.savefig(saveas,dpi=150)
     if verbose:
@@ -152,9 +153,9 @@ if __name__ == "__main__":
         first_injection_time = 30*60
         second_injection_time = 60*60
 
-        labels[timestamps[:,0] < first_injection_time] = 1
-        labels[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] = 2
-        labels[timestamps[:,0] > second_injection_time] = 3
+        pre_injection = wavefroms[timestamps[:,0] < first_injection_time] 
+        past_first = wavefroms[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] 
+        past_second = wavefroms[timestamps[:,0] > second_injection_time] 
 
 
     # Create test linear timestamps
@@ -166,30 +167,41 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------
     threshold = 0.7
     runs_for_time = 0
-    i = 27
+    i_range = np.arange(2000)
     path_to_fig = None
     path_to_fig_ev = None
-    for threshold in [0.7,0.8,0.9]:
-        for i in range(10,100,20):
+    label_res = [None,]
+    for threshold in [0.7]:
+        correlations = wf_correlation(i_range,std_waveforms)
+        for corr_vec in correlations.T: #range(20,100,20):
+            #print(corr_vec.shape)
             runs_for_time += 1
-            correlations = wf_correlation(i,std_waveforms)
-            bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
+            bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True )
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
             delta_ev, ev_stats = delta_ev_measure(event_rates)
             #path_to_fig = '../Figs_TESTS/correlation_meassure_relates/WF_thres_'+str(threshold)+'_wf_'+str(i)+'.png'
-            plot_correlated_wf(i,std_waveforms,bool_labels,threshold,saveas=path_to_fig,verbose=False )
+            ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
+
+            if ev_labels[-1] == 0:
+                print('joro')
+                label_res.append(ev_label)
+            #print(f'The event_rate_label is : {ev_labels}')
+            #print()
+            #plot_correlated_wf(i,std_waveforms,bool_labels,threshold,saveas=path_to_fig,verbose=True )
             
             #path_to_fig_ev = '../Figs_TESTS/correlation_meassure_relates/EV_thres_'+ str(threshold) +'_wf_' + str(i)+'.png'
-            plot_event_rates(event_rates,timestamps,noise=0,conv_width=100,saveas=path_to_fig_ev, verbose=False)
-            print(f'The change in event rate is: {delta_ev}')
-            print()
-            print(f'Event_rate stats : {ev_stats}')
+            #plot_event_rates(event_rates,timestamps,noise=None,conv_width=100,saveas=path_to_fig_ev, verbose=True)
+            
+            #print(f'The event_rate_label is : {delta_ev}')
+            #print()
+            #print(f'Event_rate stats : {ev_stats}')
     end = time.time()
     print(f' Mean time for calculating labels and event_rate : {(end-start)/runs_for_time * 1000} ms')
+    print(label_res)
     #print(f'event rates shape: {event_rates.shape}')
     #print(f'Real clusters: {real_clusters}')
-    bool_labels = label_from_corr(correlations,threshold=threshold, return_boolean=True)
-    plot_correlated_wf(i,std_waveforms,bool_labels,threshold,saveas=None)
-    plot_event_rates(event_rates,timestamps,noise=0,conv_width=100)
+    #bool_labels = label_from_corr(correlations,threshold=threshold, return_boolean=True)
+    #plot_correlated_wf(i,std_waveforms,bool_labels,threshold,saveas=None)
+    #plot_event_rates(event_rates,timestamps,noise=None,conv_width=100)
     #plt.show()
 
