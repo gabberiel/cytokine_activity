@@ -147,34 +147,32 @@ class Gmm_Vae_Model(keras.Model):
             # KL-loss to prior of z:
             kl_loss = -0.5 * tf.reduce_mean(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var) )
             
-            gmm_z = tf.make_ndarray(z)
+            #gmm_z = tf.make_ndarray(z)
             # GMM_update and corresponding kl_loss
-            self.gmm.fit(gmm_z) # Potentially time consuming...
-            gmm_labels = self.gmm.classify(z)
-            gmm_var = self.gmm.get_gaussian_var()
-            gmm_means = self.gmm.get_gaussian_means()
-            acces_all_rows = np.arange(len(labels))
-            z_mean_gmm = gmm_means[acces_all_rows,labels] # Correct syntax..?
-            z_var_gmm = gmm_var[acces_all_rows,labels]
+            #self.gmm.fit(gmm_z) # Potentially time consuming...
+            #gmm_labels = self.gmm.classify(z)
+            #gmm_var = self.gmm.get_gaussian_var()
+            #gmm_means = self.gmm.get_gaussian_means()
+            #acces_all_rows = np.arange(len(labels))
+            #z_mean_gmm = gmm_means[acces_all_rows,labels] # Correct syntax..?
+            #z_var_gmm = gmm_var[acces_all_rows,labels]
 
             # add float to denominatior to avoid inf..
-            gmm_kl_loss = -(0.5 + z_log_var - tf.log(z_var_gmm) + (z_log_var_gmm + tf.square(z_mean_gmm - z_mean))/(2*tf.exp(z_log_var) + 1e-3))
-            gmm_kl_loss = - (tf.reduce_mean(gmm_kl_loss))
+            #gmm_kl_loss = -(0.5 + z_log_var - tf.log(z_var_gmm) + (z_log_var_gmm + tf.square(z_mean_gmm - z_mean))/(2*tf.exp(z_log_var) + 1e-3))
+            #gmm_kl_loss = - (tf.reduce_mean(gmm_kl_loss))
 
             reconstruction_loss = tf.reduce_mean(
                 keras.losses.mean_squared_error(data, reconstruction)
             )
-            #reconstruction_loss *= 141
+            reconstruction_loss *= 141
 
-            total_loss = reconstruction_loss + kl_loss + gmm_kl_loss
+            total_loss = reconstruction_loss + kl_loss # + gmm_kl_loss
         grads = tape.gradient(total_loss, self.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
         return {
             "loss": total_loss,
             "reconstruction_loss": reconstruction_loss,
-            "kl_loss": kl_loss,
-            "gmm_kl_loss": gmm_kl_loss
-        }
+            "kl_loss": kl_loss} #, "gmm_kl_loss": gmm_kl_loss}
 
 
 
@@ -382,7 +380,7 @@ if __name__ == "__main__":
     #print(x_train[0:300,:])
     if Train == True:
         history = gmm_vae.fit(x_train, epochs=nr_epochs, batch_size=128,verbose=1)
-        vae.save_weights(saved_weights)
+        gmm_vae.save_weights(saved_weights)
         plt.plot(history.history['loss'])
         plt.show() 
     else:
