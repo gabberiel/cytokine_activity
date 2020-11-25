@@ -1,5 +1,7 @@
 import numpy as np
+import time
 import matplotlib.pyplot as plt
+from wf_similarity_measures import *
 
 def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     '''
@@ -148,7 +150,40 @@ def ev_label(delta_ev,ev_stats,n_std=1):
 
     return ev_label
 
+def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
+    '''
+    ...
 
+    '''
+    print('Initiating event-rate labeling')
+    sub_steps = 1000
+    n_wf = wf_std.shape[0]
+    ev_labels = np.empty((3,n_wf))
+
+    ii = 0
+    t0 = time.time()
+    prev_substep = 0
+    for sub_step in np.arange(sub_steps,n_wf,sub_steps):
+        i_range = np.arange(prev_substep,sub_step)
+        correlations = wf_correlation(i_range,wf_std)
+        for corr_vec in correlations.T:
+            bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
+            event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
+            delta_ev, ev_stats = delta_ev_measure(event_rates)
+            #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
+            ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=1)[:,0]
+            ii +=1
+        prev_substep = sub_step            
+        if ii%(sub_steps*10)==0:
+            print(f'On waveform {ii} in event-rate labeling')        
+            ti = time.time()
+            ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
+            print(f'ETA: {round(ETA_t)} seconds..')
+            print()
+    if saveas is not None:
+        np.save(saveas,ev_labels)
+            
+    return ev_labels
 
 
 

@@ -1,8 +1,10 @@
 import numpy as np
+import warnings
 import matplotlib.pyplot as plt
 
 def standardise_wf(waveforms):
     '''
+    OBSOBOBS -- old version. NOW in preprocess_wf
     Computes the correlation between the different standardised waveforms
 
     Parameters
@@ -14,6 +16,9 @@ def standardise_wf(waveforms):
         std_waveforms : (number_of_waveforms, size_of_waveform) array_like
             Standardised wavefroms
     '''
+    warnings.warn('Old version of function standardise_wf() is being used. Use version in preprocess_wf.py instead.',DeprecationWarning)
+
+
     mean = np.mean(waveforms, axis=-1)
     std  = np.std(waveforms, axis=-1)  
     waveforms = waveforms - mean[:,None]
@@ -28,7 +33,7 @@ def wf_correlation(main_idx,std_waveforms):
     Parameters
     ----------
         std_waveforms : (number_of_std_waveforms, size_of_waveform) array_like
-            standardised wavefroms
+            standardised waveforms. (mean subtracted and devided by variance)
         
         main_idx : integer_like
             Specifices which waveform to get event rate from. 
@@ -81,6 +86,7 @@ def label_from_corr(correlations, threshold=0.5,return_boolean=True):
         labels = np.zeros((correlations.shape[0]))
         labels[correlations > threshold] = 1
         return labels
+
 
 
 def plot_correlated_wf(original_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True):

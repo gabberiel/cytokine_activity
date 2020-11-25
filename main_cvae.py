@@ -6,10 +6,15 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from os import path
 from plot_functions_wf import *
 from main_functions import *
 from sklearn.cluster import KMeans, DBSCAN
 from event_rate_first import *
+import preprocess_wf 
+from wf_similarity_measures import *
+
+# OBS assumes existance of the standardise
 
 # ************************************************************
 # ******************** Parameters ****************************
@@ -25,7 +30,6 @@ view_GD_result = False # This reqires user to give input if to continue the scri
 
 run_DBscan = False
 run_KMeans = False
-
 
 verbose = 1
 
@@ -55,13 +59,16 @@ save_figure = 'figures/21nov_first_full_training'
 path_to_weights = 'models/21nov_first_full_training'
 # Numpy file:
 path_to_hpdp = "../numpy_files/numpy_hpdp/21nov_first_full_training"
+path_to_EVlabels = "../numpy_files/EV_labels/deleteme_25nov"
 
 # ************************************************************
 # ******************** Load Files ****************************
 # ************************************************************
+
+# TODO Move preprocessing from "load_waveforms function"
 load_data = True
 if load_data:
-    waveforms, mean, std = load_waveforms(path_to_wf,'waveforms',standardize=True, verbose=1)
+    waveforms, mean, std = load_waveforms(path_to_wf,'waveforms',standardize=False, verbose=1)
     timestamps = load_timestamps(path_to_ts,'gg_timestamps',verbose=1)
     
     # Extract Training data:
@@ -71,6 +78,25 @@ if load_data:
     ts_train = timestamps
     print(f'Shape of training data: {wf_train.shape}')
 
+# ************************************************************
+# ******************** Preprocess ****************************
+# ************************************************************
+# Standardise wavefroms
+waveforms = preprocess_wf.standardise_wf(waveforms)
+
+# ************************************************************
+# ******************** Event-rate Labeling *******************
+# ************************************************************
+
+if path.isfile(path_to_EVlabels+'.npy'):
+    print()
+    print(f'Loading saved EV-labels from {path_to_EVlabels}')
+    print()
+    ev_label = np.load(path_to_EVlabels+'.npy')
+else:
+    ev_labels = get_ev_labels(waveforms,timestamps,threshold=0.6,saveas=path_to_EVlabels)
+
+exit()
 # ************************************************************
 # ******************** Train/Load model **********************
 # ************************************************************
@@ -186,7 +212,6 @@ if run_event_rate:
     print(f'Real cluster (with mean event_rate over 0.5 is CAPs {real_clusters})')
     plot_event_rates(event_rates,ts_train,saveas=save_figure+'_event_rate', conv_width=30)
     #plot_event_rates(event_rates,ts_train,saveas=save_figure+'_event_rate', conv_width=30)
-
 
 # ************************************************************
 # ******************** General PLOTTING ******************************
