@@ -65,7 +65,7 @@ def create_encoder(encoder_input,latent_dim):
     cx     = keras.layers.Conv1D(filters=16, kernel_size=2, strides=1, padding='same', activation='relu')(cx)
     cx     = keras.layers.BatchNormalization()(cx)
     x      = keras.layers.Flatten()(cx)
-    x      = keras.layers.Dense(20, activation='relu')(x)
+    x      = keras.layers.Dense(100, activation='relu')(x)
     x      = keras.layers.BatchNormalization()(x)
 
     #conv_shape = keras.backend.int_shape(cx)
@@ -126,13 +126,13 @@ def create_decoder(waveform_dim,latent_dim):
 
     d_i = layers.Input(shape=(latent_dim, ), name='decoder_input')
     x   = keras.layers.Dense(20 , activation='relu')(d_i)
-    x   = keras.layers.Dense(100, activation='relu')(d_i)
+    x   = keras.layers.Dense(100, activation='relu')(x)
     x   = keras.layers.BatchNormalization()(x)
-    x   = keras.layers.Dense(100, activation='relu')(d_i)
+    x   = keras.layers.Dense(100, activation='relu')(x)
     x   = keras.layers.BatchNormalization()(x)
-    x   = keras.layers.Dense(100, activation='relu')(d_i)
-    x   = keras.layers.BatchNormalization()(x)
-    o   = keras.layers.Dense(waveform_dim, activation='relu')(d_i)
+    #x   = keras.layers.Dense(100, activation='relu')(x)
+    #x   = keras.layers.BatchNormalization()(x)
+    o   = keras.layers.Dense(waveform_dim, activation=None)(x)
     #x   = keras.layers.Reshape((waveform_dim, 1))(x)
     #cx  = keras.layers.Conv1DTranspose(filters=16, kernel_size=2, strides=1, padding='same', activation='relu')(x)
     #cx  = keras.layers.BatchNormalization()(cx)
@@ -236,13 +236,13 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------
     # --------------------- TEST FUNCTIONS: ----------------------------
     # ------------------------------------------------------------------------------------
-    Train = True
+    Train = False
     continue_train = False
-    nr_epochs = 50
+    nr_epochs = 10
     saved_weights = 'models_tests/first_test'
     save_figure = 'figures_tests/wf_latent_decoded'
     waveform_dim = waveforms.shape[-1]
-    xx = waveforms[:30000,:]
+    xx = waveforms[:136000,:]
     # Standardize input data.
     mean = np.mean(xx, axis=-1)
     std  = np.std(xx, axis=-1)  
@@ -273,9 +273,9 @@ if __name__ == "__main__":
             vae.save_weights(saved_weights)
             plt.plot(history.history['loss'])
             plt.show() 
-    #print()
-    #print(f'Visualising decoded latent space...')
-    #print()
-    #plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
-    #plot_encoded(encoder, x_train, saveas=None, verbose=1)
+    print()
+    print(f'Visualising decoded latent space...')
+    print()
+    plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
+    plot_encoded(encoder, x_train, saveas=None, verbose=1)
     

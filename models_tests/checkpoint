@@ -1,0 +1,2 @@
+model_checkpoint_path: "Cvae_first_test_var=0.5"
+all_model_checkpoint_paths: "Cvae_first_test_var=0.5"

@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from vae_dense_wf import get_vae
+from cvae_dense_wf import get_vae # OBSOBSOBS -- Change when running main_first...
 from scipy.io import loadmat
 from os import path
 

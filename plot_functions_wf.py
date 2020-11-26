@@ -2,11 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # VERISON USED FOR ARAMS CODE ON WAVEFORM DATA
-def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1):
+def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
     Plots (resolution x resolution) sized grid in of waveform from the
     corresponding latent variable in the range 
-
 
 
     Notes
@@ -28,7 +27,10 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1):
             latent_z = np.array((z1,-z2))
             #print(latent_z)
             latent_z = np.reshape(latent_z, (1,2))
-            reconstructed = decoder.predict(latent_z)
+            if ev_label is not None:
+                reconstructed = decoder.predict([latent_z,ev_label])
+            else:
+                reconstructed = decoder.predict(latent_z)
             ax.plot(reconstructed[0,0:-1:5])
             ax.set(xticks=[], yticks=[])
             if j == resolution:
@@ -42,14 +44,18 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1):
         ax.spines['right'].set_visible(ax.is_last_col())
     plt.savefig(saveas, dpi=150)
     #plt.title('Decoded Latent Space')
-    plt.show()
+    if verbose==1:
+        plt.show()
 
 
-def plot_encoded(encoder, data, saveas=None,verbose=1):
+def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None):
     '''
     Display a 2D plot of the latent space mean. 
     Will show plot if verbose>0.
     Will save figure if saveas is a valid path.
+
+    If ev_label is None then it is assumed that the encoder is part of a VAE
+    Otherwise a CVAE.
 
     Parameters
     ----------
@@ -61,9 +67,14 @@ def plot_encoded(encoder, data, saveas=None,verbose=1):
         if None then the figure is not saved
     verbose : integer_like
         verbose>0 => plt.show()
+    ev_label : (num_of_wf, label_dim) array_like or None
+        Determens if a vae or cvae model is used.
 
     '''
-    z_mean, log_var_out, z  = encoder.predict(data)
+    if ev_label is not None:
+        z_mean, log_var_out, z  = encoder.predict([data,ev_label])
+    else:
+        z_mean, log_var_out, z  = encoder.predict(data)
     
     assert z_mean.shape[-1] == 2, 'PLOT ONLY WORK FOR 2D LATENT SPACE'
     plt.figure(figsize=(10, 10))
@@ -73,5 +84,5 @@ def plot_encoded(encoder, data, saveas=None,verbose=1):
     plt.ylabel("z[1]")
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
-    if verbose>0:
-            plt.show()
+    if verbose==1:
+        plt.show()
