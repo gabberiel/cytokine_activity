@@ -2,7 +2,8 @@ import tensorflow as tf
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from cvae_dense_wf import get_vae # OBSOBSOBS -- Change when running main_first...
+from vae_dense_wf import get_vae # OBSOBSOBS -- Change when running main_first...
+from cvae_dense_wf import get_cvae
 from scipy.io import loadmat
 from os import path
 
@@ -76,10 +77,13 @@ def load_timestamps(path_to_ts,matlab_key,verbose=1):
 
 
 def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_weights=None, 
-                continue_train=False, verbose=1):
+                continue_train=False, verbose=1,ev_label=None):
     """
     Initiates or continues training of vae-model depending on existance of path_to_weights-file.
 
+    If ev_label is None the it assumes a VAE-model.
+    Otherwise Conditional-VAE
+    
     Parameters
     ----------
     data_train : (num_train_data_pts, size_of_waveform) array_like
@@ -96,20 +100,31 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
     """
     assert np.isnan(np.sum(data_train))==False, 'Nans in "data_train"'
     waveform_shape = data_train.shape[-1]
-    encoder,decoder,vae = get_vae(waveform_shape,latent_dim)
+    if ev_label is None:
+        encoder,decoder,vae = get_vae(waveform_shape,latent_dim)
+    else:
+        encoder,decoder,cvae = get_cvae(waveform_shape,latent_dim,label_dim=3)
+    
     if path.isfile(path_to_weights+'.index'):
         if verbose>0:
             print()
             print(f'Loading {path_to_weights}...')
             print()
-        vae.load_weights(path_to_weights)
+        if ev_label is None:
+            vae.load_weights(path_to_weights)
+        else:
+            cvae.load_weights(path_to_weights)
         if continue_train == True:
             if verbose>0:
                 print()
                 print(f'Continue training for {nr_epochs} epochs...')
                 print()
-            history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
-            vae.save_weights(path_to_weights)
+            if ev_label is None:
+                history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
+                vae.save_weights(path_to_weights)
+            else:
+                history = cvae.fit([data_train,ev_label] , data_train, epochs=nr_epochs, batch_size=batch_size)
+                cvae.save_weights(path_to_weights)
             if verbose>1:
                 plt.plot(history.history['loss'])
                 plt.show() 
@@ -119,12 +134,19 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
             print(f'Start training from scratch for {nr_epochs} epochs...')
             print(f'Weights will be saved as {path_to_weights}')
             print()
-        history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
-        vae.save_weights(path_to_weights)
+        if ev_label is None:
+            history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
+            vae.save_weights(path_to_weights)
+        else:
+            history = cvae.fit([data_train,ev_label] , data_train, epochs=nr_epochs, batch_size=batch_size)
+            cvae.save_weights(path_to_weights)
         if verbose>1:
             plt.plot(history.history['loss'])
             plt.show() 
-    return encoder,decoder,vae 
+    if ev_label is None:
+         return encoder,decoder,vae 
+    else:
+         return encoder,decoder,cvae 
 
 def __cluster__(vae,x,eta,gamma,m):
     ''' The Gradient decent loop used in "pdf_GD". '''

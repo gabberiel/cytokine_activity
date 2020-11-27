@@ -35,7 +35,7 @@ path_to_matlab_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
 path_to_matlab_ts = '../matlab_files/gg_timestamps.mat'
 
 # tf weight-file:
-path_to_model_weights = 'models_tests/cvae_test_var=0.1'
+path_to_model_weights = 'models_tests/dense_vae_27nov'
 
 
 # ********* Figures saveas: ************
@@ -81,6 +81,7 @@ print('*********************** Tensorflow Blaj *********************************
 print()
 
 encoder,decoder,vae = train_model(waveforms, path_to_weights=path_to_model_weights,continue_train=False)
+#encoder,decoder,cvae = train_model(waveforms, path_to_weights=path_to_model_weights,continue_train=False,ev_label=ev_labels_wf)
 print()
 print('******************************************************************************')
 print()
@@ -123,7 +124,7 @@ if plot_simulatated_path_from_model:
 # ************************************************************
 # ******** Plot examples of event-rates from EV_labeles ******
 # ************************************************************
-plot_wf_and_ev_for_the_different_ev_labels = False
+plot_wf_and_ev_for_the_different_ev_labels = True
 if plot_wf_and_ev_for_the_different_ev_labels:
     threshold = 0.6
 
@@ -131,7 +132,7 @@ if plot_wf_and_ev_for_the_different_ev_labels:
     idx_increase_after_second = np.where(ev_labels_wf[1,:]==1)
     idx_constant_throughout = np.where(ev_labels_wf[2,:]==1)
     print(idx_increase_after_first[0][100:300:100])
-    saveas = 'figures_tests/event_rate_labels/ev_incr_first_n_std_1'
+    saveas = 'figures_tests/event_rate_labels/aa_ev_incr_first_n_std_1'
     for i in idx_increase_after_first[0][100:300:100]: #range(20,100,20):
         correlations = wf_correlation(i,waveforms)
         bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
@@ -142,7 +143,7 @@ if plot_wf_and_ev_for_the_different_ev_labels:
         plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=False) 
 
     # ********* Increase Afrer Second Injection
-    saveas = 'figures_tests/event_rate_labels/ev_incr_second_n_std_1'
+    saveas = 'figures_tests/event_rate_labels/aa_ev_incr_second_n_std_1'
     for i in idx_increase_after_second[0][100:300:100]: #range(20,100,20):
         correlations = wf_correlation(i,waveforms)
         bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )

@@ -4,9 +4,31 @@ import matplotlib.pyplot as plt
 # VERISON USED FOR ARAMS CODE ON WAVEFORM DATA
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
-    Plots (resolution x resolution) sized grid in of waveform from the
-    corresponding latent variable in the range 
+    Takes (resolution x resolution) samples from grid in latent space and plots the decoded x-mean.
+    We assume x ~ N(mu_x,I). The functions then does as follows:
+        * sample z. (takes values in evenly spaced grid.)
+        * Use decoder to get mu_x = f(z;theta)
+        * Plot mu_x in grid-subplots
 
+
+    Will show plot if verbose=1.
+    Will save figure if saveas is a valid path.
+
+    If ev_label is None then it is assumed that the encoder is part of a VAE
+    Otherwise a CVAE.
+
+    Parameters
+    ----------
+    decoder : keras.Model class_instance
+        Decoder part of VAE/CVAE
+    resolution : integer
+        Spacing of latent space grid.
+    saveas : 'path/to/save_fig' string_like
+        if None then the figure is not saved
+    verbose : integer_like
+        verbose>0 => plt.show()
+    ev_label : (num_of_wf, label_dim) array_like or None
+        Determens if a vae or cvae model is used.
 
     Notes
     -----
@@ -51,7 +73,7 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=Non
 def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None):
     '''
     Display a 2D plot of the latent space mean. 
-    Will show plot if verbose>0.
+    Will show plot if verbose=1.
     Will save figure if saveas is a valid path.
 
     If ev_label is None then it is assumed that the encoder is part of a VAE

@@ -9,7 +9,7 @@ from sklearn.mixture import GaussianMixture
 
 def sample_z(mu,sigma):
     '''
-    TODO : 
+    Reparametrisation step of encoder to consider the stochastic sampling of latent variable as an input to network -- enabeling backprop.
     '''
     batch     = keras.backend.shape(mu)[0]
     dim       = keras.backend.int_shape(mu)[1]
@@ -28,21 +28,28 @@ class Add_kl_loss(layers.Layer):
         return kl_loss
 
 
-def create_encoder(encoder_input,latent_dim,inp_label):
+def __create_encoder__(encoder_input,latent_dim,inp_label):
     '''
-    TODO:
-    Description....
+    Initiates encoder of conditional variational autoencoder.
+
+    Called by "get_cvae()"
 
     Parameters
     ----------
-    inp_layer : 
+    encoder_input : keras.layers.Input - type
+        Input layer of CVAE
+    laten_dim : Integer 
+        dimension of latent space
+    inp_label : keras.layers.Input - type
+        Input label to condition on in the conditional VAE.
 
     Returns
     -------
-    out : 
+    out : keras.Model
+        Dense encoder model of CVAE
 
     '''
-    #e_i    = layers.Input(shape=(waveform_shape, ), name='encoder_input')
+    #e_i    = layers.Input(shape=(waveform_dim, ), name='encoder_input')
     xi     = layers.Concatenate(axis=1)([encoder_input, inp_label])
     x      = layers.Dense(120, activation='relu')(xi)
     x      = layers.BatchNormalization()(x)
@@ -73,36 +80,26 @@ def create_encoder(encoder_input,latent_dim,inp_label):
     return encoder
 
 
-def create_decoder(waveform_shape,latent_dim,inp_label):    
+def __create_decoder__(waveform_dim,latent_dim,inp_label):    
     '''
-    TODO:
-    Description....
+    Initiates decoder of conditional variational autoencoder.
+
+    Called by "get_cvae()"
 
     Parameters
     ----------
-    a : 
+    wavefrom_dim : Integer - type
+        Number of features in each waveform. To be used in reconstructed output
+    laten_dim : Integer 
+        dimension of latent space
+    inp_label : keras.layers.Input - type
+        Input label to condition on in the conditional VAE.
 
     Returns
     -------
-    out : 
+    out : keras.Model
+        Dense decoder model of CVAE
 
-    See Also
-    --------
-        Ref to similar funtions...
-    
-    Notes
-    -----
-    More mathematicall description
-
-    References
-    ----------
-    .. [1] Wikipedia, "Convolution", http://en.wikipedia.org/wiki/Convolution.
-    Examples
-    --------
-    blabla
-    >>> np.convolve([1, 2, 3], [0, 1, 0.5])
-    array([ 0. ,  1. ,  2.5,  4. ,  1.5])
-    Only return the middle values of the convolution.
     '''
 
     d_i    = layers.Input(shape=(latent_dim, ), name='decoder_input')
@@ -113,53 +110,67 @@ def create_decoder(waveform_shape,latent_dim,inp_label):
     x      = layers.BatchNormalization()(x)
     x      = layers.Dense(120, activation='relu')(x)
     x      = layers.BatchNormalization()(x)
-    o      = layers.Dense(waveform_shape, activation=None)(x)
+    o      = layers.Dense(waveform_dim, activation=None)(x)
 
     decoder = keras.Model(inputs=[d_i,inp_label],outputs=o, name='decoder')
     return decoder
     
-def get_cvae(waveform_shape,latent_dim,label_dim=3):
+def get_cvae(waveform_dim,latent_dim,label_dim=3):
     '''
-    TODO:
-    Description....
+    Builds a Conditional Autoencoder with 1D input dimension specified by waveform_dim.
+    Conditiones input with label of dimension label_dim.
 
     Parameters
     ----------
-    a : 
+    wavefrom_dim : Integer - type
+        Number of features in each waveform. To be used in reconstructed output
+    laten_dim : Integer 
+        dimension of latent space
+    label_dim : Integer
+        Dimension of label to condition on in the conditional VAE.
 
     Returns
     -------
-    out : 
-
+    encoder : keras.Model
+        Dense encoder model of CVAE
+    decoder : keras.Model
+        Dense decoder model of CVAE
+    cvae : keras.Model
+        Full cvae model to be trained.
     '''
-    encoder_input = layers.Input(shape=(waveform_shape, ), name='encoder_input')
+    encoder_input = layers.Input(shape=(waveform_dim, ), name='encoder_input')
     inp_label = layers.Input(shape=(label_dim, ), name='ev_label_input')
-    encoder = create_encoder(encoder_input, latent_dim, inp_label)
-    decoder = create_decoder(waveform_shape, latent_dim, inp_label)
+    encoder = __create_encoder__(encoder_input, latent_dim, inp_label)
+    decoder = __create_decoder__(waveform_dim, latent_dim, inp_label)
     
     reconstruction = decoder([encoder([encoder_input,inp_label])[2],inp_label])
     cvae = keras.Model(inputs=[encoder_input,inp_label], outputs=reconstruction, name='cvae')
     cvae.add_loss(encoder.losses)
     optimizer = tf.keras.optimizers.Adam()
-    #reconstruction_loss = tf.keras.losses.MeanSquaredError(reconstruction, inp_layer)
-    #cvae.add_loss(reconstruction_loss)
+    #__reconstruction_loss__ = tf.keras.losses.MeanSquaredError(reconstruction, inp_layer)
+    #cvae.add_loss(__reconstruction_loss__)
     
-    cvae.compile(optimizer,loss=reconstruction_loss)
+    cvae.compile(optimizer,loss=__reconstruction_loss__)
     #cvae.summary()
     return encoder,decoder,cvae
 
-def reconstruction_loss(data,target):
+def __reconstruction_loss__(data,target):
     '''
-    TODO:
-    Description....
-
+    Specifies reconstruction loss under multivariate normal assumption of the input data.
+    
+    Called when compileing cvae-keras.Model.
+    
+    Tensorflow requiers two inputs only and gives the inputs: data and target
     Parameters
     ----------
-    a : 
-
+    data : tensorflow object 
+        output from tensorflow prediction
+    target : tensorflow object
+        Label for the corresponing input data.
     Returns
     -------
-    out : 
+    out : scalar
+        Loss considered in backpropagation. 
 
     '''
     variance = 0.5
@@ -221,8 +232,8 @@ if __name__ == "__main__":
 
 
     ev_labels_wf = np.load(path_to_EVlabels+'.npy')
-    waveform_shape = waveforms.shape[-1]
-    encoder,decoder,cvae = get_cvae(waveform_shape,2)
+    waveform_dim = waveforms.shape[-1]
+    encoder,decoder,cvae = get_cvae(waveform_dim,2)
     xx = waveforms[:130000,:]
     ev_labels = ev_labels_wf[:,:130000].T
 

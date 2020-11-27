@@ -17,7 +17,7 @@ from event_rate_first import *
 
 # VAE training params:
 continue_train = False
-nr_epochs = 2000 # if all train data is used -- almost no loss-decrease after 100 batches..
+nr_epochs = 20 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
 view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
@@ -52,7 +52,7 @@ path_to_ts = '../matlab_files/gg_timestamps.mat'
 
 save_figure = 'figures/21nov_first_full_training'
 # tf weight-file:
-path_to_weights = 'models/21nov_first_full_training'
+path_to_weights = 'models_tests/dense_vae_27nov'
 # Numpy file:
 path_to_hpdp = "../numpy_files/numpy_hpdp/21nov_first_full_training"
 

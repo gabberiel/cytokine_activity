@@ -152,8 +152,19 @@ def ev_label(delta_ev,ev_stats,n_std=1):
 
 def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
     '''
-    ...
-
+    Complete pipeline of labeling standardised waveforms based on change in event rates.
+    Steps in process:
+        * Use correlation-threshold to cluster wavefomes assuming each observation as "main-wf"
+        * Calculate event-rate from resulting cluster above
+        * Calculate the change in event rate at time of injection as well as mean/variance for the three periods 
+        * get ev_labels using the threshold: "mean-event rate increasing at least n std_deviations  after injection".
+    
+    Parameters
+    ----------
+        wf_std : (number_of_waveforms, dim_of_waveforms) array_like 
+            Standardised/Preprocessed waveforms to label with ev_labels.
+        timestaps : (number_of_waveforms, ) array_like 
+            Vector containing timestamp for each waveform in seconds from started recording.
     '''
     print('Initiating event-rate labeling')
     sub_steps = 1000
@@ -190,7 +201,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
         
 def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True):
     '''
-    Plots event rates by smoothing kernel average of width convolution_window.
+    Plots event rates by smoothing kernel average of width "conv_width".
     convolution done including boundary effects but returns vector of same size.
 
     Parameters
