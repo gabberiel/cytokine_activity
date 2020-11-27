@@ -22,19 +22,19 @@ from wf_similarity_measures import *
 
 # VAE training params:
 continue_train = False
-nr_epochs = 2000 # if all train data is used -- almost no loss-decrease after 100 batches..
+nr_epochs = 20 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
 view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
+view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 
 run_DBscan = False
-run_KMeans = False
+run_KMeans = True
 
 verbose = 1
 
 # pdf GD params: 
-m=0 # Number of steps 
+m=1000 # Number of steps 
 gamma=0.01 # learning_rate
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
@@ -45,7 +45,7 @@ db_min_sample = 35 # Minimum members in neighbourhood to not be regarded as Nois
 
 # Shape of waveforms: (136259, 141)
 #training_idx = np.arange(10000) # initial testing
-training_idx = np.arange(0,131000,10)
+#training_idx = np.arange(0,131000,10)
 
 # ************************************************************
 # ******************** Paths ****************************
@@ -54,12 +54,12 @@ training_idx = np.arange(0,131000,10)
 path_to_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat' 
 path_to_ts = '../matlab_files/gg_timestamps.mat'
 
-save_figure = 'figures/21nov_first_full_training'
+save_figure = 'figures/cvae_27nov_deleteme'
 # tf weight-file:
-path_to_weights = 'models/21nov_first_full_training'
+path_to_weights = 'models/cvae_27nov_deleteme'
 # Numpy file:
-path_to_hpdp = "../numpy_files/numpy_hpdp/21nov_first_full_training"
-path_to_EVlabels = "../numpy_files/EV_labels/deleteme_25nov"
+path_to_hpdp = "../numpy_files/numpy_hpdp/cvae_27nov_deleteme"
+path_to_EVlabels = "../numpy_files/EV_labels/cvae_27nov_deleteme"
 
 # ************************************************************
 # ******************** Load Files ****************************
@@ -74,29 +74,44 @@ if load_data:
     # Extract Training data:
     #wf_train = waveforms[training_idx]
     #ts_train = timestamps[training_idx]
-    wf_train = waveforms
-    ts_train = timestamps
-    print(f'Shape of training data: {wf_train.shape}')
+    print(f'Shape of training data: {waveforms.shape}')
+
+# ************************************************************
+# ******** Cut first and last part of recording...? **********
+# ************************************************************
+
+use_range = np.arange(5000,130000)
+waveforms = waveforms[use_range,:]
+timestamps = timestamps[use_range]
 
 # ************************************************************
 # ******************** Preprocess ****************************
 # ************************************************************
-# Standardise wavefroms
+# Standardise waveforms
 waveforms = preprocess_wf.standardise_wf(waveforms)
 
 # ************************************************************
 # ******************** Event-rate Labeling *******************
 # ************************************************************
 
+
 if path.isfile(path_to_EVlabels+'.npy'):
     print()
     print(f'Loading saved EV-labels from {path_to_EVlabels}')
     print()
-    ev_label = np.load(path_to_EVlabels+'.npy')
+    ev_labels = np.load(path_to_EVlabels+'.npy')
+    ev_stats_tot = np.load(path_to_EVlabels+'tests_tot.npy') 
 else:
-    ev_labels = get_ev_labels(waveforms,timestamps,threshold=0.6,saveas=path_to_EVlabels)
+    ev_labels, ev_stats_tot = get_ev_labels(waveforms,timestamps,threshold=0.6,saveas=path_to_EVlabels)
 
-exit()
+print()
+print(f'Number of wf which ("icreased after first","increased after second", "constant") = {np.sum(ev_labels,axis=1)} ')
+
+# ho := High Occurance, ts := timestamps
+wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=1,ev_labels=ev_labels)
+
+print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
+
 # ************************************************************
 # ******************** Train/Load model **********************
 # ************************************************************
@@ -104,15 +119,17 @@ print()
 print('*********************** Tensorflow Blaj *************************************')
 print()
 
-encoder,decoder,vae = train_model(wf_train, nr_epochs=nr_epochs, batch_size=batch_size, path_to_weights=path_to_weights, 
-                                        continue_train=continue_train, verbose=1)
+encoder,decoder,cvae = train_model(wf_ho, nr_epochs=nr_epochs, batch_size=batch_size, path_to_weights=path_to_weights, 
+                                        continue_train=continue_train, verbose=1, ev_label=ev_label_ho)
 print()
 print('******************************************************************************')
 print()
 
 #view_vae_result = False # This reqires user to give input if to continue the script to GD or not.
 if view_vae_result:
-    plot_decoded_latent(decoder,saveas=save_figure+'_decoded',verbose=1)
+    save_figure = 'figures_tests/encoded_decoded/cvae_27nov_deleteme'
+    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_constant',verbose=1,ev_label=np.array((0,0,1)).reshape((1,3)))
+    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_second',verbose=1,ev_label=np.array((0,1,0)).reshape((1,3)))
     continue_to_run_GD = input('Continue to gradient decent of pdf? (yes/no) :')
 
     all_fine = False
@@ -130,20 +147,27 @@ if view_vae_result:
 # ** Perform GD on pdf to find high prob. data-points (hpdp) *
 # ************************************************************  
 
+# TODO: perform GD for wf with increased-ev labels.
 run_GD = True
 #view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
+label_on = 1
+waveforms_increase_second = wf_ho[ev_label_ho[:,label_on]==1]
+ev_label_corr_shape = np.zeros((waveforms_increase_second.shape[0],3))
+ev_label_corr_shape[:,label_on] = 1
+print(f'waveforms_increase_second : {waveforms_increase_second.shape}')
 if run_GD:
     print()
     print('Running pdf_GD to get hpdp...')
     print()
     # To easy computational load -- only every 20th data-point is used..
-    hpdp = pdf_GD(vae, wf_train, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
+    hpdp = pdf_GD(cvae, waveforms_increase_second,ev_label=ev_label_corr_shape, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
     #hpdp = pdf_GD(vae, wf_train, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
 
     if view_GD_result:
+        save_figure = 'figures_tests/hpdp/cvae_27nov_deleteme'
         print(f'Visualising decoded latent space of hpdp...')
         print()
-        plot_encoded(encoder, hpdp, saveas=save_figure+'_hpdp_encoded', verbose=1)        
+        plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp', verbose=1,ev_label=ev_label_corr_shape)        
         continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
 
         all_fine = False

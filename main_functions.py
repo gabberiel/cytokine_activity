@@ -6,6 +6,7 @@ from vae_dense_wf import get_vae # OBSOBSOBS -- Change when running main_first..
 from cvae_dense_wf import get_cvae
 from scipy.io import loadmat
 from os import path
+import warnings
 
 def load_waveforms(path_to_wf,matlab_key, standardize=False, verbose=1):
     """
@@ -123,7 +124,7 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
                 history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
                 vae.save_weights(path_to_weights)
             else:
-                history = cvae.fit([data_train,ev_label] , data_train, epochs=nr_epochs, batch_size=batch_size)
+                history = cvae.fit([data_train, ev_label] , data_train, epochs=nr_epochs, batch_size=batch_size)
                 cvae.save_weights(path_to_weights)
             if verbose>1:
                 plt.plot(history.history['loss'])
@@ -171,7 +172,30 @@ def __cluster__(vae,x,eta,gamma,m):
 
     return x
 
-def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
+def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
+    ''' The Gradient decent loop used in "pdf_GD". '''
+    count = 0
+    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
+    for i in range(m):
+        # Estimate time of loop, (ETA).
+        if i==0:
+            t0 = time.time()
+        elif i%100==0:
+            count += 1
+            ti = time.time()
+            ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
+            print(f'Running pdf-GD, iteration={i}')
+            print(f'ETA: {round(ETA_t)} seconds..')
+            print()
+
+        #x_hat = x + eta*tf.random.normal(shape=x.shape)
+        x_hat = x + eta * np.random.normal(size=x.shape)
+        x_rec = cvae.predict([x_hat,label])
+        x = x - gamma*(x_hat-x_rec)
+
+    return x
+
+def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
     '''
     Gradient decent of approximate input probability space using VAEs.
     I.e Normal approximation of input distribution.
@@ -193,14 +217,7 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
 
     Returns
     -------
-    
-    Notes
-    -----
-
-
     '''
-    
-
     if m>0:
         if path.isfile(path_to_hpdp+'.npy'):
             if verbose>0:
@@ -215,7 +232,10 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
                 print()
                 print(f'Continues GD on file: {path_to_hpdp} for {m} iterations...')
             
-            hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
+            if ev_label is None:
+                hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
+            else:
+                hpdp_x = __cluster_CVAE__(vae,data_points,ev_label,eta,gamma,m)
             assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x efter GD..'
             np.save(path_to_hpdp,hpdp_x)
 
@@ -228,7 +248,10 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
                 print()
                 print(f'Starting fresh for {m} iterations....')
                 print()
-            hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
+            if ev_label is None:
+                hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
+            else:
+                hpdp_x = __cluster_CVAE__(vae,data_points,ev_label,eta,gamma,m)
             assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x after GD..'
             np.save(path_to_hpdp,hpdp_x)
             if verbose>0:
@@ -249,7 +272,7 @@ def pdf_GD(vae, data_points, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,ver
                 print(f'High prob. data-points (hpdp): "{path_to_hpdp}" loaded Succesfully...')
                 print()
         else:
-            raise Warning(f'{path_to_hpdp} not found and number of iterations set to 0. Returning input datapoints.')
+            warnings.warn(f'{path_to_hpdp} not found and number of iterations set to 0. Returning input datapoints.')
         
         return data_points
 

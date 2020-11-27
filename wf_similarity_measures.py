@@ -89,16 +89,16 @@ def label_from_corr(correlations, threshold=0.5,return_boolean=True):
 
 
 
-def plot_correlated_wf(original_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True):
+def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True):
     '''
-    Plots wavefroms specified as True in bool_label. original_idx gives index for the main-wavform under consideration.
+    Plots wavefroms specified as True in bool_label. candidate_idx gives index for the Candidate-wavform under consideration.
 
     Will show plot if verbose is Ture.
     Will save figure if saveas is a valid path.
 
     Parameters
     ----------
-        original_idx : integer
+        candidate_idx : integer
             index of main-waveform
         waveforms : (number_of_waveforms, size_of_waveform) array_like
             waveforms -- should be standardised
@@ -116,7 +116,7 @@ def plot_correlated_wf(original_idx,waveforms,bool_labels,threshold,saveas=None,
     '''
     
     # If there is more than 1000 wavforms in cluster, then 500 indexes is sampled to speed up plotting.
-    print(f'Number of waveforms above threshold for wf_idx={original_idx} : {sum(bool_labels)}.')
+    print(f'Number of waveforms above threshold for wf_idx={candidate_idx} : {sum(bool_labels)}.')
     if np.sum(bool_labels)>500:
         true_idx = np.where(bool_labels==True)
         idx_sample = np.random.choice(true_idx[0], size=500, replace=False)
@@ -130,11 +130,11 @@ def plot_correlated_wf(original_idx,waveforms,bool_labels,threshold,saveas=None,
     plt.figure()
     plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
     plt.plot(time,np.median(waveforms[bool_labels],axis=0),color = (0.1,0.1,0.1),lw=1, label='Median')
-    plt.plot(time,waveforms[original_idx,:],color = (1,0,0),lw=1, label='Original')
+    plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
 
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
-    plt.title(f'Waveforms such that corr > {threshold} to "Original" ')
+    plt.title(f'W.F. s.t. corr > {threshold}. candidate wf: {candidate_idx}, N_cluster = {sum(bool_labels)}')
     plt.legend(loc='upper right')
     if saveas is not None:
         plt.savefig(saveas,dpi=150)

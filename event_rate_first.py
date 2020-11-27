@@ -2,6 +2,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from wf_similarity_measures import *
+import warnings
 
 def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     '''
@@ -53,8 +54,36 @@ def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
                 real_clusters.append(cluster)
 
     return event_rate_results, real_clusters
+def get_average_ev(ev_stats):
+    """
+    Extracts average event_rate and variance for full period using outputs of "delta_ev_measure()"
+    OBS: assuming ev_stats for one cluster...
+    Parameters
+    ----------
+    ev_stats :[interval_ev_means, interval_ev_std] python_list
+        interval_ev_means: (3, number_of_clusters) array_like
+        interval_ev_std : (3, number_of_clusters) array_like
+            mean and standard deviation of event rates for all three periods for each cluster.
+    Returns
+    -------
+    tot_mean : float
+        mean over complete recording
+    tot_std : float
+        standard deviation over complete recording
 
-def delta_ev_measure(event_rates):
+    """
+    assert np.isnan(np.sum(ev_stats))==False, 'Nans in "ev_stats"'
+    means = ev_stats[0]
+    stds = ev_stats[1]
+
+    tot_means = np.mean(means,axis=0)
+    tot_std = np.mean(stds,axis=0)    
+    assert np.isnan(np.sum(tot_means))==False, 'Nans in "ev_stats"'
+    assert np.isnan(np.sum(tot_std))==False, 'Nans in "ev_stats"'
+    return tot_means,tot_std
+
+
+def delta_ev_measure(event_rates,timestamps = None):
         '''
         Calculates measure of how event-rate differs before and after injections. 
         i.e changes as 30min and 60min into recording.
@@ -87,7 +116,13 @@ def delta_ev_measure(event_rates):
         num_clusters = event_rates.shape[-1]
         # OBS. recording last longer than 90 minutes. 
         # Could change to end time but then intervals have different lengths.
-        injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
+        if timestamps is not None:
+            assert timestamps[0] < 60*30, 'Invalid time range. Start time need to be before first injection.'
+            assert timestamps[-1] > 60*60, 'Invalid time range. End time need to be After second injection.'
+            injection_times = [np.int(timestamps[0][0]), 60*30, 60*60, np.int(timestamps[-1][0])]
+        else:
+            warnings.warn('No timestamps given to "delta_ev_measure()". Assumes full time of recording.')
+            injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
 
         interval_ev_means = np.empty((num_intervals, num_clusters))
         interval_ev_std = np.empty((num_intervals, num_clusters))
@@ -95,7 +130,8 @@ def delta_ev_measure(event_rates):
         for i in range(num_intervals):
                 interval_ev_means[i,:] = np.mean(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
                 interval_ev_std[i,:] = np.std(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
-
+        assert np.isnan(np.sum(interval_ev_means))==False, 'Nans in "interval_ev_means"'
+        assert np.isnan(np.sum(interval_ev_std))==False, 'Nans in "interval_ev_std"'
         # Could explore many differnt times of measures...
         # For now, difference in mean event-rate will be considered.
         delta_ev = interval_ev_means[1:,:] - interval_ev_means[:-1,:]
@@ -123,7 +159,7 @@ def ev_label(delta_ev,ev_stats,n_std=1):
         considered as increase/decrease
     Returns
     -------
-        label : () array_like
+        label : :(3, number_of_clusters) array_like
 
     Example
     -------
@@ -165,22 +201,33 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
             Standardised/Preprocessed waveforms to label with ev_labels.
         timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds from started recording.
+
+    Returns
+    -------
+        ev_labels
+
+        ev_stats_tot : (2,n_wf)
+            (tot_mean, tot_std)
     '''
     print('Initiating event-rate labeling')
     sub_steps = 1000
     n_wf = wf_std.shape[0]
-    ev_labels = np.empty((3,n_wf))
+    ev_labels = np.zeros((3,n_wf))
+    ev_stats_tot = np.zeros((2,n_wf))
 
     ii = 0
     t0 = time.time()
     prev_substep = 0
     for sub_step in np.arange(sub_steps,n_wf,sub_steps):
+        #print(sub_step)
         i_range = np.arange(prev_substep,sub_step)
         correlations = wf_correlation(i_range,wf_std)
         for corr_vec in correlations.T:
             bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
-            delta_ev, ev_stats = delta_ev_measure(event_rates)
+            delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
+            tot_mean,tot_std = get_average_ev(ev_stats)
+            ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
             #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
             ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=1)[:,0]
             ii +=1
@@ -193,8 +240,8 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
             print()
     if saveas is not None:
         np.save(saveas,ev_labels)
-            
-    return ev_labels
+        np.save(saveas+'tests_tot',ev_stats_tot)
+    return ev_labels, ev_stats_tot
 
 
 
@@ -301,7 +348,9 @@ if __name__ == "__main__":
     runs_for_time = 1
     for i in range(runs_for_time):
         event_rates, real_clusters = get_event_rates(timestamps[:,0],labels,bin_width=1)
-
+        delta, ev_stats = delta_ev_measure(event_rates)
+        mean_,std_ = get_average_ev(ev_stats)
+        
     end = time.time()
     print(f' Mean time for calculating event_rate : {(end-start)/runs_for_time * 1000} ms')
     print(f'event rates shape: {event_rates.shape}')
