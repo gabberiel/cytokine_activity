@@ -1,2 +1,2 @@
-model_checkpoint_path: "dense_vae_27nov"
-all_model_checkpoint_paths: "dense_vae_27nov"
+model_checkpoint_path: "cvae_27nov_deleteme"
+all_model_checkpoint_paths: "cvae_27nov_deleteme"

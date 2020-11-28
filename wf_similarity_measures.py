@@ -115,8 +115,10 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         None
     '''
     
+    nr_of_wf_in_cluster = np.sum(bool_labels)
+    print(f'Number of waveforms above threshold for wf_idx={candidate_idx} : {nr_of_wf_in_cluster}.')
     # If there is more than 1000 wavforms in cluster, then 500 indexes is sampled to speed up plotting.
-    print(f'Number of waveforms above threshold for wf_idx={candidate_idx} : {sum(bool_labels)}.')
+
     if np.sum(bool_labels)>500:
         true_idx = np.where(bool_labels==True)
         idx_sample = np.random.choice(true_idx[0], size=500, replace=False)
@@ -134,7 +136,7 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
 
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
-    plt.title(f'W.F. s.t. corr > {threshold}. candidate wf: {candidate_idx}, N_cluster = {sum(bool_labels)}')
+    plt.title(f'W.F. s.t. corr > {threshold}. candidate wf: {candidate_idx}, N_cluster = {nr_of_wf_in_cluster}')
     plt.legend(loc='upper right')
     if saveas is not None:
         plt.savefig(saveas,dpi=150)

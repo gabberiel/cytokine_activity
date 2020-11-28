@@ -21,11 +21,11 @@ from wf_similarity_measures import *
 # ************************************************************
 
 # VAE training params:
-continue_train = False
+continue_train = True
 nr_epochs = 20 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
-view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
+view_vae_result = True # True => reqires user to give input if to continue the script to pdf-GD or not.. 
 view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 
 run_DBscan = False
@@ -34,6 +34,8 @@ run_KMeans = True
 verbose = 1
 
 # pdf GD params: 
+# For first attempt of CVAE. m=2000 sufficient for very low variance in hpdp. All converged to same cluster. (looking at latent space..)
+# After 3000 iterations, this cluster split in two but the two are basically encoding the same waveform
 m=1000 # Number of steps 
 gamma=0.01 # learning_rate
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
@@ -54,7 +56,10 @@ db_min_sample = 35 # Minimum members in neighbourhood to not be regarded as Nois
 path_to_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat' 
 path_to_ts = '../matlab_files/gg_timestamps.mat'
 
-save_figure = 'figures/cvae_27nov_deleteme'
+# FOR SAVING FIGURES
+unique_string_for_run = 'cvae_27nov_deleteme'
+#save_figure = 'figures/cvae_27nov_deleteme'
+
 # tf weight-file:
 path_to_weights = 'models/cvae_27nov_deleteme'
 # Numpy file:
@@ -127,7 +132,7 @@ print()
 
 #view_vae_result = False # This reqires user to give input if to continue the script to GD or not.
 if view_vae_result:
-    save_figure = 'figures_tests/encoded_decoded/cvae_27nov_deleteme'
+    save_figure = 'figures_tests/encoded_decoded/' + unique_string_for_run
     plot_decoded_latent(decoder,saveas=save_figure+'_decoded_constant',verbose=1,ev_label=np.array((0,0,1)).reshape((1,3)))
     plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_second',verbose=1,ev_label=np.array((0,1,0)).reshape((1,3)))
     continue_to_run_GD = input('Continue to gradient decent of pdf? (yes/no) :')
@@ -147,7 +152,7 @@ if view_vae_result:
 # ** Perform GD on pdf to find high prob. data-points (hpdp) *
 # ************************************************************  
 
-# TODO: perform GD for wf with increased-ev labels.
+
 run_GD = True
 #view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 label_on = 1
@@ -164,7 +169,7 @@ if run_GD:
     #hpdp = pdf_GD(vae, wf_train, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp,verbose=verbose)
 
     if view_GD_result:
-        save_figure = 'figures_tests/hpdp/cvae_27nov_deleteme'
+        save_figure = 'figures_tests/hpdp/' + unique_string_for_run
         print(f'Visualising decoded latent space of hpdp...')
         print()
         plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp', verbose=1,ev_label=ev_label_corr_shape)        
@@ -186,7 +191,38 @@ else:
     print()
 
 
+# ************************************************************
+# *********** Inference from increased EV hpdp ***************
+# ************************************************************
+gd_runs = '_3000'
+plot_hpdp_assesments = False
+if plot_hpdp_assesments:
+    bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
+    saveas = 'figures_tests/hpdp/'+unique_string_for_run+gd_runs
+    plot_correlated_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf',verbose=True)
 
+    #PLOT ENCODED wf_increase_second... :
+    save_figure = 'figures_tests/encoded_decoded/'+unique_string_for_run + '_ho_second'
+    plot_encoded(encoder, waveforms_increase_second, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded', verbose=True)
+    plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp', verbose=1,ev_label=ev_label_corr_shape) 
+
+MAIN_CANDIDATE = np.median(hpdp,axis=0)
+added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),waveforms),axis=0)
+assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
+
+# Get correlation cluster for Delta EV - increased_second hpdp
+MAIN_THRES = 0.6
+saveas = 'figures_tests/event_rate_labels/'+unique_string_for_run+gd_runs
+correlations = wf_correlation(0,added_main_candidate_wf)
+bool_labels = label_from_corr(correlations,threshold=MAIN_THRES,return_boolean=True)
+print(f'Bool labels = {bool_labels[:10]}...')
+event_rates, real_clusters = get_event_rates(timestamps,bool_labels[1:],bin_width=1,consider_only=1)
+plot_correlated_wf(0,added_main_candidate_wf,bool_labels,MAIN_THRES,saveas=saveas+'Main_cand'+'_wf',verbose=True )
+
+plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+'Main_cand'+'_ev', verbose=True) 
+
+
+exit()
 # ************************************************************
 # ******************** Cluster wf using hpdp *****************
 # ******************** This to access labels *****************

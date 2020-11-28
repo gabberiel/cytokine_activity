@@ -35,11 +35,27 @@ path_to_matlab_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
 path_to_matlab_ts = '../matlab_files/gg_timestamps.mat'
 
 # tf weight-file:
-path_to_model_weights = 'models_tests/dense_vae_27nov'
+path_to_model_weights = 'models/cvae_27nov_deleteme'
+
+# **************** WHAT TO PLOT: ************************
+
+plot_ev_stats = False
+saveas_ev_stats = 'figures_tests/event_rate_stats/27nov_130000'
+
+plot_simulatated_path_from_model = True
+saveas_simulatated_path_from_model = 'figures_tests/model_assessment/cvae_27nov_deleteme'
+
+plot_wf_and_ev_for_the_different_ev_labels = False
+saveas_wf_and_ev_for_the_different_ev_labels = 'figures_tests/event_rate_labels/nov27_ev_incr'
+
+plot_acf_pacf = False
+savefig_acf_pacf = 'figures_tests/acf_pacf/26_nov'
+
+plot_test_of_test_statistic = False
+savefig_test_of_test_statistic = 'figures_tests/test_statistic/26_nov_'
 
 
-# ********* Figures saveas: ************
-save_figure = 'figures/27_nov'
+
 
 # ******* Numpy files ***********
 path_to_hpdp = "../numpy_files/numpy_hpdp/21nov_first_full_training"
@@ -76,9 +92,10 @@ else:
 # ************************************************************
 # ******************** Event-rate-stats **********************
 # ************************************************************
-plot_ev_stats = True
+#plot_ev_stats = True
+#saveas_ev_stats = 'figures_tests/event_rate_stats/27nov_130000'
 if plot_ev_stats:
-    saveas = 'figures_tests/event_rate_stats/27nov_130000'
+    saveas = saveas_ev_stats
     plt.hist(ev_stats_tot[0],bins=100,density=True)
     plt.xlabel('Mean Event Rate')
     plt.title('Distribution of mean event rate.')
@@ -97,55 +114,64 @@ if plot_ev_stats:
 
 #high_occurance_wf, high_occurance_ts = apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1)
 
-# TODO : Include to sort out the high occurance event rates.
-waveforms, timestamps = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=1)
+# Consider only waveforms with high occurance event rates.
+print(f'Number of wf which ("icreased after first","increased after second", "constant") = {np.sum(ev_labels_wf,axis=1)} ')
 
-# TODO : Also sort so plotting is only done for increased EV-label... :
+# ho := High Occurance, ts := timestamps
+wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=1,ev_labels=ev_labels_wf)
 
-threshold = 0.6
-saveas = 'figures_tests/event_rate_labels/aa_nov27_high_occurance_n_std_1_'
-for i in np.arange(0,waveforms.shape[0],1000): #range(20,100,20):
-    correlations = wf_correlation(i,waveforms)
-    bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
-    event_rates, real_clusters = get_event_rates(timestamps,bool_labels,bin_width=1,consider_only=1)
-    delta_ev, ev_stats = delta_ev_measure(event_rates)#,timestamps=timestamps)
-    ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-    plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+'_wf'+str(i),verbose=False)
-    plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+'_ev'+str(i), verbose=False) 
+print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
+#waveforms, timestamps = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=1)
 
-exit()
+# Plotting EV etc. done for High occurance CAPs... :
+plot_ho_EVs = False
+if plot_ho_EVs:
+    threshold = 0.6
+    saveas = 'figures_tests/event_rate_labels/aa_nov27_high_occurance_n_std_1_'
+    for i in np.arange(0,wf_ho.shape[0],10000): #range(20,100,20):
+        correlations = wf_correlation(i,wf_ho)
+        bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
+        event_rates, real_clusters = get_event_rates(ts_ho,bool_labels,bin_width=1,consider_only=1)
+        delta_ev, ev_stats = delta_ev_measure(event_rates)#,timestamps=ts_ho)
+        ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
+        plot_correlated_wf(i,wf_ho,bool_labels,threshold,saveas=saveas+'_wf'+str(i),verbose=False)
+        plot_event_rates(event_rates,ts_ho,noise=None,conv_width=20,saveas=saveas+'_ev'+str(i), verbose=False) 
+
+
 # ************************************************************
-# ******************** Load model ****************************
+# ******************** Train/Load model **********************
 # ************************************************************
 print()
 print('*********************** Tensorflow Blaj *************************************')
 print()
 
-encoder,decoder,vae = train_model(waveforms, path_to_weights=path_to_model_weights,continue_train=False)
-#encoder,decoder,cvae = train_model(waveforms, path_to_weights=path_to_model_weights,continue_train=False,ev_label=ev_labels_wf)
+encoder,decoder,cvae = train_model(wf_ho, nr_epochs=0, batch_size=128, path_to_weights=path_to_model_weights, 
+                                        continue_train=False, verbose=1, ev_label=ev_label_ho)
 print()
 print('******************************************************************************')
 print()
 
 
 # ************************************************************
-# **** PLOT Simulated wf. from N(mu_x,I) *********************
+# **** PLOT Simulated wf. from N(mu_x,I) (CVAE) *********************
 # ************************************************************
-plot_simulatated_path_from_model = False
+#plot_simulatated_path_from_model = True
+#saveas_simulatated_path_from_model = 'figures_tests/model_assessment/cvae_wf_'
 if plot_simulatated_path_from_model:
     for jj in [10,212,3120,10000]:
-        saveas = 'figures_tests/model_assessment/cvae_wf_'+str(jj)
-        x = waveforms[jj,:]
-        print(jj)
-        x_rec = vae.predict(x.reshape((1,141))).reshape((141,))
+        saveas = saveas_simulatated_path_from_model+str(jj)
+        x = wf_ho[jj,:]
+        label = ev_label_ho[jj,:]
+
+        x_rec = cvae.predict([x.reshape((1,141)),label.reshape((1,label.shape[0]))])
         time = np.arange(0,3.5,3.5/x.shape[0])
 
         plt.figure()
-        plt.plot(time,x,color = (0,0,0),lw=1,label='$x$')
-        plt.plot(time,x_rec,color = (1,0,0),lw=1,label='$\mu_x$')
+        plt.plot(time,x.reshape((141,)),color = (0,0,0),lw=1,label='$x$')
+        plt.plot(time,x_rec.reshape((141,)),color = (1,0,0),lw=1,label='$\mu_x$')
 
         for i in range(4):
-            x_sample = np.random.multivariate_normal(x_rec,np.eye(x.shape[0])*0.5)
+            x_sample = np.random.multivariate_normal(x_rec.reshape((141,)),np.eye(x.shape[0])*0.5)
             if i==0:
                 plt.plot(time,x_sample,color = (0.1,0.1,0.1),lw=0.3, label='$x_{sim}$')
             else:
@@ -158,21 +184,24 @@ if plot_simulatated_path_from_model:
         plt.legend(loc='upper right')
         if saveas is not None:
             plt.savefig(saveas,dpi=150)
+        plt.show()
         plt.close()
-        #plt.show()
+        
     print('Done.')
+
 
 # ************************************************************
 # ******** Plot examples of event-rates from EV_labeles ******
 # ************************************************************
-plot_wf_and_ev_for_the_different_ev_labels = False
+#plot_wf_and_ev_for_the_different_ev_labels = False
+#saveas_wf_and_ev_for_the_different_ev_labels = 'figures_tests/event_rate_labels/nov27_ev_incr'
 if plot_wf_and_ev_for_the_different_ev_labels:
     threshold = 0.6
     idx_increase_after_first= np.where(ev_labels_wf[0,:]==1)
     idx_increase_after_second = np.where(ev_labels_wf[1,:]==1)
     idx_constant_throughout = np.where(ev_labels_wf[2,:]==1)
     print(idx_increase_after_first[0][100:300:100])
-    saveas = 'figures_tests/event_rate_labels/nov27_ev_incr_first_n_std_1'
+    saveas = saveas_wf_and_ev_for_the_different_ev_labels + '_first_n_std_1'
     for i in idx_increase_after_first[0][100:300:100]: #range(20,100,20):
         correlations = wf_correlation(i,waveforms)
         bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
@@ -183,7 +212,7 @@ if plot_wf_and_ev_for_the_different_ev_labels:
         plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=False) 
 
     # ********* Increase Afrer Second Injection
-    saveas = 'figures_tests/event_rate_labels/nov27_ev_incr_second_n_std_1'
+    saveas = saveas_wf_and_ev_for_the_different_ev_labels+'_second_n_std_1'
     for i in idx_increase_after_second[0][100:300:100]: #range(20,100,20):
         correlations = wf_correlation(i,waveforms)
         bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
@@ -201,10 +230,11 @@ if plot_wf_and_ev_for_the_different_ev_labels:
 # ************************************************************
 # ******** Quick look at ACF/PACF  ***************************
 # ************************************************************
-plot_acf_pacf = False
+#plot_acf_pacf = False
+#savefig_acf_pacf = 'figures_tests/acf_pacf/26_nov'
 if plot_acf_pacf:
     i=0
-    saveas = 'figures_tests/acf_pacf/26_nov'
+    saveas = savefig_acf_pacf
     for j in range(1000,2000,300):
         fig, (ax0, ax1, ax3) = plt.subplots(ncols=3, constrained_layout=True,figsize=(12,3))
         print(j)
@@ -221,10 +251,11 @@ if plot_acf_pacf:
 # ************************************************************
 # ******** Cluster-Results using "Test-statistic"  ***********
 # ************************************************************
-plot_test_of_test_statistic = True
+#plot_test_of_test_statistic = False
+#savefig_test_of_test_statistic = 'figures_tests/test_statistic/26_nov_'
 if plot_test_of_test_statistic:
     for c in [1021,2312,99210]:
-        saveas = 'figures_tests/test_statistic/26_nov_'
+        saveas = savefig_test_of_test_statistic
         test_stat = waveforms - waveforms[c,:]
         print(test_stat.shape)
         mean = np.zeros((test_stat.shape[-1]))
