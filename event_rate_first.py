@@ -265,13 +265,14 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
     Returns
     -------
     '''
+    warnings.warn('Old version of function plot_event_rates() is being used. Use version in plot_functions_wf.py instead.',DeprecationWarning)
     end_time = timestamps[-1]
     number_of_obs = event_rates[:,0].shape[0]
     #time_of_recording_in_seconds = event_rates[:,0].shape[0]
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
 
-    plt.figure()
+    #plt.figure()
     #colors = ['r','k','g']
     if noise is not None:
         print('Noise...')
@@ -295,7 +296,7 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
         plt.savefig(saveas, dpi=150)
     if verbose:
         plt.show()
-    plt.close()    
+    #plt.close()    
 
 
 

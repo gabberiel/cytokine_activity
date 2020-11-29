@@ -282,6 +282,7 @@ def plot_waveforms(waveforms,labels=None):
     If labels are given, then the meadian of each waveform - cluster is ploted. 
     x_axis assumes each waveform is 3.5ms long.
     '''
+    warnings.warn('Old version of function plt_waveforms() is being used. Use version in plot_functions_wf.py instead.',DeprecationWarning)
     num_wf = waveforms.shape[0]
     wf_size = waveforms.shape[-1]
     cols = ['r','b',]

@@ -160,33 +160,10 @@ print()
 if plot_simulatated_path_from_model:
     for jj in [10,212,3120,10000]:
         saveas = saveas_simulatated_path_from_model+str(jj)
-        x = wf_ho[jj,:]
-        label = ev_label_ho[jj,:]
+        x = wf_ho[jj,:].reshape((1,141))
+        label = ev_label_ho[jj,:].reshape((1,3))
+        plot_simulated(cvae,x,ev_label=label,n=3,var=0.5, saveas=saveas, verbose=True)
 
-        x_rec = cvae.predict([x.reshape((1,141)),label.reshape((1,label.shape[0]))])
-        time = np.arange(0,3.5,3.5/x.shape[0])
-
-        plt.figure()
-        plt.plot(time,x.reshape((141,)),color = (0,0,0),lw=1,label='$x$')
-        plt.plot(time,x_rec.reshape((141,)),color = (1,0,0),lw=1,label='$\mu_x$')
-
-        for i in range(4):
-            x_sample = np.random.multivariate_normal(x_rec.reshape((141,)),np.eye(x.shape[0])*0.5)
-            if i==0:
-                plt.plot(time,x_sample,color = (0.1,0.1,0.1),lw=0.3, label='$x_{sim}$')
-            else:
-                plt.plot(time,x_sample,color = (0.1,0.1,0.1),lw=0.3)
-
-            #plt.plot(time,waveforms[original_idx,:],color = (1,0,0),lw=1, label='Original')
-        plt.xlabel('Time $(ms)$')
-        plt.ylabel('Voltage $(\mu V)$')
-        plt.title('Model Assessment: Simulating $x \sim \mathcal{N}(\mu_x,0.5 \mathcal{I} )$')
-        plt.legend(loc='upper right')
-        if saveas is not None:
-            plt.savefig(saveas,dpi=150)
-        plt.show()
-        plt.close()
-        
     print('Done.')
 
 

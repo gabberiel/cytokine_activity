@@ -114,7 +114,8 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
     -------
         None
     '''
-    
+    warnings.warn('Old version of function plot_correlated_wf() is being used. Use version in plot_functions_wf.py instead.',DeprecationWarning)
+
     nr_of_wf_in_cluster = np.sum(bool_labels)
     print(f'Number of waveforms above threshold for wf_idx={candidate_idx} : {nr_of_wf_in_cluster}.')
     # If there is more than 1000 wavforms in cluster, then 500 indexes is sampled to speed up plotting.
@@ -129,7 +130,7 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
 
     time = np.arange(0,3.5,3.5/waveforms.shape[-1])
     
-    plt.figure()
+    #plt.figure()
     plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
     plt.plot(time,np.median(waveforms[bool_labels],axis=0),color = (0.1,0.1,0.1),lw=1, label='Median')
     plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
@@ -142,7 +143,7 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         plt.savefig(saveas,dpi=150)
     if verbose:
         plt.show()
-    plt.close()
+    #plt.close()
 
 def sim_measure2():
     '''
