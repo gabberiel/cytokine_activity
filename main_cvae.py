@@ -57,13 +57,11 @@ path_to_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
 path_to_ts = '../matlab_files/gg_timestamps.mat'
 
 # FOR SAVING FIGURES
-unique_string_for_run = 'cvae_27nov_deleteme'
-#save_figure = 'figures/cvae_27nov_deleteme'
-
+unique_string_for_run = 'cvae_30nov_deleteme'
 # tf weight-file:
-path_to_weights = 'models/cvae_27nov_deleteme'
+path_to_weights = 'models/cvae_30nov_deleteme'
 # Numpy file:
-path_to_hpdp = "../numpy_files/numpy_hpdp/cvae_27nov_deleteme"
+path_to_hpdp = "../numpy_files/numpy_hpdp/cvae_30nov_deleteme"
 path_to_EVlabels = "../numpy_files/EV_labels/cvae_27nov_deleteme"
 
 # ************************************************************
@@ -107,7 +105,7 @@ if path.isfile(path_to_EVlabels+'.npy'):
     ev_labels = np.load(path_to_EVlabels+'.npy')
     ev_stats_tot = np.load(path_to_EVlabels+'tests_tot.npy') 
 else:
-    ev_labels, ev_stats_tot = get_ev_labels(waveforms,timestamps,threshold=0.6,saveas=path_to_EVlabels)
+    ev_labels, ev_stats_tot = get_ev_labels(waveforms,timestamps,threshold=0.6,saveas=path_to_EVlabels,similarity_measure='corr')
 
 print()
 print(f'Number of wf which ("icreased after first","increased after second", "constant") = {np.sum(ev_labels,axis=1)} ')

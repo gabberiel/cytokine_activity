@@ -51,6 +51,44 @@ def wf_correlation(main_idx,std_waveforms):
 
     return correlations
 
+
+def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1):
+    '''
+    Similarity measure of waveforms based on Annulus theorem of Gaussians.
+    H0: All observations (i.e waveforms) are assumed to be distributed as N(μ_x, σ^2*I),
+    where mu_x is the candidate wavefrom specified by candidate_idx. 
+
+    Annulus theorem: A n-dimensional spherical gaussian has all but at most 3*exp{−cnε^2} 
+    of the probability mass in the annulus: n(1−ε) <= ||x|| <= n(1+ε). for some fixed constant c.
+    
+    OBS: extremely time-consuming to do for all waveforms...
+    
+    Parameters
+    ----------
+    candidate_idx : integer
+        ...
+    wavefroms : (num_of_wf, dim_of_waveforms) array_like
+        
+    epsilon : float
+        parameter for test-statistic.. ish
+
+    Returns
+    -------
+    similarity_evaluation : (num_of_wf,) array_like - Booleon
+        True for similar waveforms
+    '''
+    n = waveforms.shape[1]
+    upper_buond = 3*np.exp(-n*(epsilon**2))
+
+
+    mean_shifted = waveforms - waveforms[candidate_idx,:] # Mean shifted
+    candidate_standardised = mean_shifted / var # All elements now assumed to be iid N(0,var)
+    #print(candidate_standardised.shape)
+    # Sum of Squares:
+    ssq = np.sum(np.square(candidate_standardised),axis=1) # Under H0, we should have: (n(1-epsilon) < ssq < n(1+epsilon)), with prob. = 1 as n --> inf.
+    similarity_evaluation = (n*(1-epsilon) < ssq ) & ( ssq < n*(1+epsilon)) # Those waveform s.t. ssq/sqrt(n) is close to 1 is assumed to be in the same cluster..
+    return similarity_evaluation, upper_buond
+
 def trans_inv_corr_wf():
     '''
     Translation Invariant version of the correlation similarity measure

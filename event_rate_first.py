@@ -97,9 +97,11 @@ def delta_ev_measure(event_rates,timestamps = None):
 
         Parameters
         ----------
-        event_rates : total_time_in_seconds, number_of_clusters) array_like 
+        event_rates : (total_time_in_seconds, number_of_clusters) array_like 
                 Number of occurances of labeled waveforms in each one second window during time
                 of recording. 
+
+        timestamps : ()
 
         Returns
         -------
@@ -186,7 +188,7 @@ def ev_label(delta_ev,ev_stats,n_std=1):
 
     return ev_label
 
-def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
+def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measure='corr'):
     '''
     Complete pipeline of labeling standardised waveforms based on change in event rates.
     Steps in process:
@@ -202,28 +204,57 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
         timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds from started recording.
 
+        similarity_measure : 'corr' or 'ssq'
+            specifies which similarity measure to use for initial event-rate calculations.
+            'corr' : correlation similarity measure
+            'ssq' : sum of squares (gaussian annulus theorem) similarity measure
+        
+
     Returns
     -------
-        ev_labels
+        ev_labels : ()
 
         ev_stats_tot : (2,n_wf)
             (tot_mean, tot_std)
     '''
     print('Initiating event-rate labeling')
-    sub_steps = 1000
+    
     n_wf = wf_std.shape[0]
     ev_labels = np.zeros((3,n_wf))
     ev_stats_tot = np.zeros((2,n_wf))
+    if similarity_measure=='corr':
+        print('Using Correlation as similarity measure...')
+        sub_steps = 1000
+        ii = 0
+        t0 = time.time()
+        prev_substep = 0
 
-    ii = 0
-    t0 = time.time()
-    prev_substep = 0
-    for sub_step in np.arange(sub_steps,n_wf,sub_steps):
-        #print(sub_step)
-        i_range = np.arange(prev_substep,sub_step)
-        correlations = wf_correlation(i_range,wf_std)
-        for corr_vec in correlations.T:
-            bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
+        for sub_step in np.arange(sub_steps,n_wf,sub_steps):
+            #print(sub_step)
+            i_range = np.arange(prev_substep,sub_step)
+            correlations = wf_correlation(i_range,wf_std)
+            for corr_vec in correlations.T:
+                bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
+                event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
+                delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
+                tot_mean,tot_std = get_average_ev(ev_stats)
+                ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
+                #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
+                ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=1)[:,0]
+                ii +=1
+            prev_substep = sub_step            
+            if ii%(sub_steps*10)==0:
+                print(f'On waveform {ii} in event-rate labeling')        
+                ti = time.time()
+                ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
+                print(f'ETA: {round(ETA_t)} seconds..')
+                print()
+    if similarity_measure=='ssq':
+        print('Using Sum of squares (gaussian annulus theorem) as similarity measure...')
+        ii = 0
+        t0 = time.time()
+        for candidate_idx in range(n_wf):
+            bool_labels, _ = similarity_SSQ(candidate_idx, wf_std, epsilon=threshold, var=1)
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
             delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
             tot_mean,tot_std = get_average_ev(ev_stats)
@@ -231,13 +262,12 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None):
             #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
             ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=1)[:,0]
             ii +=1
-        prev_substep = sub_step            
-        if ii%(sub_steps*10)==0:
-            print(f'On waveform {ii} in event-rate labeling')        
-            ti = time.time()
-            ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
-            print(f'ETA: {round(ETA_t)} seconds..')
-            print()
+            if ii%100==0:
+                print(f'On waveform {ii} in event-rate labeling')        
+                ti = time.time()
+                ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
+                print(f'ETA: {round(ETA_t)} seconds..')
+                print()
     if saveas is not None:
         np.save(saveas,ev_labels)
         np.save(saveas+'tests_tot',ev_stats_tot)
@@ -312,6 +342,7 @@ if __name__ == "__main__":
     from scipy.io import loadmat
     import matplotlib.pyplot as plt
     import time
+    from preprocess_wf import standardise_wf
     print()
     print('Loading matlab files...')
     print()
@@ -328,7 +359,12 @@ if __name__ == "__main__":
     print()
     print(f'Shape of timestamps: {timestamps.shape}.')
     print()
-    assert waveforms.shape[0] == timestamps.shape[0], 'Missmatch of waveforms and timestamps shape.'
+    assert waveforms.shape[0] == timestamps.shape[0], 'Missmatch of waveforms and timestamps shape.'   
+    wf_std = standardise_wf(waveforms) 
+    get_ev_labels(wf_std,timestamps,threshold=0.001,saveas=None, similarity_measure='ssq')
+
+    quit()
+
     # CREATE LABELS FOR TESTS
     labels = np.zeros((waveforms.shape[0]))
     first_injection_time = 30*60
@@ -338,9 +374,10 @@ if __name__ == "__main__":
     labels[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] = 2
     labels[timestamps[:,0] > second_injection_time] = 3
 
-
     # Create test linear timestamps
     time_test = np.arange(0,60*60*1.5,60*60*1.5/136259)
+
+
 
     start = time.time()
     # ------------------------------------------------------------------------------------

@@ -38,11 +38,12 @@ path_to_matlab_ts = '../matlab_files/gg_timestamps.mat'
 path_to_model_weights = 'models/cvae_27nov_deleteme'
 
 # **************** WHAT TO PLOT: ************************
+verbose_main=True
 
 plot_ev_stats = False
 saveas_ev_stats = 'figures_tests/event_rate_stats/27nov_130000'
 
-plot_simulatated_path_from_model = True
+plot_simulatated_path_from_model = False
 saveas_simulatated_path_from_model = 'figures_tests/model_assessment/cvae_27nov_deleteme'
 
 plot_wf_and_ev_for_the_different_ev_labels = False
@@ -100,13 +101,15 @@ if plot_ev_stats:
     plt.xlabel('Mean Event Rate')
     plt.title('Distribution of mean event rate.')
     plt.savefig(saveas+'tot_mean_ev',dpi=150)
-    #plt.show()
+    if verbose_main is True:
+        plt.show()
     plt.close()
     plt.hist(ev_stats_tot[1],bins=100,density=True)
     plt.xlabel('Event Rate standard deviation')
     plt.title('Distribution of event rate standard deviations.')
     plt.savefig(saveas+'tot_std_ev',dpi=150)
-    #plt.show()
+    if verbose_main is True:
+        plt.show()
 
 # ************************************************************
 # ************* PLOT High occurance WF: **********************
@@ -134,8 +137,8 @@ if plot_ho_EVs:
         event_rates, real_clusters = get_event_rates(ts_ho,bool_labels,bin_width=1,consider_only=1)
         delta_ev, ev_stats = delta_ev_measure(event_rates)#,timestamps=ts_ho)
         ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-        plot_correlated_wf(i,wf_ho,bool_labels,threshold,saveas=saveas+'_wf'+str(i),verbose=False)
-        plot_event_rates(event_rates,ts_ho,noise=None,conv_width=20,saveas=saveas+'_ev'+str(i), verbose=False) 
+        plot_correlated_wf(i,wf_ho,bool_labels,threshold,saveas=saveas+'_wf'+str(i),verbose=verbose_main)
+        plot_event_rates(event_rates,ts_ho,noise=None,conv_width=20,saveas=saveas+'_ev'+str(i), verbose=verbose_main) 
 
 
 # ************************************************************
@@ -162,7 +165,8 @@ if plot_simulatated_path_from_model:
         saveas = saveas_simulatated_path_from_model+str(jj)
         x = wf_ho[jj,:].reshape((1,141))
         label = ev_label_ho[jj,:].reshape((1,3))
-        plot_simulated(cvae,x,ev_label=label,n=3,var=0.5, saveas=saveas, verbose=True)
+
+        plot_simulated(cvae,x,ev_label=label,n=3,var=0.5, saveas=saveas, verbose=verbose_main)
 
     print('Done.')
 
@@ -177,6 +181,7 @@ if plot_wf_and_ev_for_the_different_ev_labels:
     idx_increase_after_first= np.where(ev_labels_wf[0,:]==1)
     idx_increase_after_second = np.where(ev_labels_wf[1,:]==1)
     idx_constant_throughout = np.where(ev_labels_wf[2,:]==1)
+    
     print(idx_increase_after_first[0][100:300:100])
     saveas = saveas_wf_and_ev_for_the_different_ev_labels + '_first_n_std_1'
     for i in idx_increase_after_first[0][100:300:100]: #range(20,100,20):
@@ -185,8 +190,8 @@ if plot_wf_and_ev_for_the_different_ev_labels:
         event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
         delta_ev, ev_stats = delta_ev_measure(event_rates)
         ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-        plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+str(i)+'_wf',verbose=False )
-        plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=False) 
+        plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+str(i)+'_wf',verbose=verbose_main )
+        plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=verbose_main) 
 
     # ********* Increase Afrer Second Injection
     saveas = saveas_wf_and_ev_for_the_different_ev_labels+'_second_n_std_1'
@@ -196,8 +201,8 @@ if plot_wf_and_ev_for_the_different_ev_labels:
         event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
         delta_ev, ev_stats = delta_ev_measure(event_rates)
         ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-        plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+str(i)+'_wf',verbose=False)
-        plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=False) 
+        plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+str(i)+'_wf',verbose=verbose_main)
+        plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=verbose_main) 
 
 
 
@@ -221,7 +226,8 @@ if plot_acf_pacf:
         i+=1
         plt.savefig(saveas+'_wf_'+str(j)+'.png',dpi=150)
         plt.close()
-        #plt.show()
+        if verbose_main is True:
+            plt.show()
 
 
 
@@ -241,4 +247,4 @@ if plot_test_of_test_statistic:
         threshold = 1e-25
         bool_labels = probs>threshold
         #sum(bool_labels)
-        plot_correlated_wf(c,waveforms,bool_labels,threshold,saveas=saveas+'thres_'+str(threshold)+'_wf_'+str(c),verbose=False )
+        plot_correlated_wf(c,waveforms,bool_labels,threshold,saveas=saveas+'thres_'+str(threshold)+'_wf_'+str(c),verbose=verbose_main )

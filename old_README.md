@@ -12,7 +12,7 @@ Find Main Article at <https://www.researchgate.net/publication/325035277_Identif
 Raw input-file.plx --[Preprocess (1)]--> waveforms & timestamps .mat files --[Preprocess (2)]-->  waveforms & timestamps .npy files --[VAE-training (3)]--> keras.Model 
 --[ pdf GD (4)]--> high prob. data-points --[Clustering (5)]--> labeled data --[Event-rate (6)]--> Result that can be infered. 
 
-
+<<<<<<< Updated upstream
 * (1) : MATLAB preprocessing of raw recording. Includes "adaptive threshold" and romoval of "bad"-datapoints based on cardiac events etc. 
 
 * (2) : Python preprocessing to have optimal form of input to VAE. qqq: Standardisation/frequency-domain ...?
@@ -45,14 +45,13 @@ $$ \pi $$
 * (6) : **Event Rate** calculation -- the occurence rate in CAPs/sec during time of recording. \
 **OUT** : 
 
+>>>>>>> Stashed changes
 ## Code structure
 
-MAIN files as of 30 november. (Which are to be called directly.)
-**main_cvae.py** : Can runs all parts of pipeline depending on settings. -- Mainly to be able to train model over night using 'caffinate'
-**visualisations_main.py** : Assumes all files from training exists and load these to visualise results.
-**CVAE_pipeline_main.ipnb** : Combination of the above to run one "step of workflow" at a time and visualise results in between.
+Only file to be called is main_first.py
 
-Source Tree is as follows: 
+Source Tree is as follows:
+qqqq: TODO
 
 
 OBS. main reads matlab files currently assumed to be in a folder "matlab_files" one step back in pwd.

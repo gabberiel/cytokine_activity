@@ -183,7 +183,7 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
     x_rec = cvae.predict([x,label])
     time = np.arange(0,3.5,3.5/dim_of_waveform)
 
-    plt.figure()
+    #plt.figure()
     plt.plot(time,x.reshape((dim_of_waveform,)),color = (0,0,0),lw=1,label='$x$')
     plt.plot(time,x_rec.reshape((dim_of_waveform,)),color = (1,0,0),lw=1,label='$\mu_x$')
     for i in range(n):
@@ -238,7 +238,7 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         new_bool_labels = np.zeros(bool_labels.shape)
         new_bool_labels[idx_sample] = 1 
         bool_labels = new_bool_labels == 1 # Convert to booleon
-        print('Plotting 500...')
+        #print('Plotting 500...')
 
     time = np.arange(0,3.5,3.5/waveforms.shape[-1])
     
