@@ -62,7 +62,7 @@ def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1):
     of the probability mass in the annulus: n(1−ε) <= ||x|| <= n(1+ε). for some fixed constant c.
     
     OBS: extremely time-consuming to do for all waveforms...
-    
+
     Parameters
     ----------
     candidate_idx : integer
@@ -81,8 +81,8 @@ def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1):
     upper_buond = 3*np.exp(-n*(epsilon**2))
 
 
-    mean_shifted = waveforms - waveforms[candidate_idx,:] # Mean shifted
-    candidate_standardised = mean_shifted / var # All elements now assumed to be iid N(0,var)
+    candidate_standardised = waveforms - waveforms[candidate_idx,:] # Mean shifted
+    #candidate_standardised = mean_shifted / var # All elements now assumed to be iid N(0,var)
     #print(candidate_standardised.shape)
     # Sum of Squares:
     ssq = np.sum(np.square(candidate_standardised),axis=1) # Under H0, we should have: (n(1-epsilon) < ssq < n(1+epsilon)), with prob. = 1 as n --> inf.

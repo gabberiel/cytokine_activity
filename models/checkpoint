@@ -1,2 +1,2 @@
-model_checkpoint_path: "cvae_30nov_deleteme"
-all_model_checkpoint_paths: "cvae_30nov_deleteme"
+model_checkpoint_path: "cvae_30nov_SSQ"
+all_model_checkpoint_paths: "cvae_30nov_SSQ"

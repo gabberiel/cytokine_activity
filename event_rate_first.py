@@ -218,7 +218,8 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
             (tot_mean, tot_std)
     '''
     print('Initiating event-rate labeling')
-    
+    n_std_threshold = 1
+
     n_wf = wf_std.shape[0]
     ev_labels = np.zeros((3,n_wf))
     ev_stats_tot = np.zeros((2,n_wf))
@@ -240,7 +241,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
                 tot_mean,tot_std = get_average_ev(ev_stats)
                 ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
                 #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-                ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=1)[:,0]
+                ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
                 ii +=1
             prev_substep = sub_step            
             if ii%(sub_steps*10)==0:
@@ -253,16 +254,20 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
         print('Using Sum of squares (gaussian annulus theorem) as similarity measure...')
         ii = 0
         t0 = time.time()
+        wf_downsampled = wf_std[:,::2]/0.8
+        #n_wf = wf_downsampled.shape[0]
+        #ev_labels = np.zeros((3,n_wf))
+        #ev_stats_tot = np.zeros((2,n_wf))
         for candidate_idx in range(n_wf):
-            bool_labels, _ = similarity_SSQ(candidate_idx, wf_std, epsilon=threshold, var=1)
+            bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold)
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
             delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
             tot_mean,tot_std = get_average_ev(ev_stats)
             ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
             #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-            ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=1)[:,0]
+            ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
             ii +=1
-            if ii%100==0:
+            if ii%1000==0:
                 print(f'On waveform {ii} in event-rate labeling')        
                 ti = time.time()
                 ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 

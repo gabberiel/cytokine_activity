@@ -13,7 +13,7 @@ Raw input-file.plx --[Preprocess (1)]--> waveforms & timestamps .mat files --[Pr
 --[ pdf GD (4)]--> high prob. data-points --[Clustering (5)]--> labeled data --[Event-rate (6)]--> Result that can be infered. 
 
 
-* (1) : MATLAB preprocessing of raw recording. Includes "adaptive threshold" and romoval of "bad"-datapoints based on cardiac events etc. 
+* (1) : MATLAB preprocessing of raw recording. Includes "adaptive threshold" and romoval of "bad"-datapoints based on cardiac events etc.  See steps in MAIN_preprocess.mat
 
 * (2) : Python preprocessing to have optimal form of input to VAE. qqq: Standardisation/frequency-domain ...?
 
