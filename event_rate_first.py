@@ -86,9 +86,9 @@ def get_average_ev(ev_stats):
 def delta_ev_measure(event_rates,timestamps = None):
         '''
         Calculates measure of how event-rate differs before and after injections. 
-        i.e changes as 30min and 60min into recording.
+        i.e changes at 30min and 60min into recording.
 
-        Could explore many differnt times of measures. especially take variance into account.
+        Could explore many different types of measures. especially take variance into account.
         However mu/var for instance could end up with division by zero..
         For now, a simple difference in mean of event-rates during each period will be considered.
 
@@ -119,8 +119,8 @@ def delta_ev_measure(event_rates,timestamps = None):
         # OBS. recording last longer than 90 minutes. 
         # Could change to end time but then intervals have different lengths.
         if timestamps is not None:
-            assert timestamps[0] < 60*30, 'Invalid time range. Start time need to be before first injection.'
-            assert timestamps[-1] > 60*60, 'Invalid time range. End time need to be After second injection.'
+            assert timestamps[0] < 60*30, f'Invalid time range. Start time {timestamps[0]}, need to be before first injection.'
+            assert timestamps[-1] > 60*60, f'Invalid time range. End time {timestamps[-1]}, need to be After second injection.'
             injection_times = [np.int(timestamps[0][0]), 60*30, 60*60, np.int(timestamps[-1][0])]
         else:
             warnings.warn('No timestamps given to "delta_ev_measure()". Assumes full time of recording.')
@@ -143,7 +143,7 @@ def delta_ev_measure(event_rates,timestamps = None):
 
 def ev_label(delta_ev,ev_stats,n_std=1):
     '''
-    Give waveform a label encoding how the event rate change at time of injection.
+    Give waveform a label encoding how the event rate change at time of injections.
     The label is vector with 3 dimensions. The three values corresponds 
     to "increase after first injection", "increase after second injection", "consant" -- respectively.
 
@@ -177,7 +177,7 @@ def ev_label(delta_ev,ev_stats,n_std=1):
     ev_label = np.zeros((3,delta_ev.shape[-1]))
 
     # Find if there is a sufficient increase in event rates after injections: 
-    is_increase = delta_ev > n_std*interval_ev_std
+    is_increase = delta_ev > (n_std*interval_ev_std)
     if True in is_increase:
         is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
         ev_label[is_increase] = 1
@@ -192,7 +192,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
     '''
     Complete pipeline of labeling standardised waveforms based on change in event rates.
     Steps in process:
-        * Use correlation-threshold to cluster wavefomes assuming each observation as "main-wf"
+        * Use similarity_measure to cluster wavefomes assuming each observation as "candidate-wf"
         * Calculate event-rate from resulting cluster above
         * Calculate the change in event rate at time of injection as well as mean/variance for the three periods 
         * get ev_labels using the threshold: "mean-event rate increasing at least n std_deviations  after injection".
@@ -203,7 +203,8 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
             Standardised/Preprocessed waveforms to label with ev_labels.
         timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds from started recording.
-
+        threshold : float
+            Gives either the minimum correlation using 'corr' or epsilon in gaussain annulus theorem for 'ssq' 
         similarity_measure : 'corr' or 'ssq'
             specifies which similarity measure to use for initial event-rate calculations.
             'corr' : correlation similarity measure
@@ -212,7 +213,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
 
     Returns
     -------
-        ev_labels : ()
+        ev_labels : (n_wf,) array_like
 
         ev_stats_tot : (2,n_wf)
             (tot_mean, tot_std)
@@ -254,7 +255,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
         print('Using Sum of squares (gaussian annulus theorem) as similarity measure...')
         ii = 0
         t0 = time.time()
-        wf_downsampled = wf_std[:,::2]/0.8
+        wf_downsampled = wf_std[:,::2]/0.7 
         #n_wf = wf_downsampled.shape[0]
         #ev_labels = np.zeros((3,n_wf))
         #ev_stats_tot = np.zeros((2,n_wf))

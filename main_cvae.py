@@ -23,7 +23,7 @@ from wf_similarity_measures import *
 similarity_measure='corr'
 
 # VAE training params:
-continue_train = False
+continue_train = True
 nr_epochs = 100 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
@@ -33,7 +33,7 @@ view_GD_result = True # This reqires user to give input if to continue the scrip
 run_DBscan = False
 run_KMeans = False
 
-verbose = 1
+verbose_main = 1
 
 # pdf GD params: 
 # For first attempt of CVAE. m=2000 sufficient for very low variance in hpdp. All converged to same cluster. (looking at latent space..)
@@ -55,12 +55,18 @@ db_min_sample = 35 # Minimum members in neighbourhood to not be regarded as Nois
 # ******************** Paths *********************************
 # ************************************************************
 #recording = 'amp_thresh_R10_Exp2_71516_BALBC_TNF_05ug_IL1B_35ngperkg_10.mat'
-recording = 'amp_thresh_R10_Exp2_71516_BALBC_TNF_05ug_IL1B35ngperkg_10'
+# General: 
+recording = 'R10_Exp2_71516_BALBC_TNF_05ug_IL1B_35ngperkg_10.mat'
 path_to_wf = '../matlab_files/waveforms'+recording+'.mat' 
 path_to_ts = '../matlab_files/timestamps'+recording+'.mat'
 
+# FOR TESTING:
+recording = 'new_computer_deleteme3'
+path_to_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03'+'.mat'
+path_to_ts = '../matlab_files/gg_timestamps'+'.mat'
+
 # FOR SAVING FIGURES
-unique_string_for_run = 'corr_30nov'+recording
+unique_string_for_run = 'corr_2_dec'+recording
 # tf weight-file:
 path_to_weights = 'models/'+unique_string_for_run
 # Numpy file:
@@ -75,31 +81,44 @@ path_to_EVlabels = "../numpy_files/EV_labels/"+unique_string_for_run
 load_data = True
 if load_data:
     waveforms, mean, std = load_waveforms(path_to_wf,'waveforms',standardize=False, verbose=1)
-    timestamps = load_timestamps(path_to_ts,'timestamps',verbose=1)
-    
-    # Extract Training data:
-    #wf_train = waveforms[training_idx]
-    #ts_train = timestamps[training_idx]
+    timestamps = load_timestamps(path_to_ts,'gg_timestamps',verbose=1)
+    n0_wf = waveforms.shape[0]
+    d0_wf = waveforms.shape[1] 
+
     print(f'Shape of training data: {waveforms.shape}')
 
 # ************************************************************
-# ******** Cut first and last part of recording...? **********
+# ****** Cut first and last part of recording to ensure stable
+#        sleep state during recording ************************
 # ************************************************************
-
-use_range = np.arange(1000,29000)
+remove = 5000 
+top_range = round((n0_wf-remove)/1000)*1000
+use_range = np.arange(remove,top_range)
 waveforms = waveforms[use_range,:]
 timestamps = timestamps[use_range]
+print(waveforms.shape)
+# ************************************************************
+# ** Enforce all recording to have the same waveform dim. ****
+# ************************************************************
 
 # ************************************************************
 # ******************** Preprocess ****************************
 # ************************************************************
+# Enforce all recording to have the same waveform dim. (141):
+wf = np.zeros((waveforms.shape[0],141))
+if d0_wf >= 141:
+    wf[:,:] = waveforms[:,:141] # disregard last dimensions of waveform..
+else:
+    wf[:,:d0_wf] = waveforms[:,:] # The last elements remain zero..
+del(waveforms) 
+waveforms = wf # Let waveform point on the waveforms of the standard dimension.
+
 # Standardise waveforms
 waveforms = preprocess_wf.standardise_wf(waveforms)
 
 # ************************************************************
 # ******************** Event-rate Labeling *******************
 # ************************************************************
-
 
 if path.isfile(path_to_EVlabels+'.npy'):
     print()
@@ -108,7 +127,7 @@ if path.isfile(path_to_EVlabels+'.npy'):
     ev_labels = np.load(path_to_EVlabels+'.npy')
     ev_stats_tot = np.load(path_to_EVlabels+'tests_tot.npy') 
 else:
-    ev_labels, ev_stats_tot = get_ev_labels(waveforms,timestamps,threshold=0.3,saveas=path_to_EVlabels,similarity_measure=similarity_measure)
+    ev_labels, ev_stats_tot = get_ev_labels(waveforms,timestamps,threshold=0.5,saveas=path_to_EVlabels,similarity_measure=similarity_measure)
 
 print()
 print(f'Number of wf which ("icreased after first","increased after second", "constant") = {np.sum(ev_labels,axis=1)} ')
@@ -118,6 +137,7 @@ wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,time
 
 print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
 
+number_of_occurances= np.sum(ev_label_ho,axis=0)
 # ************************************************************
 # ******************** Train/Load model **********************
 # ************************************************************
@@ -134,8 +154,11 @@ print()
 #view_vae_result = False # This reqires user to give input if to continue the script to GD or not.
 if view_vae_result:
     save_figure = 'figures/encoded_decoded/' + unique_string_for_run
-    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_constant',verbose=1,ev_label=np.array((0,0,1)).reshape((1,3)))
-    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_second',verbose=1,ev_label=np.array((0,1,0)).reshape((1,3)))
+    
+    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_constant',verbose=verbose_main,ev_label=np.array((0,0,1)).reshape((1,3)))
+    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_second',verbose=verbose_main,ev_label=np.array((0,1,0)).reshape((1,3)))
+    plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_first',verbose=verbose_main,ev_label=np.array((1,0,0)).reshape((1,3)))
+
     continue_to_run_GD = input('Continue to gradient decent of pdf? (yes/no) :')
 
     all_fine = False
