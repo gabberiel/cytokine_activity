@@ -6,8 +6,8 @@ import warnings
 
 def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     '''
-    Calculates event rate of labeled waveforms. This by counting the number of occurances in sliding
-    one second window of the corresponding timestamps.
+    Calculates event rate of labeled waveforms. This by counting the number of occurances in a sliding
+    one second window of the corresponding timestamps for each label.
     
     Parameters
     ----------
@@ -188,7 +188,8 @@ def ev_label(delta_ev,ev_stats,n_std=1):
 
     return ev_label
 
-def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measure='corr'):
+def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measure='corr',
+                    assumed_model_varaince=0.5,n_std_threshold=1):
     '''
     Complete pipeline of labeling standardised waveforms based on change in event rates.
     Steps in process:
@@ -209,8 +210,11 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
             specifies which similarity measure to use for initial event-rate calculations.
             'corr' : correlation similarity measure
             'ssq' : sum of squares (gaussian annulus theorem) similarity measure
-        
-
+        assumed_model_varaince : float
+            The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I)  
+        n_std_threshold : float
+            Number of standard deviation which the mean-even-rate need to increase for a candidate-CAP to 
+            be labeled as "likely to encode cytokine-info". 
     Returns
     -------
         ev_labels : (n_wf,) array_like
@@ -219,18 +223,21 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
             (tot_mean, tot_std)
     '''
     print('Initiating event-rate labeling')
-    n_std_threshold = 1
+    #n_std_threshold = 1
 
     n_wf = wf_std.shape[0]
     ev_labels = np.zeros((3,n_wf))
     ev_stats_tot = np.zeros((2,n_wf))
     if similarity_measure=='corr':
-        print('Using Correlation as similarity measure...')
+        print(f'Using Correlation as similarity measure...')
+        print(f'threshold : {threshold}')
+        print(f'n_std_threshold : {n_std_threshold}')
+        print()
         sub_steps = 1000
         ii = 0
         t0 = time.time()
         prev_substep = 0
-
+        #wf_downsampled = wf_std/assumed_model_varaince # Will no longer be normalised--not suitible for corr..??
         for sub_step in np.arange(sub_steps,n_wf,sub_steps):
             #print(sub_step)
             i_range = np.arange(prev_substep,sub_step)
@@ -252,10 +259,15 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
                 print(f'ETA: {round(ETA_t)} seconds..')
                 print()
     if similarity_measure=='ssq':
-        print('Using Sum of squares (gaussian annulus theorem) as similarity measure...')
+        print(f'Using Sum of squares (gaussian annulus theorem) as similarity measure. Paramterers:')
+        print(f'assumed_model_varaince : {assumed_model_varaince}')
+        print(f'n_std_threshold : {n_std_threshold}')
+        print(f'threshold : {threshold}')
+        print()
+        # assumed_model_varaince = 0.5
         ii = 0
         t0 = time.time()
-        wf_downsampled = wf_std[:,::2]/0.7 
+        wf_downsampled = wf_std[:,::2]/assumed_model_varaince # 0.5 in CVAE atm. 
         #n_wf = wf_downsampled.shape[0]
         #ev_labels = np.zeros((3,n_wf))
         #ev_stats_tot = np.zeros((2,n_wf))

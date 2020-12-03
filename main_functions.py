@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from vae_dense_wf import get_vae # OBSOBSOBS -- Change when running main_first...
+from vae_dense_wf import get_vae 
 from cvae_dense_wf import get_cvae
 from scipy.io import loadmat
 from os import path
@@ -208,8 +208,10 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
     ----------
     vae : kera.Model class_instance
         Full trained VAE model. 
-    data_points : (number_of_wf, size_of_wf) array_like
+    data_points : (number_of_wf, dim_of_wf) array_like
         Only used to initiate GD if "path_to_hpdp" does not exist.
+    ev_labels : (number_of_wf, 3) array_like or None
+        If None, then VAE is assumed. Otherwise CVAE
     m,gamma,eta : integer/floats 
         Parameters for GD of pdf
     path_to_hpdp : 'path/to/hpdp.npy'
@@ -217,6 +219,12 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
 
     Returns
     -------
+    if m>0:
+        hpdp_x : (number_of_wf, dim_of_wf) array_like
+            The resulting waveforms after running GD on all.
+    if m=0:
+        data_points : (number_of_wf, dim_of_wf) array_like
+            Saved hpdp if "path_to_hpdp" exist. Otherwise raises warning and returns the input.
     '''
     if m>0:
         if path.isfile(path_to_hpdp+'.npy'):
@@ -279,6 +287,7 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
 
 def plot_waveforms(waveforms,labels=None):
     ''' 
+    OBSOBS: old version, use version in plot_functions_wf.py
     If labels are given, then the meadian of each waveform - cluster is ploted. 
     x_axis assumes each waveform is 3.5ms long.
     '''

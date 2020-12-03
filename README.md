@@ -9,41 +9,34 @@ Find Main Article at <https://www.researchgate.net/publication/325035277_Identif
 
 ## Steps in workflow:
 
-Raw input-file.plx --[Preprocess (1)]--> waveforms & timestamps .mat files --[Preprocess (2)]-->  waveforms & timestamps .npy files --[VAE-training (3)]--> keras.Model 
---[ pdf GD (4)]--> high prob. data-points --[Clustering (5)]--> labeled data --[Event-rate (6)]--> Result that can be infered. 
+Raw input-file.plx --[Matlab-Preprocess (1)]--> waveforms & timestamps .mat files --[Preprocess and Label (2)]-->  waveforms & timestamps .npy files --[CVAE-training (3)]--> keras.Model 
+--[ pdf GD (4)]--> high prob. data-points --[Candidate evaluation looking at Event-rates (5)]--> Result that can be infered from. 
 
 
-* (1) : MATLAB preprocessing of raw recording. Includes "adaptive threshold" and romoval of "bad"-datapoints based on cardiac events etc.  See steps in MAIN_preprocess.mat
-
-* (2) : Python preprocessing to have optimal form of input to VAE. qqq: Standardisation/frequency-domain ...?
-
-* (3) : Build VAE model to achieve approximate probability model -- variational inference approach. Latent representa
-tion of data etc. 
-
-* (4) : Preform gradient decent on $$ \pi $$
-* (5) : 
-
-* (6) :
-
-$$ \pi $$
 =======
-* (1) : **MATLAB preprocessing** of raw recording. Includes "adaptive threshold" and romoval of "bad"-datapoints based on cardiac events etc. \
+* (1) : **MATLAB preprocessing of raw-recording.** Includes "adaptive threshold" and romoval of "bad"-datapoints influenced by cardiac events etc. In the MATLAB code we apply the steps:
+    * Apply Gain
+    * Butterworth high-pass filter
+    * Downsample with Nd=5
+    * Adaptive threshold
 **OUT** : waveforms.mat, timestamps.mat
 
-* (2) : **Python preprocessing** to have optimal form of input to VAE. qqq: Standardisation/frequency-domain ...? \
-**OUT** : waveforms_input.npy (numpy_array)
+* (2) : **Python preprocessing and label of waveforms.** 
+    * Remove observations occuring before 15min and after 90 minutes of recording. (From visual inspection of raw-file.) 
+    * Standardisation of waveforms (favourable for Neural Network input.)
+    * Event-rate calculation based on similarity measure.
+    * Remove data-point which has a mean-event-rate less then specified threshold. (consider these as noise.)
+    * Label waveform based on how the event rate changes at the injection-times, representing if they are likely or not to encode cytokine-information.
+**OUT** : waveforms.npy, timestamps.npy, ev_labels.npy, (numpy_arrays)
 
-* (3) : **Build and train VAE model** to achieve approximate probability model -- variational inference approach. Latent representation of data etc. \
-**OUT** : Variational autoencoder + weights (keras.Model)
+* (3) : **Build and train CVAE model** to achieve approximate probability model -- variational inference approach. Latent representation of data etc. \
+**OUT** : Conditional Variational autoencoder + weights (keras.Model)
 
-* (4) : Preform gradient decent on $$ I(x)=-log(p) $$ to find high probability data-points (hpdp). \
-**OUT** : 
+* (4) **Preform pdf-gradient decent** on I(x)=-log(p|label="increased event-rate"), to find high probability data-points (hpdp) in the probability space . \
+**OUT** : hpdp<-->"increase after first injection", hpdp-<-->"increase after second injection" (numpy arrays)
 
-* (5) : qqq: **Clustering** procedure on either hpdp in ots original dimention or latent space using either k-means/ DBSCAN etc. Very important to sort out noise here since the achieved labels together with the "timestamps" determines the event-rate deterministically. \
-**OUT** :
+* (5) : **Candidate evaluation looking at Event-rates.** Consider the hpdp given that they are likely to encode cytokine information and consider one such CAP as the main-candidate. Look at Event-rate for the main-canditate and study the event-rate to see if there is a significant increase at time of injection for this candidate CAP. \ 
 
-* (6) : **Event Rate** calculation -- the occurence rate in CAPs/sec during time of recording. \
-**OUT** : 
 
 ## Code structure
 

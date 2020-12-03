@@ -1,2 +1,2 @@
-model_checkpoint_path: "corr_2_decnew_computer_deleteme2"
-all_model_checkpoint_paths: "corr_2_decnew_computer_deleteme2"
+model_checkpoint_path: "test_4_decR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
+all_model_checkpoint_paths: "test_4_decR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
