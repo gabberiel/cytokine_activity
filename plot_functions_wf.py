@@ -70,7 +70,7 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=Non
         plt.show()
 
 
-def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None):
+def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
     '''
     Display a 2D plot of the latent space mean. 
     Will show plot if verbose=1.
@@ -101,16 +101,18 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None):
     assert z_mean.shape[-1] == 2, 'PLOT ONLY WORK FOR 2D LATENT SPACE'
     #plt.figure(figsize=(10, 10))
     plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
-    plt.colorbar()
+    #plt.colorbar()
     plt.xlabel("z[0]")
     plt.ylabel("z[1]")
+    if title is not None:
+        plt.title(title)
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
     if verbose==1:
         plt.show()
 
 
-def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False):
+def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
     '''
     Plot of raw recording before MATLAB preprocessing.
     Assumes downsampled raw_rec such that the sample frequency is 8000 Hz
@@ -123,6 +125,8 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False):
     plt.plot(timeline, rawrec)#, c=labels)
     plt.xlabel("Time (min)")
     plt.ylabel("Voltage ($\mu V$)")
+    if title is not None:
+        plt.title(title)
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
     if verbose==True:
@@ -130,7 +134,7 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False):
 
 
         
-def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False):
+def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     ''' 
     If labels are given, then the meadian of each waveform - cluster is ploted. 
     x_axis assumes each waveform is 3.5ms long.
@@ -150,6 +154,8 @@ def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False):
         plt.plot(t_axis.T,waveforms.T)
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
+    if title is not None:
+        plt.title(title)
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
     if verbose==True:
@@ -202,8 +208,9 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
         plt.show()
         #plt.close()
 
-def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True):
+def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,show_clustered=True,cluster=None):
     '''
+    Change name to plot_similar_wf or plot_clustered waveforms..
     Plots wavefroms specified as True in bool_label. candidate_idx gives index for the Candidate-wavform under consideration.
 
     Will show plot if verbose is Ture.
@@ -243,9 +250,13 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
     time = np.arange(0,3.5,3.5/waveforms.shape[-1])
     
     #plt.figure()
-    plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
-    plt.plot(time,np.median(waveforms[bool_labels],axis=0),color = (0.1,0.1,0.1),lw=1, label='Median')
-    plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
+    if show_clustered:
+        plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
+        plt.plot(time,np.median(waveforms[bool_labels],axis=0),color = (0.1,0.1,0.1),lw=1, label='Median')
+        plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
+    else:    
+        plt.plot(time,np.median(waveforms[bool_labels],axis=0),lw=1, label='median cluster '+str(cluster))
+        #plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
 
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
@@ -258,7 +269,7 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
     #plt.close()
 
       
-def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True):
+def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True,cluster=None):
     '''
     Plots event rates by smoothing kernel average of width "conv_width".
     convolution done including boundary effects but returns vector of same size.
@@ -293,10 +304,13 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
                 plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
 
     else:
-        print('No given noise..')
+        #print('No given noise..')
         for i,ev in enumerate(event_rates.T):
             smothed_ev = np.convolve(ev,conv_kernel,'same')
-            plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
+            if cluster is not None:
+                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6, label=f'cluster {cluster}') #color=colors[i%3]
+            else:
+                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6, label=f'cluster {i}') #color=colors[i%3]
     
     plt.xlabel('Time of recording (min)')
     plt.ylabel('Event rate (CAPs/second)') 

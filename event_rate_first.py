@@ -141,7 +141,7 @@ def delta_ev_measure(event_rates,timestamps = None):
         stats = [interval_ev_means, interval_ev_std]
         return delta_ev, stats
 
-def ev_label(delta_ev,ev_stats,n_std=1):
+def ev_label(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
     '''
     Give waveform a label encoding how the event rate change at time of injections.
     The label is vector with 3 dimensions. The three values corresponds 
@@ -149,9 +149,9 @@ def ev_label(delta_ev,ev_stats,n_std=1):
 
     Parameters
     ----------
-    delta_ev : (number_of_injections, number_of_clusters) array_like
+    delta_ev : (number_of_injections(=2), number_of_clusters) array_like
                 Changes in mean event rate after the two injections for each cluster.
-                (This function will only need/get "number_of_clusters" = 1.)
+                (This function will only need/get "number_of_clusters" = 1. ??)
     ev_stats :[interval_ev_means, interval_ev_std] python_list
         interval_ev_means: (3, number_of_clusters) array_like
         interval_ev_std : (3, number_of_clusters) array_like
@@ -169,10 +169,17 @@ def ev_label(delta_ev,ev_stats,n_std=1):
         label = [1,1,0] corresponds to increase in activity after both injections. 
     '''
     # TODO OBS for now it only accepts one label and one delta_ev..
-    interval_ev_std = ev_stats[1][:2] #.reshape((-1,2)) # Get standard deviation for first two periods.
-
     # Define baseline standard deviation for second injection as mean of first two periods of recording..
-    interval_ev_std[-1] = (interval_ev_std[0] + interval_ev_std[1])/2
+    if new_variance_periods:
+        # Will probably reduce variance threshold assuming variance is lower during second period
+        interval_ev_std = np.empty(ev_stats[1][:2].shape)
+        var_thres_first = (ev_stats[1][0] + ev_stats[1][1])/2 *0.2# Mean variance over firts two periods
+        var_thres_second = (ev_stats[1][0] + ev_stats[1][1] + ev_stats[1][2] )/3 # Mean variance over whole recording
+        interval_ev_std[0] = var_thres_first
+        interval_ev_std[1] = var_thres_second
+    else:
+        interval_ev_std = ev_stats[1][:2] #.reshape((-1,2)) # Get standard deviation for first two periods.
+        interval_ev_std[-1] = (interval_ev_std[0] + interval_ev_std[1])/2
 
     ev_label = np.zeros((3,delta_ev.shape[-1]))
 

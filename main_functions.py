@@ -8,7 +8,7 @@ from scipy.io import loadmat
 from os import path
 import warnings
 
-def load_waveforms(path_to_wf,matlab_key, standardize=False, verbose=1):
+def load_waveforms(path_to_wf,matlab_key, verbose=1):
     """
     Load waveform-matlab file specified by "path_to_wf" and returns it as numpy array.
     
@@ -40,21 +40,7 @@ def load_waveforms(path_to_wf,matlab_key, standardize=False, verbose=1):
         print()
         print(f'Shape of waveforms: {waveforms.shape}.')
     
-    if standardize==True:
-        if verbose>0:
-            print()
-            print('Standardize waveforms...')
-            print()
-        mean = np.mean(waveforms, axis=-1)
-        std  = np.std(waveforms, axis=-1)  
-        waveforms = waveforms - mean[:,None]
-        waveforms = waveforms/std[:,None]
-        assert np.isnan(np.sum(waveforms))==False, 'Nans in "waveforms"'
-    
-        return waveforms, mean, std
-    else:
-        assert np.isnan(np.sum(waveforms))==False, 'Nans in "waveforms"'
-        return waveforms, None, None
+    return waveforms
 
 def load_timestamps(path_to_ts,matlab_key,verbose=1):
     """Load timestamp-matlab file specified by "path_to_ts" and returns it as numpy array.

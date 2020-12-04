@@ -13,7 +13,7 @@ from wf_similarity_measures import wf_correlation,similarity_SSQ
 from event_rate_first import get_ev_labels, get_event_rates, similarity_SSQ, label_from_corr
 from plot_functions_wf import *
 
-#from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 # OBS assumes existance of the standardise
 
 # ************************************************************
@@ -21,20 +21,18 @@ from plot_functions_wf import *
 # ************************************************************
 
 similarity_measure='ssq'
-similarity_thresh = 0.5 # Gives either the minimum correlation using 'corr' or epsilon in gaussain annulus theorem for 'ssq'
-ev_threshold = 0.01 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
 
-assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity measur. i.e variance in N(x_candidate,sigma^2*I)   
+similarity_thresh = 0.5 # Gives either the minimum correlation using 'corr' or epsilon in gaussain annulus theorem for 'ssq'
+assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I)   
  
 n_std_threshold = 0.5  # Number of standard deviation which the mean-even-rate need to increase for a candidate-CAP to be labeled as "likely to encode cytokine-info".
-
+#ev_threshold = 0.01 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
+ev_threshold = 0.005 # Downsample=4
 verbose_main = 1
 
 # pdf-GD params: 
-# For first attempt of CVAE. m=2000 sufficient for very low variance in hpdp. All converged to same cluster. (looking at latent space..)
-# After 3000 iterations, this cluster split in two but the two are basically encoding the same waveform
 
-m=500 # Number of steps in pdf-gradient decent
+m=0 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
@@ -45,18 +43,8 @@ batch_size = 128
 
 view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
 view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
-plot_hpdp_assesments = False
+plot_hpdp_assesments = True
 
-# OLD
-#run_DBscan = False
-#run_KMeans = False
-# DBSCAN params
-#db_eps = 0.1 # max_distance to be considered as neighbours 
-#db_min_sample = 35 # Minimum members in neighbourhood to not be regarded as Noise.
-
-# Shape of waveforms: (136259, 141)
-#training_idx = np.arange(10000) # initial testing
-#training_idx = np.arange(0,131000,10)
 
 # ************************************************************
 # ******************** Paths *********************************
@@ -70,22 +58,29 @@ plot_hpdp_assesments = False
 
 # General: 
 #recording = 'R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01'
-recording = 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01'
+#recording = 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01'
 #recording = 'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03'
+recording = 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02'
 
 path_to_wf = '../matlab_files/wf'+recording+'.mat' 
 path_to_ts = '../matlab_files/ts'+recording+'.mat'
 
 
-# FOR SAVING FIGURES
-unique_string_for_run = 'test_4_dec'+recording
-#unique_string_for_figs = 'test2_3_dec_'+'R10_6_27_16_BALBC_IL1B_35ngperkg_TNF_05ug_01'
-unique_string_for_figs = 'tests_4_dec_'+'R10_6_27_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_01'
-#unique_string_for_figs = 'tests_3_dec_'+'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_03'
+#unique_string_for_run = 'aa_using_new_var_period_3_test_4_dec'+recording
+unique_string_for_run = 'test_4_dec_ds4'+recording
+
+
+# FOR SAVING FIGURES ****Not allowed to contain . or () signs****
+#unique_string_for_figs = 'tests_4_dec_ds4'+'R10_6_27_16_BALBC_IL1B_35ngperkg_TNF_05ug_01' 
+#unique_string_for_figs = 'tests_4_dec_ds4'+'R10_6_27_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_01'
+#unique_string_for_figs = 'tests_4_dec_ds4'+'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_03'
+unique_string_for_figs = 'tests_4_dec_ds4'+'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_02'
+
+
 # tf weight-file:
 path_to_weights = 'models/'+unique_string_for_run
 # Numpy file:
-path_to_hpdp = "../numpy_files/numpy_hpdp/"+unique_string_for_run +'deleteme2'
+path_to_hpdp = "../numpy_files/numpy_hpdp/"+unique_string_for_run #'deleteme2' #saved version for middle case
 path_to_EVlabels = "../numpy_files/EV_labels/"+unique_string_for_run
 
 # ************************************************************
@@ -95,54 +90,28 @@ path_to_EVlabels = "../numpy_files/EV_labels/"+unique_string_for_run
 # TODO Move preprocessing from "load_waveforms function"
 load_data = True
 if load_data:
-    waveforms, mean, std = load_waveforms(path_to_wf,'waveforms',standardize=False, verbose=1)
+    waveforms = load_waveforms(path_to_wf,'waveforms', verbose=1)
     timestamps = load_timestamps(path_to_ts,'timestamps',verbose=1)
     n0_wf = waveforms.shape[0]
     d0_wf = waveforms.shape[1] 
 
-    print(f'Shape of training data: {waveforms.shape}')
 wf0 = np.copy(waveforms)
 ts0 = np.copy(timestamps)
-# ************************************************************
-# ****** Cut first and last part of recording to ensure stable
-#        sleep state during recording ************************
-# ************************************************************
 
-# TODO : Write as preprocessing function.
-# Find how many datapoints that corresponds to first 15 min of recording: 
-firts_15_idx = np.where(timestamps<15*60)[0] 
-# Find how many datapoints that corresponds to last 5 min of recording: 
-past_90_idx = np.where(timestamps>90*60)[0] 
 
-firts_15_idx = np.where(timestamps<15*60)[0] 
-# Look at how the general event rate is over time and also look at the mean event-rate!
-
-start = round(firts_15_idx[-1]/1000)*1000 
-top_range = round(past_90_idx[0]/1000)*1000
-use_range = np.arange(start,top_range,5) # REDUCE NUMBER OF CAPS UNDER CONSIDEERATION FOR EFFICENCY
-waveforms = waveforms[use_range,:]
-timestamps = timestamps[use_range]
-print(waveforms.shape)
-# ************************************************************
-# ** Enforce all recording to have the same waveform dim. ****
-# ************************************************************
-# Enforce all recording to have the same waveform dim. (141):
-if d0_wf != 141:
-    wf = np.zeros((waveforms.shape[0],141))
-    if d0_wf >= 141:
-        wf[:,:] = waveforms[:,:141] # disregard last dimensions of waveform..
-    else:
-        wf[:,:d0_wf] = waveforms[:,:] # The last elements remain zero..
-    del(waveforms) 
-    waveforms = wf # Let waveform point on the waveforms of the standard dimension.
 
 # ************************************************************
 # ******************** Preprocess ****************************
 # ************************************************************
 
+
+# Cut first and last part of recording to ensure stable sleep state during recording etc.:
+waveforms,timestamps = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141,downsample=4)
 # Standardise waveforms
 waveforms = preprocess_wf.standardise_wf(waveforms)
 #wf0 = preprocess_wf.standardise_wf(wf0)
+
+
 # ************************************************************
 # ******************** Event-rate Labeling *******************
 # ************************************************************
@@ -258,12 +227,56 @@ if plot_hpdp_assesments:
         bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
         saveas = 'figures/hpdp/'+unique_string_for_figs
         plot_correlated_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
-        '''
-        #PLOT ENCODED wf_increase_second... :
+            
+        #PLOT ENCODED wf_increase... :
+        ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
+        ev_label_corr_shape[:,label_on] = 1
         save_figure = 'figures/encoded_decoded/'+unique_string_for_figs + '_ho_second'
         plot_encoded(encoder,  wf_ho[ev_label_ho[:,label_on]==1], ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
-        plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape) 
-        '''
+        plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
+
+        K_string  = input('Number of clusters? (integer) :')
+        kmeans = KMeans(n_clusters=int(K_string), random_state=0).fit(hpdp)
+        k_labels = kmeans.labels_
+
+        # OBS that the following evaluation now performs similarity measure on waveforms from the complete recording. (no cut-outs..)
+        for cluster in range(int(K_string)):
+            hpdp_cluster = hpdp[k_labels==cluster]
+            MAIN_CANDIDATE = np.median(hpdp_cluster,axis=0) # Median more robust to outlier..
+            similarity_thresh = 0.5 #using var=1 -- Bad alternative, wfs not similar enough...
+
+            added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),wf0),axis=0)
+            assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
+            
+            # QUICK FIX FOR WAVEFORMS AMPLITUDE INCREASING AFTER GD-- standardise it.
+            # Should not be needed if GD works properly...
+            added_main_candidate_wf = preprocess_wf.standardise_wf(added_main_candidate_wf)
+            print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
+            # Get correlation cluster for Delta EV - increased_second hpdp
+            # MAIN_THRES = 0.6
+            saveas = 'figures/event_rate_labels/'+unique_string_for_figs
+            if similarity_measure=='corr':
+                print('Using "corr" to evaluate final result')
+                correlations = wf_correlation(0,added_main_candidate_wf)
+                bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
+            if similarity_measure=='ssq':
+                print('Using "ssq" to evaluate final result')
+                added_main_candidate_wf = added_main_candidate_wf/0.5  # (0.7) Assumed var in ssq
+                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
+            event_rates, real_clusters = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
+            plt.figure(1)
+            plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand'+'_wf'+str(label_on),
+                                verbose=False, show_clustered=False,cluster=cluster)
+            plt.figure(2)
+            bool_labels[bool_labels==True] = cluster
+            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'Main_cand'+'_ev'+str(label_on), verbose=False,cluster=cluster) 
+        plt.figure(3)
+        #plt.hist(ts0,bins=200)
+        event_rates, real_clusters = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
+        plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'overall_EV', verbose=False) 
+        plt.show()
+exit()            
+
 #MAIN_CANDIDATE = np.median(hpdp,axis=0)
 for label_on in [0,1]:
     hpdp = hpdp_list[label_on]
@@ -295,8 +308,15 @@ for label_on in [0,1]:
 
 
 exit()
+
+
+
+# ************************************************************
+# ************************************************************
 # ************************************************************
 # ******************** OLD STUFF FROM HERE ON ****************
+# ************************************************************
+# ************************************************************
 # ************************************************************
 
 

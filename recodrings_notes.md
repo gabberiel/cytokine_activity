@@ -15,6 +15,26 @@
 ## Notes regarding parameters etc for different recordings
 **First Testing example**
 
+**R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01**
+Showed promising results with the parametre settings:
+* similarity_measure='ssq'
+* similarity_thresh = 0.5 
+* assumed_model_varaince = 0.7    
+* n_std_threshold = 0.5  
+* ev_threshold = 0.01 
+
+pdf-GD params: 
+* m=500 # Number of steps in pdf-gradient decent
+* gamma=0.02 # learning_rate in GD.
+* eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
+
+After run with downsample=2. The run is saved as test_4_dec...
+
+
+**R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01**
+Using the same setting as above-- reasonalble number of waveforms in each "ev-cluster". Maby a bit too many in "increase after second".. The results using tha labeled waveforms without pdf_GD not really good.. After GD,  
+
+
 
 **R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05.mat**
 use_range = np.arange(5000,130000)
