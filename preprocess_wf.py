@@ -20,7 +20,7 @@ def standardise_wf(waveforms):
 
 
 
-def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141,downsample=False):
+def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141,downsample=None):
     '''
     Returns waveforms of the dimension specified by "dim_of_waveform" which are observed in the time interval ["start_time","end_time"].
 
@@ -32,8 +32,8 @@ def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=1
 
     '''
     d0_wf = waveforms.shape[0]
-    firts_15_idx = np.where(timestamps<15*60)[0] # Find how many datapoints that corresponds to first 15 min of recording:  
-    past_90_idx = np.where(timestamps>90*60)[0] # Find how many datapoints that corresponds to last 5 min of recording: 
+    firts_15_idx = np.where(timestamps<start_time*60)[0] # Find how many datapoints that corresponds to first 15 min of recording:  
+    past_90_idx = np.where(timestamps>end_time*60)[0] # Find how many datapoints that corresponds to last 5 min of recording: 
 
     # Look at how the general event rate is over time and also look at the mean event-rate???
 

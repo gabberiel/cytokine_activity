@@ -32,10 +32,10 @@ Raw input-file.plx --[Matlab-Preprocess (1)]--> waveforms & timestamps .mat file
 * (3) : **Build and train CVAE model** to achieve approximate probability model -- variational inference approach. Latent representation of data etc. \
 **OUT** : Conditional Variational autoencoder + weights (keras.Model)
 
-* (4) **Preform pdf-gradient decent** on I(x)=-log(p|label="increased event-rate"), to find high probability data-points (hpdp) in the probability space . \
+* (4) **Preform pdf-gradient decent** on I(x) = -log p(x|label="increased event-rate"), to find high probability data-points (hpdp) in the probability space . \
 **OUT** : hpdp<-->"increase after first injection", hpdp-<-->"increase after second injection" (numpy arrays)
 
-* (5) : **Candidate evaluation looking at Event-rates.** Consider the hpdp given that they are likely to encode cytokine information and consider one such CAP as the main-candidate. Look at Event-rate for the main-canditate and study the event-rate to see if there is a significant increase at time of injection for this candidate CAP. \ 
+* (5) : **Candidate evaluation looking at Event-rates.** Consider the hpdp and cluster these using k-means. The median of each cluster is then considered as main-candidate CAPs for encoding cytokine. Looking at the Event-rate for each of the main-canditate to see if there is a significant increase at time of injection or not. \ 
 
 
 ## Code structure

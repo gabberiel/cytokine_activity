@@ -1,2 +1,2 @@
-model_checkpoint_path: "test_4_dec_ds4R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02"
-all_model_checkpoint_paths: "test_4_dec_ds4R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02"
+model_checkpoint_path: "7_dec_nstd_02and01_no_dsR10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02"
+all_model_checkpoint_paths: "7_dec_nstd_02and01_no_dsR10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02"

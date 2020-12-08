@@ -173,7 +173,7 @@ def ev_label(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
     if new_variance_periods:
         # Will probably reduce variance threshold assuming variance is lower during second period
         interval_ev_std = np.empty(ev_stats[1][:2].shape)
-        var_thres_first = (ev_stats[1][0] + ev_stats[1][1])/2 *0.2# Mean variance over firts two periods
+        var_thres_first = (ev_stats[1][0] + ev_stats[1][1])/2 *0.5 # Mean variance over firts two periods
         var_thres_second = (ev_stats[1][0] + ev_stats[1][1] + ev_stats[1][2] )/3 # Mean variance over whole recording
         interval_ev_std[0] = var_thres_first
         interval_ev_std[1] = var_thres_second
@@ -296,6 +296,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
     if saveas is not None:
         np.save(saveas,ev_labels)
         np.save(saveas+'tests_tot',ev_stats_tot)
+        print(f'EV_labels succesfully saved as : {saveas}')
     return ev_labels, ev_stats_tot
 
 

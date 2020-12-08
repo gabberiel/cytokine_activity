@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import preprocess_wf
+from wf_similarity_measures import wf_correlation, label_from_corr, similarity_SSQ
+from event_rate_first import get_event_rates
 # VERISON USED FOR ARAMS CODE ON WAVEFORM DATA
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
@@ -208,7 +210,7 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
         plt.show()
         #plt.close()
 
-def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,show_clustered=True,cluster=None):
+def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,show_clustered=True,cluster=None, return_cand=False):
     '''
     Change name to plot_similar_wf or plot_clustered waveforms..
     Plots wavefroms specified as True in bool_label. candidate_idx gives index for the Candidate-wavform under consideration.
@@ -228,8 +230,8 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
             Threshold used when labeling waveforms
         saveas : 'path/to/save_fig' string_like _or_ None
             If None then the figure is not saved
-    verbose : Booleon
-        True => plt.show()
+        verbose : Booleon
+            True => plt.show()
     Returns
     -------
         None
@@ -248,14 +250,14 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         #print('Plotting 500...')
 
     time = np.arange(0,3.5,3.5/waveforms.shape[-1])
-    
+    median_wf = np.median(waveforms[bool_labels],axis=0)
     #plt.figure()
     if show_clustered:
         plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
-        plt.plot(time,np.median(waveforms[bool_labels],axis=0),color = (0.1,0.1,0.1),lw=1, label='Median')
+        plt.plot(time,median_wf,color = (0.1,0.1,0.1),lw=1, label='Median')
         plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
     else:    
-        plt.plot(time,np.median(waveforms[bool_labels],axis=0),lw=1, label='median cluster '+str(cluster))
+        plt.plot(time,median_wf,lw=1, label='median cluster '+str(cluster))
         #plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
 
     plt.xlabel('Time $(ms)$')
@@ -266,6 +268,8 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         plt.savefig(saveas,dpi=150)
     if verbose:
         plt.show()
+    if return_cand:
+        return median_wf
     #plt.close()
 
       
@@ -321,3 +325,77 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
         plt.savefig(saveas, dpi=150)
     if verbose:
         plt.show()
+
+
+
+def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', similarity_thresh=0.4, 
+                            assumed_model_varaince=0.5,saveas='saveas_not_specified',verbose=False, return_candidates=False):
+    '''
+    Evaluates the results of clustered hpdp. Uses the specified similarity measure to find the event rate using the median
+    of each hpdp cluster as "main candidate". The clusters as specified by k_labels.
+    
+    Parameters
+    ----------
+    wf0 : (n_wf,d_wf), array_like
+        The waveforms which are used for similarity measure to evaluate candidates.
+    ts0 : (n_wf,) array_like
+        Corresponding timestamps
+    hpdp : (n_hpdp, d_wf) array_lika
+        The high probability datapointes under consideration to find cytokine-candidate.
+    k_labels : (n_hpdp,) array_like
+        labels for hpdp -- should correpond to the different maximas of conditional pdf.
+    
+    saveas : 'path/to/save_fig' string_like _or_ None
+            If None then the figure is not saved
+        verbose : Booleon
+            True => plt.show()
+    
+    Returns
+    -------
+    if return_candidates is True:
+        candidate_wf : (n_clusters, d_wf) array_like
+            The median of each hpdp-cluster.
+    
+    '''
+    k_clusters = np.unique(k_labels)  
+    candidate_wf = np.empty((k_clusters.shape[0],wf0.shape[-1]))
+    for cluster in k_clusters:
+        hpdp_cluster = hpdp[k_labels==cluster]
+        MAIN_CANDIDATE = np.median(hpdp_cluster,axis=0) # Median more robust to outlier..
+
+        added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),wf0),axis=0)
+        assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
+        
+        # QUICK FIX FOR WAVEFORMS AMPLITUDE INCREASING AFTER GD-- standardise it.
+        # Should not be needed if GD works properly...
+        added_main_candidate_wf = preprocess_wf.standardise_wf(added_main_candidate_wf)
+        print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
+        # Get correlation cluster for Delta EV - increased_second hpdp
+        
+        if similarity_measure=='corr':
+            print('Using "corr" to evaluate final result')
+            correlations = wf_correlation(0,added_main_candidate_wf)
+            bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
+        if similarity_measure=='ssq':
+            print('Using "ssq" to evaluate final result')
+            added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
+            bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
+        event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
+        plt.figure(1)
+        median_wf = plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',
+                            verbose=False, show_clustered=False,cluster=cluster,return_cand=True)
+        candidate_wf[cluster,:] = median_wf
+        plt.figure(2)
+        bool_labels[bool_labels==True] = cluster
+        plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'Main_cand_ev', verbose=False,cluster=cluster) 
+    plt.figure(3)
+    #plt.hist(ts0,bins=200)
+    event_rates, _ = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
+    plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'overall_EV', verbose=False)     
+    
+    if saveas is not None:
+        plt.savefig(saveas, dpi=150)
+    if verbose:
+        plt.show()
+    if return_candidates:
+        return candidate_wf
