@@ -4,17 +4,17 @@ import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 from sklearn.mixture import GaussianMixture
-
+from tensorflow.keras import backend as K
 
 
 def sample_z(mu,sigma):
     '''
     TODO : 
     '''
-    batch     = keras.backend.shape(mu)[0]
-    dim       = keras.backend.int_shape(mu)[1]
-    eps       = keras.backend.random_normal(shape=(batch, dim))
-    return mu + keras.backend.exp(sigma / 2) * eps
+    batch     = K.shape(mu)[0]
+    dim       = K.int_shape(mu)[1]
+    eps       = K.random_normal(shape=(batch, dim))
+    return mu + K.exp(sigma / 2) * eps
 
 class Add_kl_loss(layers.Layer):
     '''

@@ -366,9 +366,12 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
         added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),wf0),axis=0)
         assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
         
+
         # QUICK FIX FOR WAVEFORMS AMPLITUDE INCREASING AFTER GD-- standardise it.
         # Should not be needed if GD works properly...
-        added_main_candidate_wf = preprocess_wf.standardise_wf(added_main_candidate_wf)
+        
+        #added_main_candidate_wf = preprocess_wf.standardise_wf(added_main_candidate_wf)
+
         print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
         # Get correlation cluster for Delta EV - increased_second hpdp
         
@@ -378,8 +381,12 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
             bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
         if similarity_measure=='ssq':
             print('Using "ssq" to evaluate final result')
-            added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
-            bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
+            if assumed_model_varaince is False:
+                #added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
+                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh,standardised_input=False)
+            else:
+                added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
+                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
         event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
         plt.figure(1)
         median_wf = plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',

@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from vae_dense_wf import get_vae 
 from cvae_dense_wf import get_cvae
 from scipy.io import loadmat
+#from tensorflow.python.framework import ops
+
 from os import path
 import warnings
 
@@ -86,6 +88,11 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
 
     """
     assert np.isnan(np.sum(data_train))==False, 'Nans in "data_train"'
+    #ops.reset_default_graph()
+
+    tf.keras.backend.clear_session() # When building new models in for-loop, the stored graph in keras.backend
+    # creats an error since it then is missmatches between the different models..
+
     waveform_shape = data_train.shape[-1]
     if ev_label is None:
         encoder,decoder,vae = get_vae(waveform_shape,latent_dim)
@@ -98,9 +105,9 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
             print(f'Loading {path_to_weights}...')
             print()
         if ev_label is None:
-            vae.load_weights(path_to_weights)
+            vae.load_weights(path_to_weights).expect_partial()
         else:
-            cvae.load_weights(path_to_weights)
+            cvae.load_weights(path_to_weights).expect_partial()
         if continue_train == True:
             if verbose>0:
                 print()
@@ -173,6 +180,7 @@ def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
             print(f'Running pdf-GD, iteration={i}')
             print(f'ETA: {round(ETA_t)} seconds..')
             print()
+            #assert np.isnan(np.sum(x))==False, 'NaNs in hpdp_x after GD..'
 
         #x_hat = x + eta*tf.random.normal(shape=x.shape)
         x_hat = x + eta * np.random.normal(size=x.shape)
@@ -230,6 +238,7 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
                 hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
             else:
                 hpdp_x = __cluster_CVAE__(vae,data_points,ev_label,eta,gamma,m)
+            hpdp_x = hpdp_x[~np.isnan(hpdp_x).any(axis=1)] # Remove CAPs containing nans.
             assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x efter GD..'
             np.save(path_to_hpdp,hpdp_x)
 
@@ -246,6 +255,7 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
                 hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
             else:
                 hpdp_x = __cluster_CVAE__(vae,data_points,ev_label,eta,gamma,m)
+            hpdp_x = hpdp_x[~np.isnan(hpdp_x).any(axis=1)] # Remove CAPs containing nans.
             assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x after GD..'
             np.save(path_to_hpdp,hpdp_x)
             if verbose>0:

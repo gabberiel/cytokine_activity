@@ -274,12 +274,19 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
         # assumed_model_varaince = 0.5
         ii = 0
         t0 = time.time()
-        wf_downsampled = wf_std[:,::2]/assumed_model_varaince # 0.5 in CVAE atm. 
+        if assumed_model_varaince is not False:
+            wf_downsampled = wf_std[:,::2]/assumed_model_varaince # 0.5 in CVAE atm. 
+        else:
+            wf_downsampled = wf_std[:,::2] 
         #n_wf = wf_downsampled.shape[0]
         #ev_labels = np.zeros((3,n_wf))
         #ev_stats_tot = np.zeros((2,n_wf))
         for candidate_idx in range(n_wf):
-            bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold)
+            if assumed_model_varaince is not False:
+                bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold,standardised_input=True)
+            else:
+                bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold,standardised_input=False)
+
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
             delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
             tot_mean,tot_std = get_average_ev(ev_stats)

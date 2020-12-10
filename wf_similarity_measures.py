@@ -52,7 +52,7 @@ def wf_correlation(main_idx,std_waveforms):
     return correlations
 
 
-def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1):
+def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1, standardised_input=True):
     '''
     Similarity measure of waveforms based on Annulus theorem of Gaussians.
     H0: All observations (i.e waveforms) are assumed to be distributed as N(μ_x, σ^2*I),
@@ -78,11 +78,13 @@ def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1):
         True for similar waveforms
     '''
     n = waveforms.shape[1]
-    upper_buond = 3*np.exp(-n*(epsilon**2))
-
-
-    candidate_standardised = waveforms - waveforms[candidate_idx,:] # Mean shifted
-    #candidate_standardised = mean_shifted / var # All elements now assumed to be iid N(0,var)
+    upper_buond = 3*np.exp(-n*(epsilon**2)) # Theoretical convergence rate of mass towards annulus
+    candidate_wf = waveforms[candidate_idx,:]
+    candidate_standardised = waveforms - candidate_wf # Mean shifted
+    assert np.sum(candidate_standardised[candidate_idx,:]) == 0, 'Mean shift in ssq not correct'
+    # TODO: Which type of variance to use..? 
+    if standardised_input is not True:
+        candidate_standardised = candidate_standardised / (np.var(candidate_wf)*var) # All elements now assumed to be iid N(0,var)
     #print(candidate_standardised.shape)
     # Sum of Squares:
     ssq = np.sum(np.square(candidate_standardised),axis=1) # Under H0, we should have: (n(1-epsilon) < ssq < n(1+epsilon)), with prob. = 1 as n --> inf.

@@ -12,22 +12,28 @@ from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD
 from wf_similarity_measures import wf_correlation,similarity_SSQ
 from event_rate_first import get_ev_labels, get_event_rates, similarity_SSQ, label_from_corr
 from plot_functions_wf import *
+from scipy.spatial.distance import cdist
 
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 
 matlab_files = ['R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01', 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01', 
             'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03', 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02',
             'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_02', 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_03',
             'R10_6.29.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_04', 'R10_6.29.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_04',
             'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05']
+matlab_files_amp_thres = ['R10_Exp2_7.13.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_08','R10_Exp2_7.13.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_09',
+            'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08', 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10']
 
 figure_strings = ['R10_6_27_16_BALBC_IL1B_35ngperkg_TNF_05ug_01','R10_6_27_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_01',
                 'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_03', 'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_02', 
                 'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_02', 'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_03',
                 'R10_6_29_16_BALBC_IL1B_35ngperkg_TNF_05ug_04', 'R10_6_29_16_BALBC_TNF_05ug_IL1B_35ngperkg_04', 
                 'R10_6_30_16_BALBC_IL1B_35ngperkg_TNF_05ug_05']
+figure_strings_amp_thres = ['R10_Exp2_7_13_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_08','R10_Exp2_7_13_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_09',
+            'R10_Exp2_7_13_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_08', 'R10_Exp2_7_15_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_10']
 
-file_names = {'matlab_files':matlab_files, 'figure_strings':figure_strings}
+#file_names = {'matlab_files':matlab_files, 'figure_strings':figure_strings}
+file_names = {'matlab_files':matlab_files_amp_thres, 'figure_strings':figure_strings_amp_thres}
 
 
 
@@ -35,27 +41,29 @@ file_names = {'matlab_files':matlab_files, 'figure_strings':figure_strings}
 # ***************** HYPERPARAMERS ****************************
 # ************************************************************
 
-similarity_measure='ssq'
-
+similarity_measure='ssq' # From testing, correlation give worse results..
+#similarity_thresh = 0.7 # For corrrelation
 similarity_thresh = 0.1 # Gives either the minimum correlation using 'corr' or epsilon in gaussain annulus theorem for 'ssq'
 assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I)   
 
 # Should maby fix such that threshold is TNF/IL-1beta specific since there is substantially more findings for TNF..
 # Otherwise maby 0.2..?
 n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even-rate need to increase for a candidate-CAP to be labeled as "likely to encode cytokine-info".
-ev_threshold = 0.02 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
-#ev_threshold = 0.005 # Downsample=4
-verbose_main = 1
+#ev_threshold = 0.02 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
+ev_threshold = 0.005 # Downsample=4
 
-downsample = 1 
+downsample = None # Only uses every #th observation during the analysis for efficiency. 
+
 
 # pdf-GD params: 
-m=500 # Number of steps in pdf-gradient decent
+run_GD = True
+m=0 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
+
 # VAE training params:
 continue_train = False
-nr_epochs = 50 # if all train data is used -- almost no loss-decrease after 100 batches..
+nr_epochs = 40 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
 view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
@@ -63,20 +71,30 @@ view_GD_result = False # This reqires user to give input if to continue the scri
 plot_hpdp_assesments = True
 
 
+run_DBscan = False
+# DBSCAN params
+#db_eps = 6 # max_distance to be considered as neighbours 
+#db_min_sample = 4 # Minimum members in neighbourhood to not be regarded as Noise.
+db_eps = 12 # max_distance to be considered as neighbours 
+db_min_sample = 4 # Minimum members in neighbourhood to not be regarded as Noise.
+
+
+standardise_waveforms = True
+verbose_main = 1
 # ************************************************************
 # ******************** Paths *********************************
 # ************************************************************
 # General: 
 
-unique_start_string = '7_dec_nstd_02and01_no_ds'
-run_i = 4
+unique_start_string = '10_dec_nstd_02and01_ds1_ampthresh' # on second to last file in this run..
+run_i = 0
 # LOOP Through to run analysis of all recodrings over night.. : 
-for matlab_file in file_names['matlab_files'][run_i:]:
+for matlab_file in file_names['matlab_files']:#[-1:]:
     path_to_wf = '../matlab_files/wf'+matlab_file+'.mat' 
     path_to_ts = '../matlab_files/ts'+matlab_file+'.mat'
     unique_string_for_run = unique_start_string+matlab_file
     unique_string_for_figs = unique_start_string + file_names['figure_strings'][run_i]
-    print(path_to_wf)
+    print(unique_string_for_figs)
     path_to_weights = 'models/'+unique_string_for_run
     # Numpy file:
     path_to_hpdp = "../numpy_files/numpy_hpdp/"+unique_string_for_run #'deleteme2' #saved version for middle case
@@ -85,55 +103,6 @@ for matlab_file in file_names['matlab_files'][run_i:]:
     
     
     run_i+=1
-    # FOR TESTING:
-    #recording = 'amp_thresh_R10_Exp2_71516_BALBC_TNF_05ug_IL1B_35ngperkg_10.mat'
-    #recording = 'new_computer_deleteme3'
-    #path_to_wf = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03'+'.mat'
-    #path_to_ts = '../matlab_files/gg_timestamps'+'.mat'
-
-
-    # General: 
-    #recording = 'R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01'
-    #recording = 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01'
-    #recording = 'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03'
-    #recording = 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02' # Strange behaviour of EV during last period..
-
-    #recording = 'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_02'
-    #recording = 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_03'
-    #recording = 'R10_6.29.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_04'
-    #recording = 'R10_6.29.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_04'
-    #recording = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
-
-
-
-    #path_to_wf = '../matlab_files/wf'+recording+'.mat' 
-    #path_to_ts = '../matlab_files/ts'+recording+'.mat'
-
-    #unique_start_string = '7_dec_nstd_02and01_no_ds'
-    #unique_string_for_run = 'aa_using_new_var_period_3_test_4_dec'+recording
-    #unique_string_for_run = unique_start_string+recording
-
-
-    # FOR SAVING FIGURES ****Not allowed to contain . or () signs****
-    #unique_string_for_figs = unique_start_string +'R10_6_27_16_BALBC_IL1B_35ngperkg_TNF_05ug_01' 
-    #unique_string_for_figs = unique_start_string +'R10_6_27_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_01'
-    #unique_string_for_figs = unique_start_string +'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_03'
-    #unique_string_for_figs = unique_start_string +'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_02'
-
-    #unique_string_for_figs = unique_start_string + 'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_02'
-    #unique_string_for_figs = unique_start_string +  'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_03'
-    #unique_string_for_figs = unique_start_string +  'R10_6_29_16_BALBC_IL1B_35ngperkg_TNF_05ug_04'
-    #unique_string_for_figs = unique_start_string +  'R10_6_29_16_BALBC_TNF_05ug_IL1B_35ngperkg_04'
-    #unique_string_for_figs = unique_start_string +  'R10_6_30_16_BALBC_IL1B_35ngperkg_TNF_05ug_05'
-
-
-
-    # tf weight-file:
-    #path_to_weights = 'models/'+unique_string_for_run
-    # Numpy file:
-    #path_to_hpdp = "../numpy_files/numpy_hpdp/"+unique_string_for_run #'deleteme2' #saved version for middle case
-    #path_to_EVlabels = "../numpy_files/EV_labels/"+unique_string_for_run
-    #path_to_cytokine_candidate = '../numpy_files/cytokine_candidates/'+unique_string_for_run
 
     # ************************************************************
     # ******************** Load Files ****************************
@@ -150,7 +119,8 @@ for matlab_file in file_names['matlab_files'][run_i:]:
 
 
     wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=10,end_time=90,dim_of_wf=141) # No downsampling. Used for evaluation 
-
+    if standardise_waveforms:
+        wf0 = preprocess_wf.standardise_wf(wf0)
     # ************************************************************
     # ******************** Preprocess ****************************
     # ************************************************************
@@ -158,10 +128,10 @@ for matlab_file in file_names['matlab_files'][run_i:]:
 
     # Cut first and last part of recording to ensure stable sleep state during recording etc.:
     waveforms,timestamps = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141,downsample=downsample)
+    
     # Standardise waveforms
-    waveforms = preprocess_wf.standardise_wf(waveforms)
-    #wf0 = preprocess_wf.standardise_wf(wf0)
-
+    if standardise_waveforms:
+        waveforms = preprocess_wf.standardise_wf(waveforms)
 
 
     # ************************************************************
@@ -194,7 +164,6 @@ for matlab_file in file_names['matlab_files'][run_i:]:
     print()
     print('*********************** Tensorflow Blaj *************************************')
     print()
-
     encoder,decoder,cvae = train_model(wf_ho, nr_epochs=nr_epochs, batch_size=batch_size, path_to_weights=path_to_weights, 
                                             continue_train=continue_train, verbose=1, ev_label=ev_label_ho)
     print()
@@ -227,7 +196,7 @@ for matlab_file in file_names['matlab_files'][run_i:]:
     # ************************************************************  
 
 
-    run_GD = True
+    #run_GD = True
     #view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 
     if run_GD:
@@ -239,8 +208,16 @@ for matlab_file in file_names['matlab_files'][run_i:]:
         found_ho_wf = number_of_occurances[:-1]>0
         for label_on in [0,1]: # Either 0 or 1 
             waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
+
             print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
-            if waveforms_increase.shape[0] > 3000: # Speed up process during param search..
+            if waveforms_increase.shape[0] == 0:
+                waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+                print('*************** OBS ***************')
+                print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
+                print(f'This considering the recording {matlab_file}')
+            elif waveforms_increase.shape[0] > 3000: # Speed up process during param search..
                 waveforms_increase = waveforms_increase[::4,:]
                 ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
                 ev_label_corr_shape[:,label_on] = 1
@@ -271,49 +248,113 @@ for matlab_file in file_names['matlab_files'][run_i:]:
         print()
         print('Skipps over pdf_GD...')
         print()
+    
+    #del(encoder,decoder,cvae)
+
+    #print('Finished successfully')
+
+    # ************************************************************
+    # *********** Inference from increased EV hpdp ***************
+    # ************************************************************
+    #gd_runs = '_3000'
+    #plot_hpdp_assesments = False
+    if plot_hpdp_assesments:
+        cytokine_candidates = np.empty((2,waveforms.shape[-1])) # To save the main candidates
+        for label_on in [0,1]:
+            hpdp = hpdp_list[label_on]
+            bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
+            saveas = 'figures/hpdp/'+unique_string_for_figs
+            plot_correlated_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
+            waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
+
+            # Make sure shape is compatible for plotting when GD diverges..
+            #number_of_nans = waveforms_increase.shape[0]-hpdp.shape[0]
+            #waveforms_increase = waveforms_increase[:-number_of_nans,:]
+
+            #print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
+            if waveforms_increase.shape[0] == 0:
+                waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+                print('*************** OBS ***************')
+                print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
+                print(f'This considering the recording {matlab_file}')
+            elif waveforms_increase.shape[0] > 3000: # Speed up process during param search..
+                waveforms_increase = waveforms_increase[::4,:]
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+            else:
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1   
+            
+            #PLOT ENCODED wf_increase... :
+            save_figure = 'figures/encoded_decoded/'+unique_string_for_figs + '_ho_second'
+            plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
+            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
+
+            K_string  = input('Number of clusters? (integer) :')
+            encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
+            kmeans = KMeans(n_clusters=int(K_string), random_state=0).fit(encoded_hpdp)
+            k_labels = kmeans.labels_
+            saveas = 'figures/event_rate_labels/'+unique_string_for_figs + str(label_on)
+
+            # OBS TODO: "assumed_model_variance" now set to False
+            possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,saveas=saveas,similarity_measure='ssq',
+                                    similarity_thresh=0.3, assumed_model_varaince=0.5,verbose=True, return_candidates=True)
+            
+            k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
+            if k_candidate != 'None':
+                cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
+        if k_candidate is not None:
+            np.save(path_to_cytokine_candidate, cytokine_candidates)
 
 
-# ************************************************************
-# *********** Inference from increased EV hpdp ***************
-# ************************************************************
-#gd_runs = '_3000'
-#plot_hpdp_assesments = False
-if plot_hpdp_assesments:
-    cytokine_candidates = np.empty((2,waveforms.shape[-1])) # To save the main candidates
-    for label_on in [0,1]:
-        hpdp = hpdp_list[label_on]
-        bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
-        saveas = 'figures/hpdp/'+unique_string_for_figs
-        plot_correlated_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
-        waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
-        #print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
-        if waveforms_increase.shape[0] > 3000: # Speed up process during param search..
-            waveforms_increase = waveforms_increase[::4,:]
-            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-            ev_label_corr_shape[:,label_on] = 1
-        else:
-            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-            ev_label_corr_shape[:,label_on] = 1   
-        #PLOT ENCODED wf_increase... :
-        #ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
-        #ev_label_corr_shape[:,label_on] = 1
-        save_figure = 'figures/encoded_decoded/'+unique_string_for_figs + '_ho_second'
-        plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
-        plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
+    if run_DBscan:
+        cytokine_candidates = np.empty((2,waveforms.shape[-1])) # To save the main candidates
+        for label_on in [0,1]:
+            waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
+            if waveforms_increase.shape[0] == 0:
+                waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+                print('*************** OBS ***************')
+                print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
+                print(f'This considering the recording {matlab_file}')
+            elif waveforms_increase.shape[0] > 3000: # Speed up process during param search..
+                waveforms_increase = waveforms_increase[::4,:]
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+            else:
+                ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1   
+            bool_labels = np.ones((waveforms_increase.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
+            saveas = 'figures/dbscan/'+unique_string_for_figs
+            plot_correlated_wf(0,waveforms_increase,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
+            
+            #dist_vec = cdist(waveforms_increase, waveforms_increase, 'euclid')
+            #plt.hist(dist_vec)
+            #plt.show()
 
-        K_string  = input('Number of clusters? (integer) :')
-        kmeans = KMeans(n_clusters=int(K_string), random_state=0).fit(hpdp)
-        k_labels = kmeans.labels_
-        saveas = 'figures/event_rate_labels/'+unique_string_for_figs + str(label_on)
-        possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,saveas=saveas,similarity_measure='ssq',
-                                similarity_thresh=0.4, assumed_model_varaince=0.5,verbose=True, return_candidates=True)
-        
-        k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
-        if k_candidate != 'None':
-            cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
-    if k_candidate is not None:
-        np.save(path_to_cytokine_candidate, cytokine_candidates)
+            print()
+            print('Running DBSCAN on hpdp...')
+            print()
+            saveas = 'figures/dbscan/'+unique_string_for_figs
+            
+            dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)
+            #hpdp_latent_mean,_,_ = encoder.predict(hpdp)
+            dbscan.fit(waveforms_increase)
+            labels = dbscan.labels_ #  Noisy samples are given the label -1
+            possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,waveforms_increase,labels,saveas=saveas,similarity_measure='ssq',
+                                    similarity_thresh=similarity_thresh, assumed_model_varaince=assumed_model_varaince,verbose=True, return_candidates=True)
+            
+            k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
+            if k_candidate != 'None':
+                cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
+        if k_candidate is not None:
+            np.save(path_to_cytokine_candidate, cytokine_candidates)
 
+
+print('Finished successfully')
 exit()            
 
 #MAIN_CANDIDATE = np.median(hpdp,axis=0)
@@ -344,7 +385,6 @@ for label_on in [0,1]:
     event_rates, real_clusters = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
     plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand'+'_wf'+str(label_on),verbose=True )
     plot_event_rates(event_rates,ts0,noise=None,conv_width=20,saveas=saveas+'Main_cand'+'_ev'+str(label_on), verbose=True) 
-
 
 exit()
 
