@@ -267,9 +267,9 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
                 print()
     if similarity_measure=='ssq':
         print(f'Using Sum of squares (gaussian annulus theorem) as similarity measure. Paramterers:')
-        print(f'assumed_model_varaince : {assumed_model_varaince}')
-        print(f'n_std_threshold : {n_std_threshold}')
-        print(f'threshold : {threshold}')
+        print(f'assumed_model_varaince = {assumed_model_varaince}')
+        print(f'n_std_threshold = {n_std_threshold}')
+        print(f'Epsilon = {threshold}')
         print()
         # assumed_model_varaince = 0.5
         ii = 0

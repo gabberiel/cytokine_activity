@@ -10,6 +10,7 @@
 * Butterworth high-pass filter
 * Downsample with Nd=5
 * Adaptive threshold
+* Amplidute threshold. -- Assume that we need a sufficiently strong signal for it to rise above the noise level. Also resonalbe considering that we then standardise the waveforms, causing more similarity between low and high amplitude waveforms. 
 
  
 ## Notes regarding parameters etc for different recordings

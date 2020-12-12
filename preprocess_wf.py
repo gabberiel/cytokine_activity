@@ -80,3 +80,13 @@ def apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1
         return high_occurance_wf[0,:,:],high_occurance_ts[:,0]
 
 
+def apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=80):
+    '''
+    Removes CAPs with amplitude above threeshold value..
+    '''
+    keep_idx = np.all((waveforms < maxamp_threshold) & (waveforms > -maxamp_threshold) , axis=1)
+    return waveforms[keep_idx],timestamps[keep_idx]
+
+
+if __name__ == "__main__":
+    pass
