@@ -10,18 +10,19 @@ from os import path, scandir
 import preprocess_wf 
 from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD
 from wf_similarity_measures import wf_correlation,similarity_SSQ
-from event_rate_first import get_ev_labels, get_event_rates, similarity_SSQ, label_from_corr
+from event_rate_first import get_ev_labels, get_event_rates, similarity_SSQ, label_from_corr, evaluate_cytokine_candidates
 from plot_functions_wf import *
 from scipy.spatial.distance import cdist
 
 from sklearn.cluster import KMeans, DBSCAN
 
+'''
 directory = '../matlab_files2'
 for entry in scandir(directory):
     if entry.path.startswith(directory+"\\tsR10"):# and entry.is_file():
         matlab_file = entry.path[19:]
         print(entry.path[19:-4])        
-
+'''
 # ************************************************************
 # ***************** HYPERPARAMERS ****************************
 # ************************************************************
@@ -57,14 +58,17 @@ batch_size = 128
 
 view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
 view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
-plot_hpdp_assesments = True # Cluster and evaluate hpdp to find cytokine-candidate CAP
+plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candidate CAP
+run_automised_assesment = True
 
+SD_min_eval = 0.15
+k_SD_eval = 2
 
 run_DBscan = False
 # DBSCAN params
 #db_eps = 6 # max_distance to be considered as neighbours 
 #db_min_sample = 4 # Minimum members in neighbourhood to not be regarded as Noise.
-db_eps = 12 # max_distance to be considered as neighbours 
+db_eps = 0.2 # max_distance to be considered as neighbours 
 db_min_sample = 4 # Minimum members in neighbourhood to not be regarded as Noise.
 
 
@@ -75,14 +79,15 @@ verbose_main = 1
 # ************************************************************
 # General: 
 
-unique_start_string = '13_dec_unique_threshs_ampthresh2' # on second to last file in this run..
+unique_start_string = '14_dec_unique_threshs_saline' # on second to last file in this run..
+#unique_start_string = '13_dec_unique_threshs_ampthresh2' # on second to last file in this run..
 
 # LOOP Through to run analysis of all recodrings over night.. : 
 #for matlab_file in file_names['matlab_files']:#[-1:]:
-directory = '../matlab_files2'
+directory = '../matlab_saline'
 
 for entry in scandir(directory):
-    if entry.path.startswith(directory+"\\tsR10"):# and entry.is_file():
+    if entry.path.startswith(directory+"\\tsR12"):# and entry.is_file():
         matlab_file = entry.path[19:-4]
             
         path_to_wf = directory + '/wf'+matlab_file +'.mat' 
@@ -119,7 +124,7 @@ for entry in scandir(directory):
         wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=10,end_time=90,dim_of_wf=141,desired_num_of_samples=None) # No downsampling. Used for evaluation 
         
         waveforms,timestamps = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=start_time,end_time=end_time,dim_of_wf=141,desired_num_of_samples=desired_num_of_samples)
-        waveforms,timestamps = preprocess_wf.apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=max_amplitude) # Remove odd CAPs-- otherwise risk that pdf-GD diverges..
+        waveforms,timestamps = preprocess_wf.apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=max_amplitude) # Remove "extreme" CAPs-- otherwise risk that pdf-GD diverges..
         print(f'Shape after max-amp thresh : {waveforms.shape}')
         # Standardise waveforms
         if standardise_waveforms:
@@ -294,21 +299,31 @@ for entry in scandir(directory):
                 #PLOT ENCODED wf_increase... :
                 save_figure = 'figures/encoded_decoded/'+unique_string_for_figs + '_ho_second'
                 plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
-                
                 ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
                 ev_label_corr_shape[:,label_on] = 1
                 
                 plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
 
-                K_string  = input('Number of clusters? (integer) :')
+                #K_string  = input('Number of clusters? (integer) :')
+                #encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
+                #kmeans = KMeans(n_clusters=int(K_string), random_state=0).fit(encoded_hpdp)
+                #k_labels = kmeans.labels_
+
+                dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)
+                #hpdp_latent_mean,_,_ = encoder.predict(hpdp)
                 encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
-                kmeans = KMeans(n_clusters=int(K_string), random_state=0).fit(encoded_hpdp)
-                k_labels = kmeans.labels_
+                dbscan.fit(encoded_hpdp)
+                k_labels = dbscan.labels_
+
+
                 saveas = 'figures/event_rate_labels/'+unique_string_for_figs + str(label_on)
 
+                results = evaluate_cytokine_candidates(wf0, ts0, hpdp, k_labels, injection=label_on+1, similarity_measure='ssq', similarity_thresh=0.4, 
+                            assumed_model_varaince=0.5, k=k_SD_eval, SD_min=SD_min_eval, saveas=saveas, verbose=False)
+
                 # OBS TODO: "assumed_model_variance" now set to False
-                possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,saveas=saveas,similarity_measure='ssq',
-                                        similarity_thresh=0.3, assumed_model_varaince=0.5,verbose=True, return_candidates=True)
+                possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,saveas=saveas, similarity_measure='ssq',
+                                        similarity_thresh=0.3, assumed_model_varaince=0.5, verbose=True, return_candidates=True)
                 
                 k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
                 if k_candidate != 'None':
@@ -317,6 +332,26 @@ for entry in scandir(directory):
                 np.save(path_to_cytokine_candidate, cytokine_candidates)
 
 
+        if run_automised_assesment:
+            recording_results = []
+            for label_on in [0,1]:
+                hpdp = hpdp_list[label_on]
+                ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+                dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)
+                #hpdp_latent_mean,_,_ = encoder.predict(hpdp)
+                encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
+                dbscan.fit(encoded_hpdp)
+                k_labels = dbscan.labels_
+
+                results = evaluate_cytokine_candidates(wf0, ts0, hpdp, k_labels, injection=label_on+1, similarity_measure='ssq', similarity_thresh=0.4, 
+                                assumed_model_varaince=0.5, k=k_SD_eval, SD_min=SD_min_eval, saveas=None, verbose=False)
+                recording_results.append(np.array(results))
+            recording_results = np.array(recording_results)
+            np.save(path_to_cytokine_candidate+'new_test',np.squeeze(recording_results))
+            print(f'Results for recording : {matlab_file} saved sucessfully as {path_to_cytokine_candidate}new_test.')
+
+        # Run DBSCAN on labeled data to see if the obtained results are similar. 
         if run_DBscan:
             cytokine_candidates = np.empty((2,waveforms.shape[-1])) # To save the main candidates
             for label_on in [0,1]:

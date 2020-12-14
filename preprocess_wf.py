@@ -41,7 +41,7 @@ def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=1
     # Look at how the general event rate is over time and also look at the mean event-rate???
 
     start = round(firts_15_idx[-1]/1000)*1000 # Get even number of waveforms.. for the moment needed for the corr-labeling to work properly
-    top_range = round(past_90_idx[0]/1000)*1000
+    top_range = round((past_90_idx[0]-1)/1000)*1000
     if desired_num_of_samples is not None:
         number_of_obs = top_range-start 
         n_down = round(number_of_obs/desired_num_of_samples)

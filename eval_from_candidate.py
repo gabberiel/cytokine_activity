@@ -1,7 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from os import path
+from os import path, scandir
 import preprocess_wf 
 from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD
 from wf_similarity_measures import wf_correlation,similarity_SSQ
@@ -35,13 +35,87 @@ assumed_model_varaince = 0.5 # The  model variance assumed in ssq-similarity mea
 
 
 
+def number_of_reponders(directory, start_string='', end_string=''):
+    responders = []
+    for entry in scandir(directory):
+        if entry.path.startswith(directory+start_string) & entry.path.endswith(end_string):# and entry.is_file():
+            print(entry.path)
+            result = np.load(entry.path, allow_pickle=True)
+            responder_bool = False
+            for injection_res in result:
+                if len(injection_res)==0:
+                    pass
+                else:
+                    responder_bool=True
+                    
+                    if injection_res.shape==(2,):
+                        plt.plot(injection_res[0])
+                        plt.title(entry.path[25:])
+                        plt.show()
+                    else:
+                        times_above_thresh = np.zeros((len(injection_res,)))
+                        for ii,responder in enumerate(injection_res):
+                            stats = responder[1]
+                            times_above_thresh[ii] = stats[3] # time above threshold
+                            #waveform = responder[0]
+                        main_candidate = np.argmax(times_above_thresh)
+                        plt.plot(injection_res[main_candidate][0])
+                        plt.title(entry.path[25:])
+                        plt.show()
+                    
+            if responder_bool:
+                responders.append(1)
+            else: 
+                responders.append(0)
+    print(f'Number of responders: {np.sum(responders)} out of {len(responders)}')
+    return responders
+
 recording_candidate = 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10'
 unique_start_string = '10_dec_nstd_02and01_ds1_ampthresh' # on second to last file in this run..
 # ************************************************************
 # ******************** Start Evaluation ****************************
 # ************************************************************
 run_i = 0
+directory = '../numpy_files/cytokine_candidates'
+start_string = "\\14_dec_unique_threshs_saline"
+#start_string = "\\13_dec_unique_threshs_ampthresh2"
+end_string = 'new_test.npy'
+number_of_reponders(directory, start_string=start_string, end_string=end_string)
+
+'''
+responders = []
+for entry in scandir(directory):
+    if entry.path.startswith(directory+"\\13_dec_unique_threshs_ampthresh2") & entry.path.endswith('new_test.npy'):# and entry.is_file():
+        print(entry.path)
+        result = np.load(entry.path, allow_pickle=True)
+        responder_bool = False
+        for injection_res in result:
+            if len(injection_res)==0:
+                pass
+            else:
+                responder_bool=True
+                if injection_res.shape==(2,):
+                    plt.plot(injection_res[0])
+                    plt.title(entry.path[25:])
+                    plt.show()
+                else:
+                    times_above_thresh = np.zeros((len(injection_res,)))
+                    for ii,responder in enumerate(injection_res):
+                        stats = responder[1]
+                        times_above_thresh[ii] = stats[3] # time above threshold
+                        #waveform = responder[0]
+                    main_candidate = np.argmax(times_above_thresh)
+                    plt.plot(injection_res[main_candidate][0])
+                    plt.title(entry.path[25:])
+                    plt.show()
+        if responder_bool:
+            responders.append(1)
+        else: 
+            responders.append(0)
+print(f'Number of responders: {np.sum(responders)} out of {len(responders)}')
+'''
 # LOOP Through to run analysis of all recodrings over night.. : 
+exit()
 for matlab_file in file_names['matlab_files']:#[:4]:
     path_to_wf = '../matlab_files/wf'+matlab_file+'.mat' 
     path_to_ts = '../matlab_files/ts'+matlab_file+'.mat'

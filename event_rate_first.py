@@ -2,6 +2,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from wf_similarity_measures import *
+#from plot_functions_wf import plot_event_rates
 import warnings
 
 def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
@@ -306,60 +307,141 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
         print(f'EV_labels succesfully saved as : {saveas}')
     return ev_labels, ev_stats_tot
 
-
-
-        
-def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True):
+def evaluate_cytokine_candidates(waveforms, timestamps, hpdp, k_labels, injection=1, similarity_measure='ssq', similarity_thresh=0.4, 
+                            assumed_model_varaince=0.5, k=1, SD_min=1, saveas='saveas_not_specified', verbose=False):
     '''
-    Plots event rates by smoothing kernel average of width "conv_width".
-    convolution done including boundary effects but returns vector of same size.
-
+    Evaluates the results of clustered hpdp using the median of each hpdp cluster as a "cytokine-candidate". 
+    We make use of the specified similarity measure to find the corresponding event-rate of each candidate and evaluates 
+    if there is a sufficient increase in the firing rate at time of injection. If so, the mice under consideration is considered
+    to be a "responder". of the corresponding cytokine. 
+    
+    The evaluation of the event-rate increase is defined as follows,
+    - Measure standart deviation, SD, of the baseline activity. (10-30 min from initial recording.)
+    - Measure mean firing rate, MU, 4 min before the considered injection.
+    - Measure past-injection firing rate, EV_past. (10-30 min after injection.)
+    - Set threshold to k*max(SD_min,SD) and consider mice as responer if EV_past > k*max(SD_min,SD) for at least 1/3 of the considered 
+      past-injection-time-interval. (7 out of 20 min.)
+    
+    The SD_min paramater is manually set to prevent the method to be sensitive to insignificant changes in event-rate. 
+    
     Parameters
     ----------
-    event_rates: (total_time_in_seconds, number_of_clusters) array_like
-            Number of occurances of labeled waveforms in each one second window during time
-            of recording. 
-    conv_width: Integer_like
-            Size of smoothing kernel window for plotting
-    noise :  integer_like
-        Integers encoding which cluster is to be considered as noise.
-       ((( qqq: old If "-1" is in clusters it is interpreted as noise. )))
-        If noise is None, then all event_rates is plotted in the same way..
+    waveforms : (n_wf,d_wf), array_like
+        The waveforms which are used for similarity measure to evaluate candidates.
+    timestamps : (n_wf,) array_like
+        Corresponding timestamps
+    hpdp : (n_hpdp, d_wf) array_lika
+        The high probability datapointes under consideration to find cytokine-candidate.
+    k_labels : (n_hpdp,) array_like
+        labels for hpdp -- should correpond to the different maximas of conditional pdf.
+    
+    saveas : 'path/to/save_fig' string_like _or_ None
+            If None then the figure is not saved
+        verbose : Booleon
+            True => plt.show()
+    
     Returns
     -------
-    '''
-    warnings.warn('Old version of function plot_event_rates() is being used. Use version in plot_functions_wf.py instead.',DeprecationWarning)
-    end_time = timestamps[-1]
-    number_of_obs = event_rates[:,0].shape[0]
-    #time_of_recording_in_seconds = event_rates[:,0].shape[0]
-    time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
-    conv_kernel = np.ones((conv_width))* 1/conv_width
-
-    #plt.figure()
-    #colors = ['r','k','g']
-    if noise is not None:
-        print('Noise...')
-        for i,ev in enumerate(event_rates.T):
-            if i != noise:
-                smothed_ev = np.convolve(ev,conv_kernel,'same')
-                plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
-
-    else:
-        print('No given noise..')
-        for i,ev in enumerate(event_rates.T):
-            smothed_ev = np.convolve(ev,conv_kernel,'same')
-            plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
+    if return_candidates is True:
+        candidate_wf : (n_clusters, d_wf) array_like
+            The median of each hpdp-cluster.
     
-    plt.xlabel('Time of recording (min)')
-    plt.ylabel('Event rate (CAPs/second)') 
-    plt.title('Event Rate')
-    plt.legend() 
+    '''
 
-    if saveas is not None:
-        plt.savefig(saveas, dpi=150)
-    if verbose:
-        plt.show()
-    #plt.close()    
+    # Times of interest (in seconds)
+    t0_baseline_SD = 10*60 # Initial time for measure baseline SD
+    time_baseline_MU = 4*60 # length og time period measureing  baseline MU
+
+    if injection==1:
+        t_injection = 30*60 # Time of first injection
+    elif injection==2:
+        t_injection = 60*60 # Time of second injection
+    assert timestamps[0] < 60*30, f'Invalid time range. Start time {timestamps[0]}, need to be before first injection.'
+    assert timestamps[-1] > 60*60, f'Invalid time range. End time {timestamps[-1]}, need to be After second injection.'
+
+    k_clusters = np.unique(k_labels)  
+    candidate_wf = np.empty((k_clusters.shape[0],waveforms.shape[-1]))
+    prel_results = [] # Store result about responders. If no responders, then this remains empty. 
+    print(f'Shape of test-dataset (now considers all observations): {waveforms.shape}')
+    for cluster in k_clusters:
+        hpdp_cluster = hpdp[k_labels==cluster]
+        MAIN_CANDIDATE = np.median(hpdp_cluster,axis=0) # Median more robust to outlier. should however not be a problem using DBSCAN..
+
+        added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),waveforms),axis=0)
+        assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
+
+        if similarity_measure=='corr':
+            print('Using "corr" to evaluate final result')
+            correlations = wf_correlation(0,added_main_candidate_wf)
+            bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
+        if similarity_measure=='ssq':
+            print('Using "ssq" to evaluate final result')
+            if assumed_model_varaince is None:
+                #added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
+                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh,standardised_input=False)
+            else:
+                added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
+                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
+        event_rate, _ = get_event_rates(timestamps,bool_labels[1:],bin_width=1,consider_only=1)
+        
+        _, baseline_SD = get_ev_stats(event_rate,start_time=t0_baseline_SD, end_time=30*60)
+        baseline_MU,_ =  get_ev_stats(event_rate,start_time=t_injection-time_baseline_MU, end_time=t_injection)
+        #baseline_MU_2,_ =  get_ev_stats(event_rate,timestamps,start_time=t_injection_2-time_baseline_MU, end_time=t_injection_2)
+        
+        SD_thesh = k * np.max((SD_min, baseline_SD))
+        cytokine_stats = get_ev_stats(event_rate,start_time=t_injection+10*60, end_time=t_injection+30*60, 
+                                            compare_to_theshold=(baseline_MU+SD_thesh), conv_width=5)
+        #print(f'Cytokine candidate responder result for injection 1 is : {cytokine_stats[2]}')
+        #print(f'Cytokine candidate responder result for injection 2 is : {second_cytokine_stats[2]}')
+        if cytokine_stats[2] is True:
+            #plt.figure(1)
+            #bool_labels[bool_labels==True] = cluster
+            #plt.plot(event_rate)
+            #plt.title(f'Responder-cluster = {cluster}')
+            #plt.show()
+            #plot_event_rates(event_rate,timestamps,noise=None,conv_width=100,saveas=saveas+'Main_cand_ev', verbose=True, cluster=cluster)
+            prel_results.append(np.array([MAIN_CANDIDATE, cytokine_stats]))
+            print(f'CAP nr. {cluster} found to have a sufficient increase in firing rate for injection {injection}.')
+    return prel_results
+        
+def get_ev_stats(event_rate,start_time=10*60, end_time=90*60, compare_to_theshold=None,conv_width=5):
+    '''
+    Get event-rate mean and standard deviation for a specified time-period.
+    If "compare_to_threshold" is not None, then the EV is compared to thresh to see if we have a "responder".
+    Called by "evaluate_cytokine_candidates()".
+
+    Returns
+    -------
+    if "compare_to_threshold" is not None:
+        returns: MU, SD, responder, time_above_thresh
+    else: 
+        returns: MU, SD
+    
+    MU : float
+        Mean event rate of considered period
+    SD : float
+        Mean Standard deviation of considered period
+    responder : booleon
+        True is the event-rate of specified period is larger than thesh for 1/3 of the period. 
+    time_above_thresh : float
+        How much time in seconds that the EV is above thresh.
+    '''
+    T = end_time-start_time # Length of time interval in seconds
+
+    event_rate_ = event_rate[start_time:end_time] # Event-rate under time-period of interest.
+    SD = np.std(event_rate_) # Standart deviation (SD) of period of interest
+    MU = np.mean(event_rate_) # Mean (MU) event-rate under period of interest
+    if compare_to_theshold is not None:
+        responder  = False
+        conv_kernel = np.ones((conv_width))* 1/conv_width
+        smoothed_EV = np.convolve(np.squeeze(event_rate_),conv_kernel,'same') # Smooth out event_rate
+        EV_above_thres = smoothed_EV > compare_to_theshold # Find all Event-rates larger then threshold
+        time_above_thresh = np.sum(EV_above_thres) # Total time, in seconds, above specified threshold. 
+        if time_above_thresh > T/3: # If responder, The EV has to be higher than thresh for at least 1/3 of the time period.
+            responder = True
+        return MU, SD, responder, time_above_thresh
+    else:
+        return MU, SD
 
 
 
