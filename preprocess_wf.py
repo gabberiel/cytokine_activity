@@ -1,7 +1,7 @@
 import numpy as np
 def standardise_wf(waveforms):
     '''
-    Computes the correlation between the different standardised waveforms
+    Standardise the waveforms by subtracting the mean and devide by the variance of each observation. 
 
     Parameters
     ----------
@@ -20,17 +20,20 @@ def standardise_wf(waveforms):
 
 
 
-def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141,downsample=None):
+def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141, desired_num_of_samples=None):
     '''
     Returns waveforms of the dimension specified by "dim_of_waveform" which are observed in the time interval ["start_time","end_time"].
+    If desired_num_of_samples is not None, then every k:th observation is used to get as close as possible to the desired sample size.
 
     Parameters
     ----------
+    
 
     Returns
     -------
 
     '''
+
     d0_wf = waveforms.shape[0]
     firts_15_idx = np.where(timestamps<start_time*60)[0] # Find how many datapoints that corresponds to first 15 min of recording:  
     past_90_idx = np.where(timestamps>end_time*60)[0] # Find how many datapoints that corresponds to last 5 min of recording: 
@@ -39,8 +42,11 @@ def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=1
 
     start = round(firts_15_idx[-1]/1000)*1000 # Get even number of waveforms.. for the moment needed for the corr-labeling to work properly
     top_range = round(past_90_idx[0]/1000)*1000
-    if downsample is not None:
-        use_range = np.arange(start,top_range,downsample) # REDUCE NUMBER OF CAPS UNDER CONSIDEERATION FOR EFFICENCY
+    if desired_num_of_samples is not None:
+        number_of_obs = top_range-start 
+        n_down = round(number_of_obs/desired_num_of_samples)
+        n_down = np.max([n_down,1]) # Assure it does not become 0..
+        use_range = np.arange(start,top_range,n_down) # REDUCE NUMBER OF CAPS UNDER CONSIDEERATION FOR EFFICENCY
     else:
         use_range = np.arange(start,top_range)
     waveforms = waveforms[use_range,:]

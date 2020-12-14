@@ -79,3 +79,23 @@ unique_string_for_figs = unique_start_string +'R10_6_28_16_BALBC_IL1B_35ngperkg_
 #unique_string_for_figs = unique_start_string +  'R10_6_29_16_BALBC_IL1B_35ngperkg_TNF_05ug_04'
 #unique_string_for_figs = unique_start_string +  'R10_6_29_16_BALBC_TNF_05ug_IL1B_35ngperkg_04'
 #unique_string_for_figs = unique_start_string +  'R10_6_30_16_BALBC_IL1B_35ngperkg_TNF_05ug_05'
+
+
+matlab_files = ['R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01', 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01', 
+            'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03', 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02',
+            'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_02', 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_03',
+            'R10_6.29.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_04', 'R10_6.29.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_04',
+            'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05']
+matlab_files_amp_thres = ['R10_Exp2_7.13.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_08','R10_Exp2_7.13.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_09',
+            'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08', 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10']
+
+figure_strings = ['R10_6_27_16_BALBC_IL1B_35ngperkg_TNF_05ug_01','R10_6_27_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_01',
+                'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_03', 'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_02', 
+                'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_02', 'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_03',
+                'R10_6_29_16_BALBC_IL1B_35ngperkg_TNF_05ug_04', 'R10_6_29_16_BALBC_TNF_05ug_IL1B_35ngperkg_04', 
+                'R10_6_30_16_BALBC_IL1B_35ngperkg_TNF_05ug_05']
+figure_strings_amp_thres = ['R10_Exp2_7_13_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_08','R10_Exp2_7_13_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_09',
+            'R10_Exp2_7_13_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_08', 'R10_Exp2_7_15_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_10']
+
+#file_names = {'matlab_files':matlab_files, 'figure_strings':figure_strings}
+file_names = {'matlab_files':matlab_files_amp_thres, 'figure_strings':figure_strings_amp_thres}

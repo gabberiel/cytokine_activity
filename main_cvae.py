@@ -16,25 +16,6 @@ from scipy.spatial.distance import cdist
 
 from sklearn.cluster import KMeans, DBSCAN
 
-matlab_files = ['R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01', 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01', 
-            'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03', 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_02',
-            'R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_02', 'R10_6.28.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_03',
-            'R10_6.29.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_04', 'R10_6.29.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_04',
-            'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05']
-matlab_files_amp_thres = ['R10_Exp2_7.13.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_08','R10_Exp2_7.13.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_09',
-            'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08', 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10']
-
-figure_strings = ['R10_6_27_16_BALBC_IL1B_35ngperkg_TNF_05ug_01','R10_6_27_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_01',
-                'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_03', 'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_02', 
-                'R10_6_28_16_BALBC_IL1B_35ngperkg_TNF_05ug_02', 'R10_6_28_16_BALBC_TNF_05ug_IL1B_35ngperkg_03',
-                'R10_6_29_16_BALBC_IL1B_35ngperkg_TNF_05ug_04', 'R10_6_29_16_BALBC_TNF_05ug_IL1B_35ngperkg_04', 
-                'R10_6_30_16_BALBC_IL1B_35ngperkg_TNF_05ug_05']
-figure_strings_amp_thres = ['R10_Exp2_7_13_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_08','R10_Exp2_7_13_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_09',
-            'R10_Exp2_7_13_16_BALBC_TNF_0_5ug_IL1B_35ngperkg_08', 'R10_Exp2_7_15_16_BALBC_IL1B_35ngperkg_TNF_0_5ug_10']
-
-#file_names = {'matlab_files':matlab_files, 'figure_strings':figure_strings}
-file_names = {'matlab_files':matlab_files_amp_thres, 'figure_strings':figure_strings_amp_thres}
-
 directory = '../matlab_files2'
 for entry in scandir(directory):
     if entry.path.startswith(directory+"\\tsR10"):# and entry.is_file():
@@ -56,8 +37,12 @@ n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even
 #ev_threshold = 0.02 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
 ev_threshold = 0.005 # Downsample=4 # Mabe good with 0.005 for aprox 37000 observations..
 
-downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
+# downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
+desired_num_of_samples = 20000
+max_amplitude = 200
 
+# Time interval of recording used for training:
+start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
@@ -90,11 +75,12 @@ verbose_main = 1
 # ************************************************************
 # General: 
 
-unique_start_string = '11_dec_nstd_02and01_ds2_ampthresh2' # on second to last file in this run..
-run_i = 0
+unique_start_string = '13_dec_unique_threshs_ampthresh2' # on second to last file in this run..
+
 # LOOP Through to run analysis of all recodrings over night.. : 
 #for matlab_file in file_names['matlab_files']:#[-1:]:
 directory = '../matlab_files2'
+
 for entry in scandir(directory):
     if entry.path.startswith(directory+"\\tsR10"):# and entry.is_file():
         matlab_file = entry.path[19:-4]
@@ -111,8 +97,6 @@ for entry in scandir(directory):
         path_to_cytokine_candidate = '../numpy_files/cytokine_candidates/'+unique_string_for_run
         
         
-        run_i+=1
-
         # ************************************************************
         # ******************** Load Files ****************************
         # ************************************************************
@@ -126,16 +110,16 @@ for entry in scandir(directory):
 
 
 
-        wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=10,end_time=90,dim_of_wf=141) # No downsampling. Used for evaluation 
 
         # ************************************************************
         # ******************** Preprocess ****************************
         # ************************************************************
 
-
-        # Cut first and last part of recording to ensure stable sleep state during recording etc.:
-        waveforms,timestamps = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141,downsample=downsample)
-        waveforms,timestamps = preprocess_wf.apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=80)
+        # Cut first and last part of recording to ensure stable "sleep-state" during recording etc.:
+        wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=10,end_time=90,dim_of_wf=141,desired_num_of_samples=None) # No downsampling. Used for evaluation 
+        
+        waveforms,timestamps = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=start_time,end_time=end_time,dim_of_wf=141,desired_num_of_samples=desired_num_of_samples)
+        waveforms,timestamps = preprocess_wf.apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=max_amplitude) # Remove odd CAPs-- otherwise risk that pdf-GD diverges..
         print(f'Shape after max-amp thresh : {waveforms.shape}')
         # Standardise waveforms
         if standardise_waveforms:
@@ -145,7 +129,7 @@ for entry in scandir(directory):
         # ************************************************************
         # ******************** Event-rate Labeling *******************
         # ************************************************************
-
+        
         if path.isfile(path_to_EVlabels+'.npy'):
             print()
             print(f'Loading saved EV-labels from {path_to_EVlabels}')
@@ -156,16 +140,28 @@ for entry in scandir(directory):
             ev_labels, ev_stats_tot = get_ev_labels(waveforms,timestamps,threshold=similarity_thresh,saveas=path_to_EVlabels,similarity_measure=similarity_measure, assumed_model_varaince=assumed_model_varaince,
             n_std_threshold=n_std_threshold)
 
+        # ************************************************************
+        # ******************* Event-rate Threshold *******************
+        # ************************************************************
         print()
         print(f'Number of wf which ("icreased after first","increased after second", "constant") = {np.sum(ev_labels,axis=1)} ')
 
+        # TODO move to function:
+        # Select event-rate threshold unique for each recording.. 
+        T  = (end_time-start_time)*60 # length of used recording in seconds.
+        N = waveforms.shape[0]
+        mean_event_rate = N/T
+        ev_thresh_procentage = 0.01 # ie 1%
+        ev_threshold = mean_event_rate*ev_thresh_procentage
+        print(f'Overall mean event rate = {mean_event_rate}, and thus ev_threshold = {ev_threshold}')
+        
         # ho := High Occurance, ts := timestamps
         wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=ev_threshold,ev_labels=ev_labels)
 
         print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
 
         number_of_occurances= np.sum(ev_label_ho,axis=0)
-
+        
         # ************************************************************
         # ******************** Train/Load model **********************
         # ************************************************************
@@ -298,6 +294,10 @@ for entry in scandir(directory):
                 #PLOT ENCODED wf_increase... :
                 save_figure = 'figures/encoded_decoded/'+unique_string_for_figs + '_ho_second'
                 plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
+                
+                ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
+                ev_label_corr_shape[:,label_on] = 1
+                
                 plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
 
                 K_string  = input('Number of clusters? (integer) :')
