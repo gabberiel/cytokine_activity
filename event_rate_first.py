@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from wf_similarity_measures import *
+from wf_similarity_measures import wf_correlation,similarity_SSQ
 #from plot_functions_wf import plot_event_rates
 import warnings
 
@@ -187,8 +187,10 @@ def ev_label(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
     # Find if there is a sufficient increase in event rates after injections: 
     is_increase = delta_ev > (n_std*interval_ev_std)
     if True in is_increase:
-        is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
-        ev_label[is_increase] = 1
+        largest_increase = np.argmax(delta_ev-(n_std*interval_ev_std))
+        ev_label[largest_increase] = 1
+        #is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
+        #ev_label[is_increase] = 1
         #print(ev_label)
     else:
         ev_label[-1] = 1
@@ -306,7 +308,7 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
         np.save(saveas+'tests_tot',ev_stats_tot)
         print(f'EV_labels succesfully saved as : {saveas}')
     return ev_labels, ev_stats_tot
-
+"""
 def evaluate_cytokine_candidates(waveforms, timestamps, hpdp, k_labels, injection=1, similarity_measure='ssq', similarity_thresh=0.4, 
                             assumed_model_varaince=0.5, k=1, SD_min=1, saveas='saveas_not_specified', verbose=False):
     '''
@@ -442,8 +444,7 @@ def get_ev_stats(event_rate,start_time=10*60, end_time=90*60, compare_to_theshol
         return MU, SD, responder, time_above_thresh
     else:
         return MU, SD
-
-
+"""
 
 if __name__ == "__main__":
     '''

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import preprocess_wf
 from wf_similarity_measures import wf_correlation, label_from_corr, similarity_SSQ
 from event_rate_first import get_event_rates
+
 # VERISON USED FOR ARAMS CODE ON WAVEFORM DATA
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
@@ -104,8 +105,8 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
     #plt.figure(figsize=(10, 10))
     plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
     #plt.colorbar()
-    plt.xlabel("z[0]")
-    plt.ylabel("z[1]")
+    plt.xlabel("$z_1$")
+    plt.ylabel("$z_2$")
     if title is not None:
         plt.title(title)
     if saveas is not None:
@@ -117,7 +118,7 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
 def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
     '''
     Plot of raw recording before MATLAB preprocessing.
-    Assumes downsampled raw_rec such that the sample frequency is 8000 Hz
+    Assumes downsampled (5) raw_rec such that the sample frequency is 8000 Hz
     Parameters
     ----------
 
@@ -138,21 +139,21 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
         
 def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     ''' 
-    If labels are given, then the meadian of each waveform - cluster is ploted. 
+    If labels are given, then the meadian of each waveform-cluster is ploted. 
     x_axis assumes each waveform is 3.5ms long.
     '''
     num_wf = waveforms.shape[0]
-    wf_size = waveforms.shape[-1]
+    wf_dim = waveforms.shape[-1]
     cols = ['r','b',]
     if labels is not None:
-        t_axis = np.arange(0,3.5,3.5/wf_size)
+        t_axis = np.arange(0,3.5,3.5/wf_dim)
 
         for cluster in labels:
             wf_clust = waveforms[labels==cluster]
             plt.plot(t_axis.T,np.median(wf_clust,axis=0).T)# ,color = (0.7,0.7,0.7),lw=0.2)
     #plt.plot(time,np.median(waveforms[ind,:,0],axis=0),color = (0.2,0.2,0.2),lw=1)
     else: 
-        t_axis = np.arange(0,3.5,3.5/wf_size)*np.ones((num_wf,1))
+        t_axis = np.arange(0,3.5,3.5/wf_dim)*np.ones((num_wf,1))
         plt.plot(t_axis.T,waveforms.T)
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
@@ -250,11 +251,11 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         #print('Plotting 500...')
 
     time = np.arange(0,3.5,3.5/waveforms.shape[-1])
-    median_wf = np.median(waveforms[bool_labels],axis=0)
+    median_wf = np.mean(waveforms[bool_labels],axis=0)
     #plt.figure()
     if show_clustered:
         plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
-        plt.plot(time,median_wf,color = (0.1,0.1,0.1),lw=1, label='Median')
+        plt.plot(time,median_wf,color = (0.1,0.1,0.1),lw=1, label='Mean')
         plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
     else:    
         plt.plot(time,median_wf,lw=1, label='median cluster '+str(cluster))
@@ -262,7 +263,8 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
 
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
-    plt.title(f'W.F. s.t. corr > {threshold}. candidate wf: {candidate_idx}, N_cluster = {nr_of_wf_in_cluster}')
+    plt.title('CAPs similar to "Candidate".')
+    #plt.title(f'W.F. s.t. corr > {threshold}. candidate wf: {candidate_idx}, N_cluster = {nr_of_wf_in_cluster}')
     plt.legend(loc='upper right')
     if saveas is not None:
         plt.savefig(saveas,dpi=150)
@@ -327,7 +329,7 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
         plt.show()
 
 
-
+"""
 def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', similarity_thresh=0.4, 
                             assumed_model_varaince=0.5,saveas='saveas_not_specified',verbose=False, return_candidates=False):
     '''
@@ -406,3 +408,4 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
         plt.show()
     if return_candidates:
         return candidate_wf
+"""

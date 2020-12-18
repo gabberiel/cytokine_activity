@@ -1,14 +1,15 @@
 
 import numpy as np
+from evaluation import find_reponders, eval_candidateCAP_on_multiple_recordings
 import matplotlib.pyplot as plt
-from os import path, scandir
-import preprocess_wf 
-from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD
-from wf_similarity_measures import wf_correlation,similarity_SSQ
-from event_rate_first import get_ev_labels, get_event_rates, similarity_SSQ, label_from_corr
-from plot_functions_wf import *
+#from os import path, scandir
+#import preprocess_wf 
+#from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD
+#from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
+#from event_rate_first import get_ev_labels, get_event_rates, evaluate_cytokine_candidates
+#from plot_functions_wf import *
 
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 
 
 matlab_files = ['R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01', 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01', 
@@ -34,88 +35,50 @@ similarity_thresh = 0.3 # Gives either the minimum correlation using 'corr' or e
 assumed_model_varaince = 0.5 # The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I)   
 
 
-
-def number_of_reponders(directory, start_string='', end_string=''):
-    responders = []
-    for entry in scandir(directory):
-        if entry.path.startswith(directory+start_string) & entry.path.endswith(end_string):# and entry.is_file():
-            print(entry.path)
-            result = np.load(entry.path, allow_pickle=True)
-            responder_bool = False
-            for injection_res in result:
-                if len(injection_res)==0:
-                    pass
-                else:
-                    responder_bool=True
-                    
-                    if injection_res.shape==(2,):
-                        plt.plot(injection_res[0])
-                        plt.title(entry.path[25:])
-                        plt.show()
-                    else:
-                        times_above_thresh = np.zeros((len(injection_res,)))
-                        for ii,responder in enumerate(injection_res):
-                            stats = responder[1]
-                            times_above_thresh[ii] = stats[3] # time above threshold
-                            #waveform = responder[0]
-                        main_candidate = np.argmax(times_above_thresh)
-                        plt.plot(injection_res[main_candidate][0])
-                        plt.title(entry.path[25:])
-                        plt.show()
-                    
-            if responder_bool:
-                responders.append(1)
-            else: 
-                responders.append(0)
-    print(f'Number of responders: {np.sum(responders)} out of {len(responders)}')
-    return responders
-
-recording_candidate = 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10'
-unique_start_string = '10_dec_nstd_02and01_ds1_ampthresh' # on second to last file in this run..
 # ************************************************************
 # ******************** Start Evaluation ****************************
 # ************************************************************
 run_i = 0
 directory = '../numpy_files/cytokine_candidates'
-start_string = "\\14_dec_unique_threshs_saline"
-#start_string = "\\13_dec_unique_threshs_ampthresh2"
-end_string = 'new_test.npy'
-number_of_reponders(directory, start_string=start_string, end_string=end_string)
+start_string = "\\17_dec_30000_max200_ampthresh5_saline" # Saline injection recordings used as control
+#end_string = 'new_test.npy'
 
-'''
-responders = []
-for entry in scandir(directory):
-    if entry.path.startswith(directory+"\\13_dec_unique_threshs_ampthresh2") & entry.path.endswith('new_test.npy'):# and entry.is_file():
-        print(entry.path)
-        result = np.load(entry.path, allow_pickle=True)
-        responder_bool = False
-        for injection_res in result:
-            if len(injection_res)==0:
-                pass
-            else:
-                responder_bool=True
-                if injection_res.shape==(2,):
-                    plt.plot(injection_res[0])
-                    plt.title(entry.path[25:])
-                    plt.show()
-                else:
-                    times_above_thresh = np.zeros((len(injection_res,)))
-                    for ii,responder in enumerate(injection_res):
-                        stats = responder[1]
-                        times_above_thresh[ii] = stats[3] # time above threshold
-                        #waveform = responder[0]
-                    main_candidate = np.argmax(times_above_thresh)
-                    plt.plot(injection_res[main_candidate][0])
-                    plt.title(entry.path[25:])
-                    plt.show()
-        if responder_bool:
-            responders.append(1)
-        else: 
-            responders.append(0)
-print(f'Number of responders: {np.sum(responders)} out of {len(responders)}')
-'''
-# LOOP Through to run analysis of all recodrings over night.. : 
+start_string = "\\17_dec_30000_max500_clean"
+end_string = 'new_assesment.npy'
+saveas = 'figures/Responders/'+start_string
+matlab_directory = '../matlab_saline'
+matlab_directory = '../matlab_clean'
+saveas2 = 'figures/cap_eval/'+'AAA_TEST_cand2'
+
+# ****************************************************************************
+# ** Find the responders from the files saved by "run_evaluation()" in main **
+# ****************************************************************************
+responders, main_candidates = find_reponders(directory, start_string=start_string, end_string=end_string,saveas=saveas, verbose=False, matlab_directory=matlab_directory,return_main_candidates=True)
+
+# ****************************************************************************
+# ***** Use CAP as candidate over multiple different recordings  *************
+# ****************************************************************************
+
+# Can either load a saved CAP-candidates in specified path or use the "main_candidates" above.
+
+recording_candidate = 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10'
+unique_start_string = '10_dec_nstd_02and01_ds1_ampthresh' 
+path_to_cytokine_candidate = '../numpy_files/cytokine_candidates/'+unique_start_string + recording_candidate
+main_candidates = np.load(path_to_cytokine_candidate+'.npy')
+
+candidate_CAP = main_candidates[1,:]
+plt.plot(candidate_CAP)
+plt.show()
+#for candidate_CAP in main_candidates:
+eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,similarity_measure='ssq',
+                                        similarity_thresh=0.4,assumed_model_varaince=0.5,saveas=saveas2)
+
+
+
+
 exit()
+# LOOP Through to run analysis of all recodrings over night.. : 
+'''
 for matlab_file in file_names['matlab_files']:#[:4]:
     path_to_wf = '../matlab_files/wf'+matlab_file+'.mat' 
     path_to_ts = '../matlab_files/ts'+matlab_file+'.mat'
@@ -177,3 +140,4 @@ for matlab_file in file_names['matlab_files']:#[:4]:
         event_rates, _ = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
         plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'overall_EV', verbose=False) 
         plt.show()
+'''

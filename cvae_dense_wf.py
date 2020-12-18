@@ -6,6 +6,9 @@ from tensorflow.keras import layers
 from sklearn.mixture import GaussianMixture
 from tensorflow.keras import backend as K
 
+# Supress tensorflow warnings..:
+#tf.logging.set_verbosity(tf.logging.ERROR) najn
+
 
 def sample_z(mu,sigma):
     '''

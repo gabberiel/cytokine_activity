@@ -2,10 +2,15 @@ import tensorflow as tf
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+from scipy.io import loadmat
 from vae_dense_wf import get_vae 
 from cvae_dense_wf import get_cvae
-from scipy.io import loadmat
+#from event_rate_first import evaluate_cytokine_candidates
+#from plot_functions_wf import evaluate_hpdp_candidates
+#from plot_functions_wf import plot_correlated_wf
 #from tensorflow.python.framework import ops
+#from sklearn.cluster import KMeans, DBSCAN
+
 
 from os import path
 import warnings
@@ -13,7 +18,7 @@ import warnings
 def load_waveforms(path_to_wf,matlab_key, verbose=1):
     """
     Load waveform-matlab file specified by "path_to_wf" and returns it as numpy array.
-    
+    Files saved locally on Asus-computer have matlab_key='waveforms'
     Parameters
     ----------
     path_to_wf : 'path/to/file.mat' string_type
@@ -45,8 +50,9 @@ def load_waveforms(path_to_wf,matlab_key, verbose=1):
     return waveforms
 
 def load_timestamps(path_to_ts,matlab_key,verbose=1):
-    """Load timestamp-matlab file specified by "path_to_ts" and returns it as numpy array.
-    
+    """
+    Load timestamp-matlab file specified by "path_to_ts" and returns it as numpy array.
+    Files saved locally on Asus-computer have matlab_key='timestamps'
     See Also
     --------
         doc_string in "load_waveforms()" for more extensive description.
@@ -143,7 +149,7 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
          return encoder,decoder,cvae 
 
 def __cluster__(vae,x,eta,gamma,m):
-    ''' The Gradient decent loop used in "pdf_GD". '''
+    ''' The Gradient decent loop used in "pdf_GD()". '''
     count = 0
     assert np.isnan(np.sum(x))==False, 'Nans in input data..'
     for i in range(m):
@@ -166,7 +172,7 @@ def __cluster__(vae,x,eta,gamma,m):
     return x
 
 def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
-    ''' The Gradient decent loop used in "pdf_GD". '''
+    ''' The Gradient decent loop used in "pdf_GD()". '''
     count = 0
     assert np.isnan(np.sum(x))==False, 'Nans in input data..'
     for i in range(m):
@@ -280,33 +286,93 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
         
         return data_points
 
-
-def plot_waveforms(waveforms,labels=None):
-    ''' 
-    OBSOBS: old version, use version in plot_functions_wf.py
-    If labels are given, then the meadian of each waveform - cluster is ploted. 
-    x_axis assumes each waveform is 3.5ms long.
+"""
+def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eval=0.15,clusters_to_evaluate=[0,1],k_clusters=None, saveas=None,verbose=False, 
+                db_eps=0.15, db_min_sample=5):
     '''
-    warnings.warn('Old version of function plt_waveforms() is being used. Use version in plot_functions_wf.py instead.',DeprecationWarning)
-    num_wf = waveforms.shape[0]
-    wf_size = waveforms.shape[-1]
-    cols = ['r','b',]
-    if labels is not None:
-        t_axis = np.arange(0,3.5,3.5/wf_size)
+    Runs evaluation of the hpdp for the different conditionals, i.e increase after first/second injections. 
+    If k_clusters=None, then DBSCAN is used with specified params.
+    Else, k-means with the number of clusters specified by k_clusters.
 
-        for cluster in labels:
-            wf_clust = waveforms[labels==cluster]
-            plt.plot(t_axis.T,np.median(wf_clust,axis=0).T)# ,color = (0.7,0.7,0.7),lw=0.2)
-    #plt.plot(time,np.median(waveforms[ind,:,0],axis=0),color = (0.2,0.2,0.2),lw=1)
-    else: 
-        t_axis = np.arange(0,3.5,3.5/wf_size)*np.ones((num_wf,1))
-        plt.plot(t_axis.T,waveforms.T)
-    plt.xlabel('Time $(ms)$')
-    plt.ylabel('Voltage $(\mu V)$')
-    plt.show()
+    Parameters
+    ----------
 
+    '''
+    recording_results = []
+    for label_on in clusters_to_evaluate:
+        hpdp = hpdp_list[label_on]
+        ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
+        ev_label_corr_shape[:,label_on] = 1
+        #hpdp_latent_mean,_,_ = encoder.predict(hpdp)
+        encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
+        if k_clusters is not None:
+            if (hpdp.shape[0]<8) and (hpdp.shape[0] != 141):
+                kmeans = KMeans(n_clusters=1, random_state=0).fit(encoded_hpdp)
+            else:
+                kmeans = KMeans(n_clusters=k_clusters, random_state=0).fit(encoded_hpdp)
+            k_labels = kmeans.labels_
+        else:
+            dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean')
+            dbscan.fit(encoded_hpdp)
+            k_labels = dbscan.labels_
 
+        results = evaluate_cytokine_candidates(waveforms, timestamps, hpdp, k_labels, injection=label_on+1, similarity_measure='ssq', similarity_thresh=0.4, 
+                        assumed_model_varaince=0.5, k=k_SD_eval, SD_min=SD_min_eval, saveas=None, verbose=verbose)
+        recording_results.append(np.array(results))
+    recording_results = np.array(recording_results)
+    if saveas is not None:
+        np.save(saveas,np.squeeze(recording_results))
+        print(f'Results for evaluation saved sucessfully as {saveas}.')
+    return recording_results
 
+def run_DBSCAN_evaluation(wf_ho,ts_ho,wf0,ts0,ev_label_ho,clusters_to_evaluate=[0,1], saveas=None, np_saveas = None, 
+                db_eps=7, db_min_sample=10,matlab_file=None,similarity_measure='ssq',
+                similarity_thresh=0.1, assumed_model_varaince=0.5):
+    '''
+    Skipp everything after labeling and perform clustering using DBSCAN on labeled high-occurance waveforms. 
+    '''
+    cytokine_candidates = np.empty((2,wf_ho.shape[-1])) # To save the main candidates
+    for label_on in clusters_to_evaluate:
+        waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
+        if waveforms_increase.shape[0] == 0:
+            waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+            ev_label_corr_shape[:,label_on] = 1
+            print('*************** OBS ***************')
+            print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
+            print(f'This considering the recording {matlab_file}')
+        elif waveforms_increase.shape[0] > 3000: # Speed up process during param search..
+            waveforms_increase = waveforms_increase[::4,:]
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+            ev_label_corr_shape[:,label_on] = 1
+        else:
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+            ev_label_corr_shape[:,label_on] = 1
+
+        #bool_labels = np.ones((waveforms_increase.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
+        #plot_correlated_wf(0,waveforms_increase,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
+        #dist_vec = cdist(waveforms_increase, waveforms_increase, 'euclid')
+        #plt.hist(dist_vec)
+        #plt.show()
+
+        print()
+        print('Running DBSCAN on hpdp...')
+        print()
+        
+        dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean', metric_params=None, algorithm='auto', leaf_size=30, p=None, n_jobs=None)
+        #hpdp_latent_mean,_,_ = encoder.predict(hpdp)
+        dbscan.fit(waveforms_increase)
+        labels = dbscan.labels_ #  Noisy samples are given the label -1
+        
+        possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,waveforms_increase,labels,saveas=saveas,similarity_measure='ssq',
+                                similarity_thresh=similarity_thresh, assumed_model_varaince=assumed_model_varaince,verbose=True, return_candidates=True)
+        
+        #k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
+        #if k_candidate != 'None':
+        #    cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
+    #if k_candidate is not None:
+    #    np.save(np_saveas+'DBSCAN', cytokine_candidates)
+"""            
 
 if __name__ == "__main__":
     '''
