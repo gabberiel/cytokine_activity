@@ -1,2 +1,2 @@
-model_checkpoint_path: "17_dec_30000_max500_cleanR10_Exp3_8.11.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_02"
-all_model_checkpoint_paths: "17_dec_30000_max500_cleanR10_Exp3_8.11.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_02"
+model_checkpoint_path: "21_dec_20k_ampthresh2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
+all_model_checkpoint_paths: "21_dec_20k_ampthresh2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"

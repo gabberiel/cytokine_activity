@@ -377,7 +377,7 @@ def __get_ev_stats__(event_rate,start_time=10*60, end_time=90*60, compare_to_the
         return MU, SD
 
 
-def find_reponders(directory, start_string='', end_string='',saveas=None,verbose=False, matlab_directory ='../matlab_files',return_main_candidates=False):
+def find_reponders(directory, start_string='', end_string='',specify_recordings='R10',saveas=None,verbose=False, matlab_directory ='../matlab_files',return_main_candidates=False):
     '''
     Main function to evaluate the saved results given by "run_evaluation()".
 
@@ -392,7 +392,7 @@ def find_reponders(directory, start_string='', end_string='',saveas=None,verbose
                     # This is used to find how many, out of all considered recordings, that are showing promising results. 
     main_candidates = []
     for entry in scandir(directory):
-        if entry.path.startswith(directory+start_string+'R10') & entry.path.endswith(end_string): # Specify any uniquness in the name of the files to be considered. 
+        if entry.path.startswith(directory+start_string+specify_recordings) & entry.path.endswith(end_string): # Specify any uniquness in the name of the files to be considered. 
             result = np.load(entry.path, allow_pickle=True)
             responder_bool = False
             for injection_res in result: # "result" is a nested list where the first two elements are the results of the different injections.
@@ -401,7 +401,7 @@ def find_reponders(directory, start_string='', end_string='',saveas=None,verbose
                 else: # A responder was found
                     responder_bool=True
                     recording = entry.path[len(directory+start_string):-len(end_string)] # Get the matlab_file of recording
-                    print()
+                    print('**********************************************************************')
                     print(f'The recording which was found to be a responder : {recording}')
                     print()
                     if injection_res.shape==(2,): # Only one cluster fullfilled the requerement to be defined as a responder
@@ -448,10 +448,11 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
     for entry in scandir(matlab_directory):
         if entry.path.startswith(matlab_directory+'\\ts' +  file_name): #"\\tsR10"): # Find unique recording string
             matlab_file = entry.path[len(matlab_directory)+3:-4] # Find unique recording string'
-            print()
+            print('************* PLOTTING RESPONDER RESULTS ***********************')
             print('*******************************************************************************')
             print(f'Responder-Recording : {matlab_file}')
             print()
+            print(f'Using {similarity_measure} to evaluate final result')
             path_to_wf = matlab_directory + '/wf'+matlab_file +'.mat'
             path_to_ts = matlab_directory + '/ts'+matlab_file +'.mat'
 
@@ -471,14 +472,14 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
             added_main_candidate_wf = np.concatenate((cytokine_candidate.reshape((1,cytokine_candidate.shape[0])),wf0),axis=0)
             assert np.sum(cytokine_candidate) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
 
-            print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
+            #print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
 
             if similarity_measure=='corr':
-                print('Using "corr" to evaluate final result')
+                #print('Using "corr" to evaluate final result')
                 correlations = wf_correlation(0,added_main_candidate_wf)
                 bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
             if similarity_measure=='ssq':
-                print('Using "ssq" to evaluate final result')
+                #print('Using "ssq" to evaluate final result')
                 added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
                 bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
             event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)

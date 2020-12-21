@@ -5,12 +5,12 @@ def standardise_wf(waveforms):
 
     Parameters
     ----------
-    waveforms : (number_of_waveforms, size_of_waveform) array_like
+    waveforms : (number_of_waveforms, dim_of_waveform) array_like
         Original waveforms
 
     Retruns
     ----------
-    std_waveforms : (number_of_waveforms, size_of_waveform) array_like
+    std_waveforms : (number_of_waveforms, dim_of_waveform) array_like
         Standardised waveforms
     '''
     mean = np.mean(waveforms, axis=-1)
@@ -30,7 +30,7 @@ def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=1
 
     Parameters
     ----------
-    waveforms : (number_of_waveforms, size_of_waveform) array_like
+    waveforms : (number_of_waveforms, dim_of_waveform) array_like
 
     timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds
@@ -67,7 +67,6 @@ def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=1
         use_range = np.arange(start,top_range)
     waveforms = waveforms[use_range,:]
     timestamps = timestamps[use_range]
-    print(waveforms.shape)
     # ************************************************************
     # ** Enforce all CAPs to have the same waveform dim. ****
     # ************************************************************
@@ -95,7 +94,7 @@ def apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1
 
     Parameters
     ----------
-    waveforms : (number_of_waveforms, size_of_waveform) array_like
+    waveforms : (number_of_waveforms, dim_of_waveform) array_like
 
     timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds
@@ -129,19 +128,25 @@ def apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1
         return np.squeeze(high_occurance_wf), np.squeeze(high_occurance_ts) #[0,:,:],[:,0]
 
 
-def apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=80):
+def apply_amplitude_thresh(waveforms, timestamps, maxamp_threshold=200, minamp_threshold=0):
     '''
-    Removes CAPs with amplitude above threeshold value..
+    Removes CAPs with amplitude above/below threeshold values.
 
     Parameters
     ----------
-    waveforms : (number_of_waveforms, size_of_waveform) array_like
+    waveforms : (number_of_waveforms, dim_of_waveform) array_like
 
     timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds
-
+    Returns
+    -------
+    waveforms_pre_thresh : (n_wf_pre_thresh, dim_of_waveform )
+    Remaining waveforms after applied threshold
     '''
-    keep_idx = np.all((waveforms < maxamp_threshold) & (waveforms > -maxamp_threshold) , axis=1)
+    max_amps = np.max(waveforms, axis=1)
+    min_amps = np.min(waveforms, axis=1)
+    keep_idx = (max_amps < maxamp_threshold)&(max_amps > minamp_threshold) & (min_amps > -max_amps)&(min_amps<-minamp_threshold)
+    #keep_idx = np.all((waveforms < maxamp_threshold) & (waveforms > -maxamp_threshold) & (waveforms > minamp_threshold) & (waveforms < minamp_threshold), axis=1)
     return waveforms[keep_idx],timestamps[keep_idx]
 
 

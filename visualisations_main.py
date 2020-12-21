@@ -174,6 +174,17 @@ if plot_simulatated_path_from_model:
 # ************************************************************
 # ******** Plot examples of event-rates from EV_labeles ******
 # ************************************************************
+if view_vae_result:
+            save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
+            
+            plot_decoded_latent(decoder,saveas=save_figure+'_decoded_constant',verbose=verbose_main,ev_label=np.array((0,0,1)).reshape((1,3)))
+            plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_first',verbose=verbose_main,ev_label=np.array((1,0,0)).reshape((1,3)))
+            plot_decoded_latent(decoder,saveas=save_figure+'_decoded_increase_second',verbose=verbose_main,ev_label=np.array((0,1,0)).reshape((1,3)))
+
+
+# ************************************************************
+# ******** Plot examples of event-rates from EV_labeles ******
+# ************************************************************
 #plot_wf_and_ev_for_the_different_ev_labels = False
 #saveas_wf_and_ev_for_the_different_ev_labels = 'figures_tests/event_rate_labels/nov27_ev_incr'
 if plot_wf_and_ev_for_the_different_ev_labels:
@@ -229,8 +240,8 @@ if plot_acf_pacf:
         if verbose_main is True:
             plt.show()
 
-
-
+# TODO : -Fix plots of encoded/decoded Latent space.
+#        -Event-rate plots? ---Njaa, finns i main..
 # ************************************************************
 # ******** Cluster-Results using "Test-statistic"  ***********
 # ************************************************************

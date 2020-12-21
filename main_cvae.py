@@ -29,18 +29,23 @@ for entry in scandir(directory):
 
 similarity_measure='ssq' # From testing, correlation give worse results..
 #similarity_thresh = 0.7 # For corrrelation
-similarity_thresh = 0.1 # Gives either the minimum correlation using 'corr' or epsilon in gaussain annulus theorem for 'ssq'
-assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I)   
+similarity_thresh = 0.1 # Gives either the minimum correlation using 'corr' or "epsilon" in gaussain annulus theorem using 'ssq' (sum of squares)
+assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I) 
+# Setting the assumed model variance to 0.5 as in CVAE yeild un unsufficient number of similar CAPs.. Thus set a bit higher for labeling..
 
-# Should maby fix such that threshold is TNF/IL-1beta specific since there is substantially more findings for TNF..
+# Should maby fix such that threshold is TNF/IL-1beta specific since there is substantially more CAPs labeles as increase after TNF injection.. 
+# This however differs quite a lot from case to case..
 # Otherwise maby 0.2..?
+
 n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even-rate need to increase for a candidate-CAP to be labeled as "likely to encode cytokine-info".
+
 #ev_threshold = 0.02 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
 #ev_threshold = 0.005 # Downsample=4 # Mabe good with 0.005 for aprox 37000 observations..
 
 # downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
-desired_num_of_samples = 30000
-max_amplitude = 500
+desired_num_of_samples = 20000 # Subsample using 
+max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro Volts)
+min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro Volts)
 ev_thresh_procentage = 0.005 #  *100 => %
 
 # Time interval of recording used for training:
@@ -63,9 +68,9 @@ plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candid
 run_automised_assesment = True # Cluster and evaluate hpdp by defined quantitative measure.
 
 # Evaluation Parameters using k*max(SD_min,SD) as threshold for "significant increase in ev." 
+#SD_min_eval = 0.2 # Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
 SD_min_eval = 0.3 # Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
-SD_min_eval = 0.2 # Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
-k_SD_eval = 1 #2.5 # k-param in k*max(SD_min,SD) 
+k_SD_eval = 2.5 #2.5 # k-param in k*max(SD_min,SD) 
 
 
 # Use DBSCAN on labeled data independent of everything after labeling to see if we obtain similar results.
@@ -93,13 +98,14 @@ verbose_main = 1
 #unique_start_string = '15_dec_30000_max200__ampthresh5' # on second to last file in this run..
 #unique_start_string = '15_dec_30000_max200_ampthresh5_new'
 
-unique_start_string = '17_dec_30000_max500_clean'
+#unique_start_string = '17_dec_30000_max500_clean'
+unique_start_string = '21_dec_20k_ampthresh2'
 
 #unique_start_string = 'deleteme'
 # find all recordingsin specified directory: 
 #directory = '../matlab_saline'
-directory = '../matlab_clean'
-start_string = '\\tsR10' # Since each recording has two files in directory (waveforms and timestamps)-- this is an ugly solution to only get unique recording once.
+directory = '../matlab_files'
+start_string = '\\tsR10'#R10' #_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 for entry in scandir(directory):
     if entry.path.startswith(directory+start_string): # Find unique recording string. R10 for all cytokine injections, R12 for saline.
         #matlab_file = entry.path[19:-4] # Find unique recording string'
@@ -135,10 +141,13 @@ for entry in scandir(directory):
         wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps, start_time=10,end_time=90, 
                                                     dim_of_wf=141,desired_num_of_samples=None) # No downsampling. Used for evaluation 
         
+        print(f'Shape before amplitude threshold : {waveforms.shape}')
+        waveforms,timestamps = preprocess_wf.apply_amplitude_thresh(waveforms,timestamps,maxamp_threshold=max_amplitude, minamp_threshold=min_amplitude) # Remove "extreme-amplitude" CAPs-- otherwise risk that pdf-GD diverges..
+        print()
+        print(f'Shape after amplitude threshold : {waveforms.shape}')
+        print()
         waveforms,timestamps = preprocess_wf.get_desired_shape(waveforms,timestamps,start_time=start_time,end_time=end_time,dim_of_wf=141,desired_num_of_samples=desired_num_of_samples)
-        waveforms,timestamps = preprocess_wf.apply_max_amplitude_thresh(waveforms,timestamps,maxamp_threshold=max_amplitude) # Remove "extreme-amplitude" CAPs-- otherwise risk that pdf-GD diverges..
-        print(f'Shape after max-amp thresh : {waveforms.shape}')
-        
+        print(f'Shape after shape-preprocessing : {waveforms.shape}')
         # ****** Standardise waveforms for more stable training. ********
         if standardise_waveforms:
             waveforms = preprocess_wf.standardise_wf(waveforms)
@@ -327,7 +336,7 @@ for entry in scandir(directory):
         # ************************************************************
         if run_automised_assesment:
             saveas = path_to_cytokine_candidate+'auto_assesment'
-            run_evaluation(wf0,ts0,hpdp_list,encoder,k_SD_eval=k_SD_eval,SD_min_eval=SD_min_eval,labels_to_evaluate=[0,1], k_clusters=None, 
+            run_evaluation(wf0,ts0,hpdp_list,encoder,k_SD_eval=k_SD_eval,SD_min_eval=SD_min_eval,labels_to_evaluate=[0,1], k_clusters=8, 
                             similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, 
                             db_eps=db_eps, db_min_sample=db_min_sample,saveas=saveas)
             
