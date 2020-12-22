@@ -1,2 +1,2 @@
-model_checkpoint_path: "21_dec_20k_ampthresh2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
-all_model_checkpoint_paths: "21_dec_20k_ampthresh2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
+model_checkpoint_path: "22_dec_30k_ampthresh2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
+all_model_checkpoint_paths: "22_dec_30k_ampthresh2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"

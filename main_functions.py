@@ -171,29 +171,10 @@ def __cluster__(vae,x,eta,gamma,m):
 
     return x
 
-def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
-    ''' The Gradient decent loop used in "pdf_GD()". '''
-    count = 0
-    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
-    for i in range(m):
-        # Estimate time of loop, (ETA).
-        if i==0:
-            t0 = time.time()
-        elif i%100==0:
-            count += 1
-            ti = time.time()
-            ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
-            print(f'Running pdf-GD, iteration={i}')
-            print(f'ETA: {round(ETA_t)} seconds..')
-            print()
-            #assert np.isnan(np.sum(x))==False, 'NaNs in hpdp_x after GD..'
 
-        #x_hat = x + eta*tf.random.normal(shape=x.shape)
-        x_hat = x + eta * np.random.normal(size=x.shape)
-        x_rec = cvae.predict([x_hat,label])
-        x = x - gamma*(x_hat-x_rec)
-
-    return x
+def run_pdf_GD():
+    '''
+    '''
 
 def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
     '''
@@ -285,6 +266,30 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
             warnings.warn(f'{path_to_hpdp} not found and number of iterations set to 0. Returning input datapoints.')
         
         return data_points
+
+def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
+    ''' The Gradient decent loop used in "pdf_GD()". '''
+    count = 0
+    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
+    for i in range(m):
+        # Estimate time of loop, (ETA).
+        if i==0:
+            t0 = time.time()
+        elif i%100==0:
+            count += 1
+            ti = time.time()
+            ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
+            print(f'Running pdf-GD, iteration={i}')
+            print(f'ETA: {round(ETA_t)} seconds..')
+            print()
+            #assert np.isnan(np.sum(x))==False, 'NaNs in hpdp_x after GD..'
+
+        #x_hat = x + eta*tf.random.normal(shape=x.shape)
+        x_hat = x + eta * np.random.normal(size=x.shape)
+        x_rec = cvae.predict([x_hat,label])
+        x = x - gamma*(x_hat-x_rec)
+
+    return x
 
 """
 def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eval=0.15,clusters_to_evaluate=[0,1],k_clusters=None, saveas=None,verbose=False, 

@@ -43,7 +43,7 @@ n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even
 #ev_threshold = 0.005 # Downsample=4 # Mabe good with 0.005 for aprox 37000 observations..
 
 # downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
-desired_num_of_samples = 20000 # Subsample using 
+desired_num_of_samples = 30000 # Subsample using 
 max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro Volts)
 min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro Volts)
 ev_thresh_procentage = 0.005 #  *100 => %
@@ -53,7 +53,7 @@ start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
-m=0 # Number of steps in pdf-gradient decent
+m=500 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
@@ -97,15 +97,16 @@ verbose_main = 1
 #unique_start_string = '14_dec_unique_threshs_saline' # on second to last file in this run..
 #unique_start_string = '15_dec_30000_max200__ampthresh5' # on second to last file in this run..
 #unique_start_string = '15_dec_30000_max200_ampthresh5_new'
-
 #unique_start_string = '17_dec_30000_max500_clean'
-unique_start_string = '21_dec_20k_ampthresh2'
+
+unique_start_string = '22_dec_30k_ampthresh2'
+#unique_start_string = '21_dec_30k_paramsearch'
 
 #unique_start_string = 'deleteme'
 # find all recordingsin specified directory: 
 #directory = '../matlab_saline'
 directory = '../matlab_files'
-start_string = '\\tsR10'#R10' #_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+start_string = '\\ts' #R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 for entry in scandir(directory):
     if entry.path.startswith(directory+start_string): # Find unique recording string. R10 for all cytokine injections, R12 for saline.
         #matlab_file = entry.path[19:-4] # Find unique recording string'
@@ -273,64 +274,7 @@ for entry in scandir(directory):
             run_visual_evaluation(wf0,ts0,hpdp_list,encoder,labels_to_evaluate=[0,1],clustering_method='k-means', db_eps=0.15, db_min_sample=5,
                      similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, unique_string_for_figs=unique_string_for_figs,
                      path_to_cytokine_candidate=path_to_cytokine_candidate)
-            '''
-            for label_on in [0,1]:
-                hpdp = hpdp_list[label_on]
-                bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
-                saveas = 'figures/hpdp/'+unique_string_for_figs
-                plot_correlated_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
-                waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
 
-                #print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
-                if waveforms_increase.shape[0] == 0:
-                    waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
-                    ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-                    ev_label_corr_shape[:,label_on] = 1
-                    print('*************** OBS ***************')
-                    print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
-                    print(f'This considering the recording {matlab_file}')
-                elif waveforms_increase.shape[0] > 3000: # Speed up process during param search..
-                    waveforms_increase = waveforms_increase[::4,:]
-                    ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-                    ev_label_corr_shape[:,label_on] = 1
-                else:
-                    ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-                    ev_label_corr_shape[:,label_on] = 1   
-                
-                #PLOT ENCODED wf_increase... :
-                save_figure = 'figures/encoded_decoded/'+unique_string_for_figs + '_ho_second'
-                plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
-                ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
-                ev_label_corr_shape[:,label_on] = 1
-                
-                plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
-
-                # ******* USING k-means *************
-                #K_string  = input('Number of clusters? (integer) :')
-                #encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
-                #kmeans = KMeans(n_clusters=int(K_string), random_state=0).fit(encoded_hpdp)
-                #k_labels = kmeans.labels_
-
-                # ******** USING DBSCAN **************
-                dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean')
-                encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
-                dbscan.fit(encoded_hpdp)
-                k_labels = dbscan.labels_
-
-                saveas = 'figures/event_rate_labels/'+unique_string_for_figs + str(label_on)
-
-                # Run quantitative evaluation of labeled hpdp -- Done in automised assesment..:
-                #results = evaluate_cytokine_candidates(wf0, ts0, hpdp, k_labels, injection=label_on+1, similarity_measure='ssq', similarity_thresh=0.4, 
-                #            assumed_model_varaince=0.5, k=k_SD_eval, SD_min=SD_min_eval, saveas=saveas, verbose=False)
-
-                possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,saveas=saveas, similarity_measure='ssq',
-                                        similarity_thresh=0.3, assumed_model_varaince=0.5, verbose=True, return_candidates=True)
-                k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
-                if k_candidate != 'None':
-                    cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
-            if k_candidate is not None:
-                np.save(path_to_cytokine_candidate, cytokine_candidates)
-            '''
         # ************************************************************
         # ******** Look for responders using hpdp-cluster ************
         # ************************************************************
