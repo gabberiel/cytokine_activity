@@ -19,7 +19,7 @@ start_string = "\\22_dec_30k_ampthresh2"
 
 end_string = 'auto_assesment.npy' 
 # ************* Interesting recordings: *********************
-#Empty string:'' will take all saved files into consideration, 'R10' the cytokine injections and 'R12' the saline injection.
+# An empty string:'', will take all saved files into consideration. 'R10' the cytokine injections and 'R12' the saline injection.
 # If a specific recording is of interest then this file name is given. E.g: 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08'
 
 #specify_recording = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08' 

@@ -7,6 +7,8 @@ from event_rate_first import get_event_rates
 # VERISON USED FOR ARAMS CODE ON WAVEFORM DATA
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
+    TODO : Fix title/axes..
+    
     Takes (resolution x resolution) samples from grid in latent space and plots the decoded x-mean.
     We assume x ~ N(mu_x,I). The functions then does as follows:
         * sample z. (takes values in evenly spaced grid.)
@@ -67,7 +69,8 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=Non
         ax.spines['bottom'].set_visible(ax.is_last_row())
         ax.spines['left'].set_visible(ax.is_first_col())
         ax.spines['right'].set_visible(ax.is_last_col())
-    plt.savefig(saveas, dpi=150)
+    if saveas is not None:
+        plt.savefig(saveas, dpi=150)
     #plt.title('Decoded Latent Space')
     if verbose==1:
         plt.show()
@@ -144,7 +147,6 @@ def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     '''
     num_wf = waveforms.shape[0]
     wf_dim = waveforms.shape[-1]
-    cols = ['r','b',]
     if labels is not None:
         t_axis = np.arange(0,3.5,3.5/wf_dim)
 
@@ -193,14 +195,14 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
     time = np.arange(0,3.5,3.5/dim_of_waveform)
 
     #plt.figure()
-    plt.plot(time,x.reshape((dim_of_waveform,)),color = (0,0,0),lw=1,label='$x$')
-    plt.plot(time,x_rec.reshape((dim_of_waveform,)),color = (1,0,0),lw=1,label='$\mu_x$')
     for i in range(n):
         x_sample = np.random.multivariate_normal(x_rec.reshape((dim_of_waveform,)),np.eye(dim_of_waveform)*var)
         if i==0: # Allow for one label for all sampled waveforms. -- Does not seem to work...
-            plt.plot(time,x_sample,color = (0.1,0.1,0.1),lw=0.3, label='$x_{sim}$')
+            plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5, label='$x_{sim}$')
         else:
-            plt.plot(time,x_sample,color = (0.1,0.1,0.1),lw=0.3) #, label='_nolegend_')
+            plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5) #, label='_nolegend_')
+    plt.plot(time,x.reshape((dim_of_waveform,)),color = (0,0,0),lw=1,label='$x$')
+    plt.plot(time,x_rec.reshape((dim_of_waveform,)),color = (1,0,0),lw=1,label='$\mu_x$')
     plt.xlabel('Time $(ms)$')
     plt.ylabel('Voltage $(\mu V)$')
     plt.title('Model Assessment: Simulating $x \sim \mathcal{N}(\mu_x,0.5 \mathcal{I} )$')
@@ -255,8 +257,8 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
     #plt.figure()
     if show_clustered:
         plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
-        plt.plot(time,median_wf,color = (0.1,0.1,0.1),lw=1, label='Mean')
-        plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
+        plt.plot(time,median_wf,color = (1,0,0),lw=1, label='Mean')
+        plt.plot(time,waveforms[candidate_idx,:],color = (0.1,0.1,0.1),lw=1, label='Candidate')
     else:    
         plt.plot(time,median_wf,lw=1, label='median cluster '+str(cluster))
         #plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')

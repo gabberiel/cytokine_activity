@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from os import path, scandir
 import preprocess_wf 
-from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD 
+from main_functions import load_waveforms, load_timestamps, get_pdf_model
 from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
 from event_rate_first import get_ev_labels, get_event_rates,delta_ev_measure
 from plot_functions_wf import *
@@ -40,7 +40,7 @@ view_GD_result = False # This reqires user to give input if to continue the scri
 matlab_directory = '../matlab_files'
 
 start_string = "21_dec_20k_ampthresh2"
-
+# '22_dec_30k_ampthresh2'
 #Interesting recordings: 
 matlab_file = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08' # 'R10'  / 'R12' for all case/control
 #matlab_file = 'R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05' # 'R10'  / 'R12' for all case/control
@@ -51,7 +51,10 @@ path_to_matlab_wf = matlab_directory + '/wf' + matlab_file
 path_to_matlab_ts = matlab_directory + '/ts' + matlab_file
 
 # tf weight-file:
-path_to_model_weights = 'models/cvae_27nov_deleteme'
+#unique_string_for_figs = unique_start_string + matlab_file.replace('.','_') # '.' not allowed in plt.savefig.. 
+
+unique_string_for_run = start_string+matlab_file
+path_to_model_weights =  'models/'+unique_string_for_run
 
 unique_string_for_run = start_string + matlab_file
 unique_for_figs = start_string + matlab_file.replace('.','_')
@@ -62,18 +65,20 @@ plot_ev_stats = False
 saveas_ev_stats = 'figures_tests/event_rate_stats/' + unique_for_figs
 
 plot_simulatated_path_from_model = False
-saveas_simulatated_path_from_model = 'figures_tests/model_assessment/' + unique_for_figs
+saveas_simulatated_path_from_model = 'figures_tests/model_assessment/' + unique_for_figs + '500'
 
 view_vae_result = False
 saveas_vae_result = 'figures_tests/encoded_decoded/' + unique_for_figs
 
-plot_wf_and_ev_for_the_different_ev_labels = True
+plot_wf_and_ev_for_the_different_ev_labels = False
 saveas_wf_and_ev_for_the_different_ev_labels = 'figures_tests/event_rate_labels/' + unique_for_figs
 
 plot_acf_pacf = True
 savefig_acf_pacf = 'figures_tests/acf_pacf/' + unique_for_figs
 
-plot_test_of_test_statistic = True
+
+#************
+plot_test_of_test_statistic = False # OLD
 savefig_test_of_test_statistic = 'figures_tests/test_statistic/' +  unique_for_figs
 
 
@@ -159,7 +164,7 @@ if plot_ho_EVs:
         bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
         event_rates, real_clusters = get_event_rates(ts_ho,bool_labels,bin_width=1,consider_only=1)
         delta_ev, ev_stats = delta_ev_measure(event_rates)#,timestamps=ts_ho)
-        ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
+        #ev_labels = get_ev_labels(delta_ev,ev_stats,n_std=1)
         plot_correlated_wf(i,wf_ho,bool_labels,threshold,saveas=saveas+'_wf'+str(i),verbose=verbose_main)
         plot_event_rates(event_rates,ts_ho,noise=None,conv_width=20,saveas=saveas+'_ev'+str(i), verbose=verbose_main) 
 
@@ -171,7 +176,7 @@ print()
 print('*********************** Tensorflow Blaj *************************************')
 print()
 
-encoder,decoder,cvae = train_model(wf_ho, nr_epochs=0, batch_size=128, path_to_weights=path_to_model_weights, 
+encoder,decoder,cvae = get_pdf_model(wf_ho, nr_epochs=0, batch_size=128, path_to_weights=path_to_model_weights, 
                                         continue_train=False, verbose=1, ev_label=ev_label_ho)
 print()
 print('******************************************************************************')
@@ -189,7 +194,7 @@ if plot_simulatated_path_from_model:
         x = wf_ho[jj,:].reshape((1,141))
         label = ev_label_ho[jj,:].reshape((1,3))
 
-        plot_simulated(cvae,x,ev_label=label,n=3,var=0.5, saveas=saveas, verbose=verbose_main)
+        plot_simulated(cvae,x,ev_label=label,n=100,var=0.5, saveas=saveas, verbose=verbose_main)
 
     print('Done.')
 
@@ -215,8 +220,22 @@ if plot_wf_and_ev_for_the_different_ev_labels:
     idx_increase_after_second = np.where(ev_labels[1,:]==1)
     idx_constant_throughout = np.where(ev_labels[2,:]==1)
     
-    print(idx_increase_after_first[0][100:300:100])
-    saveas = saveas_wf_and_ev_for_the_different_ev_labels + '_first_n_std_1'
+    #print(idx_increase_after_first[0][100:300:100])
+    for cluster in [0,1]:
+        idx_increase = np.where(ev_labels[cluster,:]==1)
+        saveas = saveas_wf_and_ev_for_the_different_ev_labels + 'cluster_' + str(cluster)
+        print(f'plotting wf and ev for cluster : {cluster}')
+        for i in idx_increase[0][0:30:10]:
+            correlations = wf_correlation(i,waveforms)
+            bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
+            event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
+            delta_ev, ev_stats = delta_ev_measure(event_rates)
+            #ev_labels,_ = get_ev_labels(waveforms,timestamps,threshold=similarity_thresh,saveas=path_to_EVlabels,similarity_measure=similarity_measure, assumed_model_varaince=assumed_model_varaince,
+            #                                            n_std_threshold=n_std_threshold)
+            plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+str(i)+'_wf',verbose=verbose_main )
+            plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=verbose_main)
+            
+    '''
     for i in idx_increase_after_first[0][100:300:100]: #range(20,100,20):
         correlations = wf_correlation(i,waveforms)
         bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
@@ -238,7 +257,7 @@ if plot_wf_and_ev_for_the_different_ev_labels:
         #                                            n_std_threshold=n_std_threshold)
         plot_correlated_wf(i,waveforms,bool_labels,threshold,saveas=saveas+str(i)+'_wf',verbose=verbose_main)
         plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+str(i)+'_ev', verbose=verbose_main) 
-
+    '''
 
 
 # Assming we have loaded the standardised waveforms : std_waveforms
@@ -252,16 +271,16 @@ if plot_wf_and_ev_for_the_different_ev_labels:
 if plot_acf_pacf:
     i=0
     saveas = savefig_acf_pacf
-    for j in range(1000,2000,300):
+    print()
+    print(f'Plotting ACF and PACF...')
+    for j in range(0,300,100):
         fig, (ax0, ax1, ax3) = plt.subplots(ncols=3, constrained_layout=True,figsize=(12,3))
-        print(j)
         plot_acf(waveforms[j,:],ax=ax0)
         plot_pacf(waveforms[j,:],ax=ax1)
         ax3.plot(waveforms[j,:])
         i+=1
         plt.savefig(saveas+'_wf_'+str(j)+'.png',dpi=150)
-        plt.close()
-        if verbose_main is True:
+        if verbose_main:
             plt.show()
 
 # TODO : -Fix plots of encoded/decoded Latent space.
@@ -272,6 +291,8 @@ if plot_acf_pacf:
 #plot_test_of_test_statistic = False
 #savefig_test_of_test_statistic = 'figures_tests/test_statistic/26_nov_'
 if plot_test_of_test_statistic:
+    print()
+    print(f'Plotting old test')
     for c in [1021,2312]:
         saveas = savefig_test_of_test_statistic
         test_stat = waveforms - waveforms[c,:]

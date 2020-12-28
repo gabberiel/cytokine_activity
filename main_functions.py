@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from vae_dense_wf import get_vae 
 from cvae_dense_wf import get_cvae
+from plot_functions_wf import plot_encoded
 #from event_rate_first import evaluate_cytokine_candidates
 #from plot_functions_wf import evaluate_hpdp_candidates
 #from plot_functions_wf import plot_correlated_wf
@@ -71,7 +72,7 @@ def load_timestamps(path_to_ts,matlab_key,verbose=1):
     return timestamps
 
 
-def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_weights=None, 
+def get_pdf_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_weights=None, 
                 continue_train=False, verbose=1,ev_label=None):
     """
     Initiates or continues training of vae-model depending on existance of path_to_weights-file.
@@ -148,47 +149,70 @@ def train_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_w
     else:
          return encoder,decoder,cvae 
 
-def __cluster__(vae,x,eta,gamma,m):
-    ''' The Gradient decent loop used in "pdf_GD()". '''
-    count = 0
-    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
-    for i in range(m):
-        # Estimate time of loop, (ETA).
-        if i==0:
-            t0 = time.time()
-        elif i%100==0:
-            count += 1
-            ti = time.time()
-            ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
-            print(f'Running pdf-GD, iteration={i}')
-            print(f'ETA: {round(ETA_t)} seconds..')
+
+
+def run_pdf_GD(wf_ho,cvae,ev_label_ho,labels_to_evaluate=[0,1], m=100, gamma=0.01, eta=0.01,matlab_file='',
+                unique_string_for_figs='', path_to_hpdp='',verbose=False,
+                downsample_threshold=3000,view_GD_result=False,encoder=None):
+    '''
+    Function to be called for running grandient decent of pdf using cvae.
+
+    Encoder needed if view_GD_results is True.
+    '''
+    #label_on = 1
+    hpdp_list = []
+    #found_ho_wf = number_of_occurances[:-1]>0 # TODO: Not used, delete? 
+    for label_on in labels_to_evaluate: # Either 0, 1 (or 2)
+        waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
+
+        print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
+        if waveforms_increase.shape[0] == 0:
+            waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+            ev_label_corr_shape[:,label_on] = 1
+            print('*************** OBS ***************')
+            print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
+            print(f'This considering the recording {matlab_file}')
+        elif waveforms_increase.shape[0] > downsample_threshold: # Speed up process during param search..
+            waveforms_increase = waveforms_increase[::4,:]
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+            ev_label_corr_shape[:,label_on] = 1
+        else:
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
+            ev_label_corr_shape[:,label_on] = 1
+
+        hpdp = __pdf_GD__(cvae, waveforms_increase,ev_label=ev_label_corr_shape, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp+str(label_on),verbose=1)
+        hpdp_list.append(hpdp)
+        if view_GD_result:
+            save_figure = 'figures/hpdp/' + unique_string_for_figs
+            print(f'Visualising decoded latent space of hpdp...')
             print()
+            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape) 
+    if view_GD_result:       
+        continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
+        all_fine = False
+        while all_fine==False:
+            if continue_to_Clustering=='no':
+                exit()
+            elif continue_to_Clustering=='yes':
+                print('Continues to "run_GD"')
+                all_fine = True
+            else:
+                continue_to_Clustering = input('Invalid input, continue to Clustering? (yes/no) :')
+    return hpdp_list
 
-        #x_hat = x + eta*tf.random.normal(shape=x.shape)
-        x_hat = x + eta * np.random.normal(size=x.shape)
-        x_rec = vae.predict(x_hat)
-        x = x - gamma*(x_hat-x_rec)
-
-    return x
-
-
-def run_pdf_GD():
+def __pdf_GD__(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
     '''
-    '''
-
-def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
-    '''
-    Gradient decent of approximate input probability space using VAEs.
-    I.e Normal approximation of input distribution.
+    Gradient decent of approximate probability ditribution using VAEs.
 
     If path_to_hpdp exists then GD is continued using the saved data.
 
-    OBS : hpdp = "High probability data-points.
+    Note : hpdp = "High probability data-points".
 
     Parameters
     ----------
     vae : kera.Model class_instance
-        Full trained VAE model. 
+        Fully trained VAE model. 
     data_points : (number_of_wf, dim_of_wf) array_like
         Only used to initiate GD if "path_to_hpdp" does not exist.
     ev_labels : (number_of_wf, 3) array_like or None
@@ -268,7 +292,9 @@ def pdf_GD(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to
         return data_points
 
 def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
-    ''' The Gradient decent loop used in "pdf_GD()". '''
+    ''' 
+    CVAE version..
+    The Gradient decent loop used in "__pdf_GD__()". '''
     count = 0
     assert np.isnan(np.sum(x))==False, 'Nans in input data..'
     for i in range(m):
@@ -287,6 +313,32 @@ def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
         #x_hat = x + eta*tf.random.normal(shape=x.shape)
         x_hat = x + eta * np.random.normal(size=x.shape)
         x_rec = cvae.predict([x_hat,label])
+        x = x - gamma*(x_hat-x_rec)
+
+    return x
+
+def __cluster__(vae,x,eta,gamma,m):
+    '''
+    VAE-version...
+    The Gradient decent loop used in "__pdf_GD__()". 
+    '''
+    count = 0
+    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
+    for i in range(m):
+        # Estimate time of loop, (ETA).
+        if i==0:
+            t0 = time.time()
+        elif i%100==0:
+            count += 1
+            ti = time.time()
+            ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
+            print(f'Running pdf-GD, iteration={i}')
+            print(f'ETA: {round(ETA_t)} seconds..')
+            print()
+
+        #x_hat = x + eta*tf.random.normal(shape=x.shape)
+        x_hat = x + eta * np.random.normal(size=x.shape)
+        x_rec = vae.predict(x_hat)
         x = x - gamma*(x_hat-x_rec)
 
     return x
@@ -401,10 +453,10 @@ if __name__ == "__main__":
         plt.show()
     # ************************************************************************
 
-    encoder,decoder,vae = train_model(waveforms[:1000], nr_epochs=5, batch_size=128, path_to_weights=path_to_weights, 
+    encoder,decoder,vae = get_pdf_model(waveforms[:1000], nr_epochs=5, batch_size=128, path_to_weights=path_to_weights, 
                                         continue_train=False, verbose=1)
     
     
     path_to_hpdp = "numpy_hpdp/second_run"
     
-    hpdp = pdf_GD(vae, waveforms[:1000], m=100, gamma=0.01, eta=0.01, path_to_hpdp=path_to_hpdp,verbose=1)
+    hpdp = __pdf_GD__(vae, waveforms[:1000], m=100, gamma=0.01, eta=0.01, path_to_hpdp=path_to_hpdp,verbose=1)

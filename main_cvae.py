@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from os import path, scandir
 import preprocess_wf 
-from main_functions import load_waveforms, load_timestamps, train_model, pdf_GD 
+from main_functions import load_waveforms, load_timestamps, get_pdf_model,run_pdf_GD  
 from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
 from event_rate_first import get_ev_labels, get_event_rates
 from plot_functions_wf import *
@@ -53,7 +53,7 @@ start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
-m=500 # Number of steps in pdf-gradient decent
+m=120 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
@@ -62,8 +62,8 @@ continue_train = False
 nr_epochs = 40 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
-view_vae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
+view_cvae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
+view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candidate CAP manually inspecting plots.
 run_automised_assesment = True # Cluster and evaluate hpdp by defined quantitative measure.
 
@@ -99,14 +99,14 @@ verbose_main = 1
 #unique_start_string = '15_dec_30000_max200_ampthresh5_new'
 #unique_start_string = '17_dec_30000_max500_clean'
 
-unique_start_string = '22_dec_30k_ampthresh2'
-#unique_start_string = '21_dec_30k_paramsearch'
+unique_start_string = '22_dec_30k_ampthresh2' # Fine for results? 
+#unique_start_string = '21_dec_30k_paramsearch' # Fine for results? 
 
 #unique_start_string = 'deleteme'
 # find all recordingsin specified directory: 
 #directory = '../matlab_saline'
 directory = '../matlab_files'
-start_string = '\\ts' #R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 for entry in scandir(directory):
     if entry.path.startswith(directory+start_string): # Find unique recording string. R10 for all cytokine injections, R12 for saline.
         #matlab_file = entry.path[19:-4] # Find unique recording string'
@@ -139,6 +139,7 @@ for entry in scandir(directory):
         # ************************************************************
         # Cut first and last part of recording to ensure stable "sleep-state" during recording.
         # Furthermore a downsampling is applied to speed up training. 
+
         wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps, start_time=10,end_time=90, 
                                                     dim_of_wf=141,desired_num_of_samples=None) # No downsampling. Used for evaluation 
         
@@ -151,6 +152,9 @@ for entry in scandir(directory):
         print(f'Shape after shape-preprocessing : {waveforms.shape}')
         # ****** Standardise waveforms for more stable training. ********
         if standardise_waveforms:
+            print()
+            print(f'Standardises waveforms...')
+            print()
             waveforms = preprocess_wf.standardise_wf(waveforms)
             wf0 = preprocess_wf.standardise_wf(wf0)
 
@@ -187,14 +191,14 @@ for entry in scandir(directory):
             print()
             print('*********************** Tensorflow Blaj *************************************')
             print()
-            encoder,decoder,cvae = train_model(wf_ho, nr_epochs=nr_epochs, batch_size=batch_size, path_to_weights=path_to_weights, 
+            encoder,decoder,cvae = get_pdf_model(wf_ho, nr_epochs=nr_epochs, batch_size=batch_size, path_to_weights=path_to_weights, 
                                                     continue_train=continue_train, verbose=1, ev_label=ev_label_ho)
             print()
             print('******************************************************************************')
             print()
 
-        #view_vae_result = False # This reqires user to give input if to continue the script to GD or not.
-        if view_vae_result:
+        #view_cvae_result = False # This reqires user to give input if to continue the script to GD or not.
+        if view_cvae_result:
             save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
             
             plot_decoded_latent(decoder,saveas=save_figure+'_decoded_constant',verbose=verbose_main,ev_label=np.array((0,0,1)).reshape((1,3)))
@@ -215,12 +219,15 @@ for entry in scandir(directory):
 
 
         # ************************************************************
-        # ** Perform GD on pdf to find high prob. data-points (hpdp) *
+        # *  Perform GD on pdf to find high prob. data-points (hpdp) *
         # ************************************************************  
         if run_GD:
             print()
             print('Running pdf_GD to get hpdp...')
             print()
+            hpdp_list = run_pdf_GD(wf_ho,cvae,ev_label_ho, labels_to_evaluate=[0,1], m=m, gamma=gamma, eta=eta,matlab_file=matlab_file,
+                unique_string_for_figs=unique_string_for_figs, path_to_hpdp=path_to_hpdp,verbose=False,view_GD_result=view_GD_result,encoder=encoder)
+            '''
             label_on = 1
             hpdp_list = []
             found_ho_wf = number_of_occurances[:-1]>0 # TODO: Not used, delete? 
@@ -261,6 +268,7 @@ for entry in scandir(directory):
                         all_fine = True
                     else:
                         continue_to_Clustering = input('Invalid input, continue to Clustering? (yes/no) :')
+            '''
         else:
             print()
             print('Skipps over pdf_GD...')
