@@ -2,29 +2,6 @@ import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-def standardise_wf(waveforms):
-    '''
-    OBSOBOBS -- old version. NOW in preprocess_wf
-    Computes the correlation between the different standardised waveforms
-
-    Parameters
-    ----------
-        waveforms : (number_of_waveforms, size_of_waveform) array_like
-            Original wavefroms
-    Retruns
-    ----------
-        std_waveforms : (number_of_waveforms, size_of_waveform) array_like
-            Standardised wavefroms
-    '''
-    warnings.warn('Old version of function standardise_wf() is being used. Use version in preprocess_wf.py instead.',DeprecationWarning)
-
-
-    mean = np.mean(waveforms, axis=-1)
-    std  = np.std(waveforms, axis=-1)  
-    waveforms = waveforms - mean[:,None]
-    std_waveforms = waveforms/std[:,None]
-    return std_waveforms
-
 def wf_correlation(main_idx,std_waveforms):
     '''
     Waveform similarity measure based on correlation. 
@@ -207,7 +184,7 @@ if __name__ == "__main__":
 
     import numpy as np
     from scipy.io import loadmat
-    from event_rate_first import * 
+    from event_rate_funs import * 
     import matplotlib.pyplot as plt
     import time
     print()
@@ -235,9 +212,9 @@ if __name__ == "__main__":
         first_injection_time = 30*60
         second_injection_time = 60*60
 
-        pre_injection = wavefroms[timestamps[:,0] < first_injection_time] 
-        past_first = wavefroms[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] 
-        past_second = wavefroms[timestamps[:,0] > second_injection_time] 
+        pre_injection = waveforms[timestamps[:,0] < first_injection_time] 
+        past_first = waveforms[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] 
+        past_second = waveforms[timestamps[:,0] > second_injection_time] 
 
 
     # Create test linear timestamps

@@ -7,10 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from os import path, scandir
 import preprocess_wf 
-from main_functions import load_waveforms, load_timestamps, get_pdf_model,run_pdf_GD  
+from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model,run_pdf_GD  
 from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
-from event_rate_first import get_ev_labels, get_event_rates
-from plot_functions_wf import *
+from event_rate_funs import get_ev_labels, get_event_rates
+from plot_functions_wf import plot_decoded_latent
 from evaluation import run_DBSCAN_evaluation, run_evaluation, run_visual_evaluation
 from scipy.spatial.distance import cdist
 
@@ -34,36 +34,36 @@ assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity mea
 # Setting the assumed model variance to 0.5 as in CVAE yeild un unsufficient number of similar CAPs.. Thus set a bit higher for labeling..
 
 # Should maby fix such that threshold is TNF/IL-1beta specific since there is substantially more CAPs labeles as increase after TNF injection.. 
-# This however differs quite a lot from case to case..
+# This. however, differs quite a lot from one recording to another..
 # Otherwise maby 0.2..?
 
-n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even-rate need to increase for a candidate-CAP to be labeled as "likely to encode cytokine-info".
+n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even-rate need to increase after injection for a candidate-CAP to be labeled as "likely to encode cytokine-info".
 
 #ev_threshold = 0.02 # The minimum mean event rate for each observed CAP for it to be considered in the analysis. (Otherwise regarded as noise..)
 #ev_threshold = 0.005 # Downsample=4 # Mabe good with 0.005 for aprox 37000 observations..
 
 # downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
-desired_num_of_samples = 30000 # Subsample using 
+desired_num_of_samples = 40000 # Subsample using 
 max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro Volts)
 min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro Volts)
-ev_thresh_procentage = 0.005 #  *100 => %
+ev_thresh_fraction = 0.005 # Fraction of total event-rate.
 
 # Time interval of recording used for training:
 start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
-m=120 # Number of steps in pdf-gradient decent
+m=700 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
 # VAE training params:
 continue_train = False
-nr_epochs = 40 # if all train data is used -- almost no loss-decrease after 100 batches..
+nr_epochs = 100 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
 view_cvae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
+view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
 plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candidate CAP manually inspecting plots.
 run_automised_assesment = True # Cluster and evaluate hpdp by defined quantitative measure.
 
@@ -102,11 +102,12 @@ verbose_main = 1
 unique_start_string = '22_dec_30k_ampthresh2' # Fine for results? 
 #unique_start_string = '21_dec_30k_paramsearch' # Fine for results? 
 
-#unique_start_string = 'deleteme'
+# unique_start_string = 'deleteme_28dec' 
+unique_start_string = '7_jan_40k_100epochs'
 # find all recordingsin specified directory: 
 #directory = '../matlab_saline'
 directory = '../matlab_files'
-start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+start_string = '\\tsR10_Exp2' #_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 for entry in scandir(directory):
     if entry.path.startswith(directory+start_string): # Find unique recording string. R10 for all cytokine injections, R12 for saline.
         #matlab_file = entry.path[19:-4] # Find unique recording string'
@@ -178,7 +179,7 @@ for entry in scandir(directory):
         print(f'Number of wf which ("icreased after first","increased after second", "constant") = {np.sum(ev_labels,axis=1)} ')
 
         # ho := High Occurance, ts := timestamps
-        wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=ev_thresh_procentage,ev_labels=ev_labels,ev_thresh_procentage=True)
+        wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=ev_thresh_fraction,ev_labels=ev_labels,ev_thresh_procentage=True)
 
         print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
 

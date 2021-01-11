@@ -2,11 +2,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf 
-from main_functions import load_timestamps,load_waveforms
+from load_and_GD_funs import load_timestamps,load_waveforms
 from os import path, scandir
 from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
-from event_rate_first import get_ev_labels, get_event_rates
-from plot_functions_wf import plot_correlated_wf, plot_event_rates, plot_encoded
+from event_rate_funs import get_ev_labels, get_event_rates
+from plot_functions_wf import plot_similar_wf, plot_event_rates, plot_encoded,plot_waveforms
 from scipy.spatial.distance import cdist
 from sklearn.cluster import KMeans, DBSCAN
 
@@ -20,8 +20,9 @@ def run_visual_evaluation(waveforms,timestamps,hpdp_list,encoder,labels_to_evalu
         hpdp = hpdp_list[label_on]
         bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
         saveas = 'figures/hpdp/'+unique_string_for_figs
-        plot_correlated_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
-
+        title = 'CAPs With Identical Labels'
+        #plot_similar_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
+        plot_waveforms(hpdp,saveas=saveas+'_wf'+str(label_on),verbose=True,title=title)
         #waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
         ##print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
         #if waveforms_increase.shape[0] == 0:
@@ -137,9 +138,10 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
                 added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
                 bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
         event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
+        wf_title = 'CAP-Cluster Mean'
         plt.figure(1)
-        median_wf = plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',
-                            verbose=False, show_clustered=False,cluster=cluster,return_cand=True)
+        median_wf = plot_similar_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',
+                            verbose=False, show_clustered=False,cluster=cluster,return_cand=True, title=wf_title)
         candidate_wf[cluster,:] = median_wf
         plt.figure(2)
         bool_labels[bool_labels==True] = cluster
@@ -439,7 +441,7 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
     '''
     Called by "find_responers()" 
 
-    Plots event rate for "cytokine_candidate"-waveform. This needs the matlab-recording to be specified by the.
+    Plots event rate for "cytokine_candidate"-waveform. This needs the matlab-recording to be specified.
 
     Parameters
     ----------
@@ -465,7 +467,6 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
                 wf0 = load_waveforms(path_to_wf,'waveforms', verbose=0) # Load the candidate's corresponding matlab file 
                 ts0 = load_timestamps(path_to_ts,'timestamps',verbose=0)
 
-            cluster='main'
             wf0,ts0 = preprocess_wf.get_desired_shape(wf0,ts0,start_time=10,end_time=90,dim_of_wf=141,desired_num_of_samples=None)
             wf0 = preprocess_wf.standardise_wf(wf0)
             
@@ -483,20 +484,26 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
                 added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
                 bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
             event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
+            # Plot titles etc.
+            wf_title = 'Candidate-CAP'
+            overall_ev_title = 'Event-Rate for all Observed CAPs'
+            cluster_ev_title = 'Event-Rate for Candidate-CAP'
             plt.figure(1)
-            plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=savefig+'Main_cand'+'_wf',
-                                verbose=False, show_clustered=False,cluster=cluster)
+            plot_similar_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=savefig+'Main_cand'+'_wf',
+                                verbose=False, show_clustered=False,cluster='Mean',title=wf_title)
             plt.figure(2)
-            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'Main_cand'+'_ev', verbose=False,cluster=cluster) 
+            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'Main_cand'+'_ev', verbose=False,title=cluster_ev_title) 
             plt.figure(3)
             event_rates, _ = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
-            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'overall_EV', verbose=False) 
+            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'overall_EV', verbose=False,title=overall_ev_title ) 
 
             plt.show()
 
 def eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,similarity_measure='ssq',
                                         similarity_thresh=0.4,assumed_model_varaince=0.5,saveas='Not_specified'):
     '''
+    Use candidate CAP to find similar waveforms in different recordings. 
+    
     '''
     __evaluate_responder__(candidate_CAP, matlab_directory, '', similarity_measure=similarity_measure, 
                         similarity_thresh = similarity_thresh, assumed_model_varaince=assumed_model_varaince,saveas=saveas)
@@ -523,7 +530,7 @@ def run_DBSCAN_evaluation(wf_ho,wf0,ts0,ev_label_ho,labels_to_evaluate=[0,1], sa
         elif waveforms_increase.shape[0] > 3000: # Downsample to speed up process during param search..
             waveforms_increase = waveforms_increase[::4,:]
         #bool_labels = np.ones((waveforms_increase.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
-        #plot_correlated_wf(0,waveforms_increase,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
+        #plot_similar_wf(0,waveforms_increase,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
         #dist_vec = cdist(waveforms_increase, waveforms_increase, 'euclid')
         #plt.hist(dist_vec)
         #plt.show()

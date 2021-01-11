@@ -148,7 +148,7 @@ def get_cvae(waveform_dim,latent_dim,label_dim=3):
     
     reconstruction = decoder([encoder([encoder_input,inp_label])[2],inp_label])
     cvae = keras.Model(inputs=[encoder_input,inp_label], outputs=reconstruction, name='cvae')
-    cvae.add_loss(encoder.losses)
+    cvae.add_loss(encoder.losses) # Add KL-loss from encoder
     optimizer = tf.keras.optimizers.Adam()
     #__reconstruction_loss__ = tf.keras.losses.MeanSquaredError(reconstruction, inp_layer)
     #cvae.add_loss(__reconstruction_loss__)

@@ -2,13 +2,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf
 from wf_similarity_measures import wf_correlation, label_from_corr, similarity_SSQ
-from event_rate_first import get_event_rates
+from event_rate_funs import get_event_rates
 
-# VERISON USED FOR ARAMS CODE ON WAVEFORM DATA
+SMALL_SIZE = 20
+MEDIUM_SIZE = 22
+BIGGER_SIZE = 24
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+plt.rc("figure", figsize=(10, 8))
+
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
     TODO : Fix title/axes..
-    
+
     Takes (resolution x resolution) samples from grid in latent space and plots the decoded x-mean.
     We assume x ~ N(mu_x,I). The functions then does as follows:
         * sample z. (takes values in evenly spaced grid.)
@@ -108,8 +119,8 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
     #plt.figure(figsize=(10, 10))
     plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
     #plt.colorbar()
-    plt.xlabel("$z_1$")
-    plt.ylabel("$z_2$")
+    plt.xlabel("$\mu_{1}$")
+    plt.ylabel("$\mu_{2}$")
     if title is not None:
         plt.title(title)
     if saveas is not None:
@@ -130,7 +141,7 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
     #plt.figure(figsize=(10, 10))
     plt.plot(timeline, rawrec)#, c=labels)
     plt.xlabel("Time (min)")
-    plt.ylabel("Voltage ($\mu V$)")
+    # plt.ylabel("Voltage ($\mu V$)")
     if title is not None:
         plt.title(title)
     if saveas is not None:
@@ -156,9 +167,9 @@ def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     #plt.plot(time,np.median(waveforms[ind,:,0],axis=0),color = (0.2,0.2,0.2),lw=1)
     else: 
         t_axis = np.arange(0,3.5,3.5/wf_dim)*np.ones((num_wf,1))
-        plt.plot(t_axis.T,waveforms.T)
+        plt.plot(t_axis.T,waveforms.T, color =  (0.2,0.6,0.6),lw=0.5)
     plt.xlabel('Time $(ms)$')
-    plt.ylabel('Voltage $(\mu V)$')
+    # plt.ylabel('Voltage $(\mu V)$')
     if title is not None:
         plt.title(title)
     if saveas is not None:
@@ -166,7 +177,7 @@ def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     if verbose==True:
         plt.show()
 
-def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose=False):
+def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose=False,title=None):
     '''
     Plots input waveform together with the corresponding predicted mean using the cvae
     and draws n samples from the corresponding distribution: x_sim ~ N(mean,var*I)
@@ -195,17 +206,25 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
     time = np.arange(0,3.5,3.5/dim_of_waveform)
 
     #plt.figure()
-    for i in range(n):
+    if n==1:
         x_sample = np.random.multivariate_normal(x_rec.reshape((dim_of_waveform,)),np.eye(dim_of_waveform)*var)
-        if i==0: # Allow for one label for all sampled waveforms. -- Does not seem to work...
-            plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5, label='$x_{sim}$')
-        else:
-            plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5) #, label='_nolegend_')
+        plt.plot(time,x_sample,color =  (0,0,0.7),lw=1, label='$x_{sim}$')
+    else:
+        for i in range(n):
+            x_sample = np.random.multivariate_normal(x_rec.reshape((dim_of_waveform,)),np.eye(dim_of_waveform)*var)
+            if i==0: # Allow for one label for all sampled waveforms.
+                plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5, label='$x_{sim}$')
+            else:
+                plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5) #, label='_nolegend_')
+    
     plt.plot(time,x.reshape((dim_of_waveform,)),color = (0,0,0),lw=1,label='$x$')
     plt.plot(time,x_rec.reshape((dim_of_waveform,)),color = (1,0,0),lw=1,label='$\mu_x$')
     plt.xlabel('Time $(ms)$')
-    plt.ylabel('Voltage $(\mu V)$')
-    plt.title('Model Assessment: Simulating $x \sim \mathcal{N}(\mu_x,0.5 \mathcal{I} )$')
+    # plt.ylabel('Voltage $(\mu V)$')
+    if title is None:
+        plt.title('Simulating $x \sim \mathcal{N}(\mu_x,0.5 \mathcal{I} )$')
+    else:
+        plt.title(title)
     plt.legend(loc='upper right')
     if saveas is not None:
         plt.savefig(saveas,dpi=150)
@@ -213,9 +232,10 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
         plt.show()
         #plt.close()
 
-def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,show_clustered=True,cluster=None, return_cand=False):
+def plot_similar_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,
+                        show_clustered=True,cluster=None, return_cand=False, title=None):
     '''
-    Change name to plot_similar_wf or plot_clustered waveforms..
+    TODO Change name to plot_similar_wf or plot_clustered waveforms..
     Plots wavefroms specified as True in bool_label. candidate_idx gives index for the Candidate-wavform under consideration.
 
     Will show plot if verbose is Ture.
@@ -253,19 +273,22 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         #print('Plotting 500...')
 
     time = np.arange(0,3.5,3.5/waveforms.shape[-1])
-    median_wf = np.mean(waveforms[bool_labels],axis=0)
+    mean_wf = np.mean(waveforms[bool_labels],axis=0)
     #plt.figure()
     if show_clustered:
         plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
-        plt.plot(time,median_wf,color = (1,0,0),lw=1, label='Mean')
+        plt.plot(time,mean_wf,color = (1,0,0),lw=1, label='Mean')
         plt.plot(time,waveforms[candidate_idx,:],color = (0.1,0.1,0.1),lw=1, label='Candidate')
     else:    
-        plt.plot(time,median_wf,lw=1, label='median cluster '+str(cluster))
+        plt.plot(time,mean_wf,lw=1, label='Cluster '+str(cluster))
         #plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
 
     plt.xlabel('Time $(ms)$')
-    plt.ylabel('Voltage $(\mu V)$')
-    plt.title('CAPs similar to "Candidate".')
+    # plt.ylabel('Voltage $(\mu V)$')
+    if title is None:
+        plt.title('CAPs similar to "Candidate".')
+    else:
+        plt.title(title)
     #plt.title(f'W.F. s.t. corr > {threshold}. candidate wf: {candidate_idx}, N_cluster = {nr_of_wf_in_cluster}')
     plt.legend(loc='upper right')
     if saveas is not None:
@@ -273,11 +296,11 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
     if verbose:
         plt.show()
     if return_cand:
-        return median_wf
+        return mean_wf
     #plt.close()
 
       
-def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True,cluster=None):
+def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True,cluster=None,title=None):
     '''
     Plots event rates by smoothing kernel average of width "conv_width".
     convolution done including boundary effects but returns vector of same size.
@@ -302,8 +325,6 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
 
-    #plt.figure()
-    #colors = ['r','k','g']
     if noise is not None:
         print('Noise...')
         for i,ev in enumerate(event_rates.T):
@@ -316,14 +337,18 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
         for i,ev in enumerate(event_rates.T):
             smothed_ev = np.convolve(ev,conv_kernel,'same')
             if cluster is not None:
-                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6, label=f'cluster {cluster}') #color=colors[i%3]
+                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6, label=f'Cluster {cluster}') #color=colors[i%3]
             else:
-                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6, label=f'cluster {i}') #color=colors[i%3]
+                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6) #, label=f'Cluster {i}') #color=colors[i%3]
     
-    plt.xlabel('Time of recording (min)')
-    plt.ylabel('Event rate (CAPs/second)') 
-    plt.title('Event Rate')
-    plt.legend() 
+    plt.xlabel('Time of Recording (min)')
+    plt.ylabel('Event-Rate (CAPs/sec)')
+    if title is None: 
+        plt.title('Event-Rate')
+    else:
+        plt.title(title)
+    if cluster is not None:
+        plt.legend() 
 
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
@@ -393,7 +418,7 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
                 bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
         event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
         plt.figure(1)
-        median_wf = plot_correlated_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',
+        median_wf = plot_similar_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',
                             verbose=False, show_clustered=False,cluster=cluster,return_cand=True)
         candidate_wf[cluster,:] = median_wf
         plt.figure(2)

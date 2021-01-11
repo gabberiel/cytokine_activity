@@ -6,7 +6,7 @@ from scipy.io import loadmat
 from vae_dense_wf import get_vae 
 from cvae_dense_wf import get_cvae
 from plot_functions_wf import plot_encoded
-#from event_rate_first import evaluate_cytokine_candidates
+#from event_rate_funs import evaluate_cytokine_candidates
 #from plot_functions_wf import evaluate_hpdp_candidates
 #from plot_functions_wf import plot_correlated_wf
 #from tensorflow.python.framework import ops
@@ -184,10 +184,11 @@ def run_pdf_GD(wf_ho,cvae,ev_label_ho,labels_to_evaluate=[0,1], m=100, gamma=0.0
         hpdp = __pdf_GD__(cvae, waveforms_increase,ev_label=ev_label_corr_shape, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp+str(label_on),verbose=1)
         hpdp_list.append(hpdp)
         if view_GD_result:
+            encoded_hpdp_title = 'Visualisation of the Latent Variable Mean.'
             save_figure = 'figures/hpdp/' + unique_string_for_figs
             print(f'Visualising decoded latent space of hpdp...')
             print()
-            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape) 
+            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title=encoded_hpdp_title) 
     if view_GD_result:       
         continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
         all_fine = False
@@ -309,6 +310,9 @@ def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
             print(f'ETA: {round(ETA_t)} seconds..')
             print()
             #assert np.isnan(np.sum(x))==False, 'NaNs in hpdp_x after GD..'
+            if np.max(x) > 20: # Fix too hopefully keep code running even if some GD diverges...
+                print('Too large value encountered for x in GD. Stops the iterations..')
+                break
 
         #x_hat = x + eta*tf.random.normal(shape=x.shape)
         x_hat = x + eta * np.random.normal(size=x.shape)
@@ -440,7 +444,7 @@ if __name__ == "__main__":
     path_to_ts = 'matlab_files/gg_timestamps.mat'
     path_to_weights = 'models/main_funs'
 
-    waveforms, mean, std = load_waveforms(path_to_wf,'waveforms',standardize=True, verbose=1)
+    waveforms, mean, std = load_waveforms(path_to_wf,'waveforms', verbose=1)
     timestamps = load_timestamps(path_to_ts,'gg_timestamps',verbose=1)
     
     
