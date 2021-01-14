@@ -43,33 +43,36 @@ n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even
 #ev_threshold = 0.005 # Downsample=4 # Mabe good with 0.005 for aprox 37000 observations..
 
 # downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
-desired_num_of_samples = 40000 # Subsample using 
-max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro Volts)
-min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro Volts)
-ev_thresh_fraction = 0.005 # Fraction of total event-rate.
+desired_num_of_samples = None #40000 # Subsample using 
+max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro-Volts)
+min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro-Volts)
+ev_thresh_fraction = 0.005 # Fraction of total event-rate used for thresholding. -- i.e 0.5%
 
 # Time interval of recording used for training:
 start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
-m=700 # Number of steps in pdf-gradient decent
+m=2000 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
 # VAE training params:
 continue_train = False
-nr_epochs = 100 # if all train data is used -- almost no loss-decrease after 100 batches..
+nr_epochs = 120 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
+# ****** If using 2D-latent space dimension: *********
 view_cvae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
 view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
 plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candidate CAP manually inspecting plots.
+# ***********************
+
 run_automised_assesment = True # Cluster and evaluate hpdp by defined quantitative measure.
 
 # Evaluation Parameters using k*max(SD_min,SD) as threshold for "significant increase in ev." 
 #SD_min_eval = 0.2 # Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
-SD_min_eval = 0.3 # Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
+SD_min_eval = 0.3 #0.3 Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
 k_SD_eval = 2.5 #2.5 # k-param in k*max(SD_min,SD) 
 
 
@@ -84,11 +87,14 @@ db_min_sample = 4 # Minimum members in neighbourhood to not be regarded as Noise
 
 standardise_waveforms = True
 verbose_main = 1
+
 # ************************************************************
 # ******************** Paths *********************************
 # ************************************************************
+
 # OBS: The string for saving tensorflow weights are not allowed to be too long.  
 # raises utf-8 encoding errors.. max ~250 characters..
+
 # **********************************************************************************
 # *********** Specify unique sting for saving files for a run: *********************
 
@@ -99,17 +105,25 @@ verbose_main = 1
 #unique_start_string = '15_dec_30000_max200_ampthresh5_new'
 #unique_start_string = '17_dec_30000_max500_clean'
 
-unique_start_string = '22_dec_30k_ampthresh2' # Fine for results? 
+#unique_start_string = '22_dec_30k_ampthresh2' # Fine for results? 
 #unique_start_string = '21_dec_30k_paramsearch' # Fine for results? 
 
-# unique_start_string = 'deleteme_28dec' 
-unique_start_string = '7_jan_40k_100epochs'
-# find all recordingsin specified directory: 
-#directory = '../matlab_saline'
+#unique_start_string = '7_jan_40k_100epochs'
+
+unique_start_string = 'finalrun_first'
+
+# ***** Specify path to directory of recordings ******* 
 directory = '../matlab_files'
-start_string = '\\tsR10_Exp2' #_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+# *****************************************************
+
+# ***** Specify the starting scaracters in filename of recordings to analyse *****
+# if "ts" is not specified, then all files will be run twise since we have one file for timestamps and one for CAP-waveform with identical names, exept the starting ts/wf.
+start_string = '\\tsR10_Exp' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+# *****************************************************
+
+number_of_skipped_files = 0
 for entry in scandir(directory):
-    if entry.path.startswith(directory+start_string): # Find unique recording string. R10 for all cytokine injections, R12 for saline.
+    if entry.path.startswith(directory+start_string): # Find unique recording string. tsR10 for all cytokine injections, tsR12 for saline. 
         #matlab_file = entry.path[19:-4] # Find unique recording string'
         matlab_file = entry.path[len(directory+'\\ts'):-len('.mat')] # extract only the matlab_file name from string.
         print()
@@ -182,8 +196,10 @@ for entry in scandir(directory):
         wf_ho, ts_ho, ev_label_ho = preprocess_wf.apply_mean_ev_threshold(waveforms,timestamps,ev_stats_tot[0],ev_threshold=ev_thresh_fraction,ev_labels=ev_labels,ev_thresh_procentage=True)
 
         print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
-
-        number_of_occurances= np.sum(ev_label_ho,axis=0)
+        #if np.sum(np.sum(ev_label_ho,axis=0)[:1]) < 500:
+        #    print('An inssuficient number of CAPs where labeled as "likely to encode cytokine". Will go to next file..')
+        #    break
+        # number_of_occurances= np.sum(ev_label_ho,axis=0)
         
         # ************************************************************
         # ******************** Train/Load model **********************
@@ -279,7 +295,10 @@ for entry in scandir(directory):
         # *********** Inference from increased EV hpdp ***************
         # ************************************************************
         if plot_hpdp_assesments:
-            cytokine_candidates = np.empty((2,waveforms.shape[-1])) # To save the main candidates
+            #cytokine_candidates = np.empty((2,waveforms.shape[-1])) # To save the main candidates
+            #print('Remove noise by reconstructing means..')
+            #wf0_means = cvae.predict([waveforms,ev_labels.T])
+            #print('Done..')
             run_visual_evaluation(wf0,ts0,hpdp_list,encoder,labels_to_evaluate=[0,1],clustering_method='k-means', db_eps=0.15, db_min_sample=5,
                      similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, unique_string_for_figs=unique_string_for_figs,
                      path_to_cytokine_candidate=path_to_cytokine_candidate)

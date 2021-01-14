@@ -185,9 +185,10 @@ def run_pdf_GD(wf_ho,cvae,ev_label_ho,labels_to_evaluate=[0,1], m=100, gamma=0.0
         hpdp_list.append(hpdp)
         if view_GD_result:
             encoded_hpdp_title = 'Visualisation of the Latent Variable Mean.'
-            save_figure = 'figures/hpdp/' + unique_string_for_figs
+            save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
             print(f'Visualising decoded latent space of hpdp...')
             print()
+            plot_encoded(encoder, wf_ho, saveas=save_figure+'_encoded_ho_wf'+str(label_on), verbose=1,ev_label=ev_label_ho,title=encoded_hpdp_title) 
             plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title=encoded_hpdp_title) 
     if view_GD_result:       
         continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
@@ -302,6 +303,9 @@ def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
         # Estimate time of loop, (ETA).
         if i==0:
             t0 = time.time()
+            if np.max(x) > 20: # Fix too hopefully keep code running even if some GD diverges...
+                print('Too large value encountered for x in GD. Stops the iterations..')
+                break
         elif i%100==0:
             count += 1
             ti = time.time()

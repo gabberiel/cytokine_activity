@@ -65,7 +65,7 @@ verbose_main=True
 plot_ev_stats = False
 saveas_ev_stats = 'figures_tests/event_rate_stats/' + unique_for_figs
 
-plot_ho_EVs = False
+plot_ho_EVs = True
 saveas_ho_EVs = 'figures_tests/event_rate_labels/' + unique_for_figs
 
 view_vae_result = False
@@ -166,14 +166,15 @@ if plot_ho_EVs:
     title_similarity = 'Similarity Cluster Given Candidate'
     saveas = saveas_ho_EVs
     for i in [10,40,80]: #range(20,100,20):
-        correlations = wf_correlation(i,wf_ho)
-        bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
+        #correlations = wf_correlation(i,wf_ho)
+        #bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
+        bool_labels,_ = similarity_SSQ(i, wf_ho, epsilon=0.1, var=0.7, standardised_input=True)
         event_rates, real_clusters = get_event_rates(ts_ho,bool_labels,bin_width=1,consider_only=1)
         delta_ev, ev_stats = delta_ev_measure(event_rates)#,timestamps=ts_ho)
         #ev_labels = get_ev_labels(delta_ev,ev_stats,n_std=1)
         plot_similar_wf(i,wf_ho,bool_labels,threshold,saveas=saveas+'_wf'+str(i),verbose=verbose_main,title=title_similarity)
-        plot_event_rates(event_rates,ts_ho,noise=None,conv_width=20,saveas=saveas+'_ev'+str(i), verbose=verbose_main) 
-
+        plot_event_rates(event_rates,ts_ho,noise=None,conv_width=100,saveas=saveas+'_ev'+str(i), verbose=verbose_main) 
+        plt.close()
 
 # ************************************************************
 # ******************** Train/Load model **********************
@@ -199,9 +200,16 @@ if plot_simulatated_path_from_model:
         saveas = saveas_simulatated_path_from_model+str(jj)
         x = wf_ho[jj,:].reshape((1,141))
         label = ev_label_ho[jj,:].reshape((1,3))
-
         plot_simulated(cvae,x,ev_label=label,n=1,var=0.5, saveas=saveas, verbose=verbose_main)
-
+        
+        #plot_simulated(cvae,x,ev_label=label,n=0,var=0.5, saveas=None, verbose=False)
+        #bool_labels,_ = similarity_SSQ(jj, wf_ho, epsilon=0.1, var=0.7, standardised_input=True)
+        #event_rates, real_clusters = get_event_rates(ts_ho,bool_labels,bin_width=1,consider_only=1)
+        #delta_ev, ev_stats = delta_ev_measure(event_rates)
+        #plot_similar_wf(jj,wf_ho,bool_labels,0.1,saveas='figures_tests/model_assessment/simulated_and_cluster_mean',cluster='mean',show_clustered=False, verbose=False,
+        #         title='Comparison of Cluster- and CVAE Mean')
+        #plt.show()
+        plt.close()
     print('Done.')
 
 
@@ -226,20 +234,19 @@ if plot_wf_and_ev_for_the_different_ev_labels:
     idx_increase_after_second = np.where(ev_labels[1,:]==1)
     idx_constant_throughout = np.where(ev_labels[2,:]==1)
     
-    #print(idx_increase_after_first[0][100:300:100])
     for cluster in [0,1]:
         idx_increase = np.where(ev_labels[cluster,:]==1)
         saveas = saveas_wf_and_ev_for_the_different_ev_labels + 'cluster_' + str(cluster)
-        print(f'plotting wf and ev for cluster : {cluster}')
+        print(f'plotting wf and ev for cluster : {cluster}') # 0="increase after first", 1="increase after second"
         for i in idx_increase[0][10,40,80]:
-            correlations = wf_correlation(i,waveforms)
-            bool_labels = label_from_corr(correlations,threshold=threshold,return_boolean=True )
+            #correlations = wf_correlation(i,waveforms)
+            bool_labels,_ = similarity_SSQ(i, waveforms, epsilon=0.1, var=0.7, standardised_input=True)
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
             delta_ev, ev_stats = delta_ev_measure(event_rates)
             #ev_labels,_ = get_ev_labels(waveforms,timestamps,threshold=similarity_thresh,saveas=path_to_EVlabels,similarity_measure=similarity_measure, assumed_model_varaince=assumed_model_varaince,
             #                                            n_std_threshold=n_std_threshold)
             plot_similar_wf(i,waveforms,bool_labels,threshold,saveas=saveas+'_wf_'+str(i),verbose=verbose_main )
-            plot_event_rates(event_rates,timestamps,noise=None,conv_width=20,saveas=saveas+'_wf_'+str(i)+'_ev', verbose=verbose_main)
+            plot_event_rates(event_rates,timestamps,noise=None,conv_width=100,saveas=saveas+'_wf_'+str(i)+'_ev', verbose=verbose_main)
             
     '''
     for i in idx_increase_after_first[0][100:300:100]: #range(20,100,20):

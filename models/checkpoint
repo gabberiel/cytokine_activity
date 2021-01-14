@@ -1,2 +1,2 @@
-model_checkpoint_path: "7_jan_40k_100epochsR12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
-all_model_checkpoint_paths: "7_jan_40k_100epochsR12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
+model_checkpoint_path: "finalrun_firstR10_7.1.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_06"
+all_model_checkpoint_paths: "finalrun_firstR10_7.1.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_06"

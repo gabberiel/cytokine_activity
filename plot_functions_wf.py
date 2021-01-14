@@ -3,18 +3,30 @@ import matplotlib.pyplot as plt
 import preprocess_wf
 from wf_similarity_measures import wf_correlation, label_from_corr, similarity_SSQ
 from event_rate_funs import get_event_rates
-
-SMALL_SIZE = 20
-MEDIUM_SIZE = 22
-BIGGER_SIZE = 24
+'''
+SMALL_SIZE = 22
+MEDIUM_SIZE = 24
+BIGGER_SIZE = 28
 plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
 plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
 plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 plt.rc("figure", figsize=(10, 8))
+'''
+
+plt.rcParams.update({'font.size': 18})
+#plt.rc('figure', titlesize=44)
+plt.rc('axes', labelsize=16)
+plt.rc('axes', titlesize=18)
+plt.rc('ytick', labelsize=11) 
+plt.rc('xtick', labelsize=11)
+plt.rc('legend', fontsize=16)    # legend fontsize
+#plt.rc(set_minor_formatter(FormatStrFormatter('% 1.2f'))
+
+#plt.rc("figure", figsize=(10, 8))
 
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
@@ -117,7 +129,10 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
     
     assert z_mean.shape[-1] == 2, 'PLOT ONLY WORK FOR 2D LATENT SPACE'
     #plt.figure(figsize=(10, 10))
-    plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
+    for label_on in [0,1]:
+        z_mean_labeled = z_mean[ev_label[:,label_on]==1]
+        plt.scatter(z_mean_labeled[:, 0], z_mean_labeled[:, 1])#, c=labels)
+    #plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
     #plt.colorbar()
     plt.xlabel("$\mu_{1}$")
     plt.ylabel("$\mu_{2}$")
@@ -218,7 +233,7 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
                 plt.plot(time,x_sample,color =  (0.6,0.6,0.6),lw=0.5) #, label='_nolegend_')
     
     plt.plot(time,x.reshape((dim_of_waveform,)),color = (0,0,0),lw=1,label='$x$')
-    plt.plot(time,x_rec.reshape((dim_of_waveform,)),color = (1,0,0),lw=1,label='$\mu_x$')
+    plt.plot(time,x_rec.reshape((dim_of_waveform,)),color = (1,0,0),lw=1,label='$\mu_{x}$')
     plt.xlabel('Time $(ms)$')
     # plt.ylabel('Voltage $(\mu V)$')
     if title is None:
@@ -230,12 +245,12 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
         plt.savefig(saveas,dpi=150)
     if verbose is True:
         plt.show()
-        #plt.close()
+    #plt.close()
 
 def plot_similar_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,
                         show_clustered=True,cluster=None, return_cand=False, title=None):
     '''
-    TODO Change name to plot_similar_wf or plot_clustered waveforms..
+    TODO Remove "Threshold" input and write more in docstring
     Plots wavefroms specified as True in bool_label. candidate_idx gives index for the Candidate-wavform under consideration.
 
     Will show plot if verbose is Ture.
@@ -280,7 +295,7 @@ def plot_similar_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,ve
         plt.plot(time,mean_wf,color = (1,0,0),lw=1, label='Mean')
         plt.plot(time,waveforms[candidate_idx,:],color = (0.1,0.1,0.1),lw=1, label='Candidate')
     else:    
-        plt.plot(time,mean_wf,lw=1, label='Cluster '+str(cluster))
+        plt.plot(time,mean_wf,lw=3) #, label='Cluster '+str(cluster))
         #plt.plot(time,waveforms[candidate_idx,:],color = (1,0,0),lw=1, label='Candidate')
 
     plt.xlabel('Time $(ms)$')
@@ -331,15 +346,15 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
             if i != noise:
                 smothed_ev = np.convolve(ev,conv_kernel,'same')
                 plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
-
+                plt.legend() 
     else:
         #print('No given noise..')
         for i,ev in enumerate(event_rates.T):
             smothed_ev = np.convolve(ev,conv_kernel,'same')
             if cluster is not None:
-                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6, label=f'Cluster {cluster}') #color=colors[i%3]
+                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=1) #, label=f'Cluster {cluster}') #color=colors[i%3]
             else:
-                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=0.6) #, label=f'Cluster {i}') #color=colors[i%3]
+                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=2) #, label=f'Cluster {i}') #color=colors[i%3]
     
     plt.xlabel('Time of Recording (min)')
     plt.ylabel('Event-Rate (CAPs/sec)')
@@ -347,8 +362,8 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
         plt.title('Event-Rate')
     else:
         plt.title(title)
-    if cluster is not None:
-        plt.legend() 
+    #if cluster is not None:
+    #    plt.legend() 
 
     if saveas is not None:
         plt.savefig(saveas, dpi=150)

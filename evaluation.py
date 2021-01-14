@@ -298,7 +298,9 @@ def __evaluate_cytokine_candidates__(waveforms, timestamps, hpdp, k_labels, inje
     print(f'Shape of test-dataset (now considers all observations): {waveforms.shape}')
     for cluster in k_clusters:
         hpdp_cluster = hpdp[k_labels==cluster]
+        # QQQ / TODO: Choose between using median and mean as main candidate.. 
         MAIN_CANDIDATE = np.median(hpdp_cluster,axis=0) # Median more robust to outlier. should however not be a problem using DBSCAN..
+        #MAIN_CANDIDATE = np.mean(hpdp_cluster,axis=0) # Mean more smooth.. 
 
         added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),waveforms),axis=0)
         assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
@@ -383,11 +385,11 @@ def find_reponders(directory, start_string='', end_string='',specify_recordings=
     '''
     Main function to evaluate the saved results given by "run_evaluation()".
 
-    Looks through the stored numpy files, saved by main-file which is the output of "run_evaluation()", to 
-    find responders to the cytokine injections. All calculations are done, this is just a file to process the results.
+    Looks through the stored numpy files, saved by a main-file which is the output of "run_evaluation()", to 
+    find responders to the cytokine injections. All calculations are done prior to this function, this is just a file to process the results.
     The files under consideration are saved in "directory" with a common start- and/or end-string, specified by input.
 
-    OBS, there is an added string e.g. 'R10', when disciminating between the files. 
+    OBS, there is an added string e.g. 'R10', when disciminating between the files. This to seperate the cytokine-cases (R10), from saline-control (R12). 
     This is set manually depending on which files that are under consideration.
     '''
     responders = [] # We will ad a 1 if a recording in specified directory corresponds to a "responder", otherwise 0. 
@@ -402,7 +404,7 @@ def find_reponders(directory, start_string='', end_string='',specify_recordings=
                     pass
                 else: # A responder was found
                     responder_bool=True
-                    recording = entry.path[len(directory+start_string):-len(end_string)] # Get the matlab_file of recording
+                    recording = entry.path[len(directory+start_string):-len(end_string)] # Get the matlab_file-string of recording
                     print('**********************************************************************')
                     print(f'The recording which was found to be a responder : {recording}')
                     print()
@@ -415,6 +417,7 @@ def find_reponders(directory, start_string='', end_string='',specify_recordings=
                             
                     else: #  >1 clusters where found with qualities as responders (most often corresponding to very similar CAPs) 
                         # Loop through the different candidate CAPs/clusters to find the one with the "clearest" result as responder.
+                        # The "clearest result" is in terms of "Total time above threshold":
                         times_above_thresh = np.zeros((len(injection_res,))) 
                         for ii,responder in enumerate(injection_res):
                             stats = responder[1]
@@ -437,7 +440,7 @@ def find_reponders(directory, start_string='', end_string='',specify_recordings=
         return responders
 
 def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
-                    similarity_measure='ssq', similarity_thresh = 0.3, assumed_model_varaince = 0.5,saveas=None):
+                    similarity_measure='ssq', similarity_thresh = 0.3, assumed_model_varaince = 0.5,saveas=None,verbose=True):
     '''
     Called by "find_responers()" 
 
@@ -496,17 +499,18 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
             plt.figure(3)
             event_rates, _ = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
             plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'overall_EV', verbose=False,title=overall_ev_title ) 
-
-            plt.show()
-
+            if verbose is True:
+                plt.show()
+            else:
+                plt.close('all')
 def eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,similarity_measure='ssq',
-                                        similarity_thresh=0.4,assumed_model_varaince=0.5,saveas='Not_specified'):
+                                        similarity_thresh=0.4,assumed_model_varaince=0.5,saveas='Not_specified',verbose=True):
     '''
     Use candidate CAP to find similar waveforms in different recordings. 
     
     '''
     __evaluate_responder__(candidate_CAP, matlab_directory, '', similarity_measure=similarity_measure, 
-                        similarity_thresh = similarity_thresh, assumed_model_varaince=assumed_model_varaince,saveas=saveas)
+                        similarity_thresh = similarity_thresh, assumed_model_varaince=assumed_model_varaince,saveas=saveas,verbose=verbose)
 
 
 
