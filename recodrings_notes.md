@@ -14,6 +14,28 @@
 
  
 ## Notes regarding parameters etc for different recordings
+
+**First final run**
+desired_num_of_samples = None # Subsample using 
+max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro-Volts)
+min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro-Volts)
+ev_thresh_fraction = 0.005 # Fraction of total event-rate used for thresholding. -- i.e 0.5%
+
+# Time interval of recording used for training:
+start_time = 15; end_time = 90
+
+# pdf-GD params: 
+run_GD = True
+m= 2000 # Number of steps in pdf-gradient decent
+gamma=0.02 # learning_rate in GD.
+eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
+
+# VAE training params:
+continue_train = False
+nr_epochs = 120 # if all train data is used -- almost no loss-decrease after 100 batches..
+batch_size = 128
+
+
 **First Testing example**
 
 **R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01**

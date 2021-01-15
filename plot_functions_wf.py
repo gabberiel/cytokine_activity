@@ -371,6 +371,18 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
         plt.show()
 
 
+def plot_amplitude_hist(waveforms, saveas=None,verbose=True):
+    
+    max_amps = np.max(waveforms,axis=1)
+    print(f'shape of max_amps: {max_amps}')
+    plt.hist(max_amps,bins=100,density=True)
+    plt.xlabel('Max Amplitude')
+    plt.title('Distribution Max amplitudes')
+    if saveas is not None:
+        plt.savefig(saveas+'tot_mean_ev',dpi=150)
+    if verbose:
+        plt.show()
+
 """
 def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', similarity_thresh=0.4, 
                             assumed_model_varaince=0.5,saveas='saveas_not_specified',verbose=False, return_candidates=False):

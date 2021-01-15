@@ -10,7 +10,7 @@ import preprocess_wf
 from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model,run_pdf_GD  
 from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
 from event_rate_funs import get_ev_labels, get_event_rates
-from plot_functions_wf import plot_decoded_latent
+from plot_functions_wf import plot_decoded_latent,plot_amplitude_hist
 from evaluation import run_DBSCAN_evaluation, run_evaluation, run_visual_evaluation
 from scipy.spatial.distance import cdist
 
@@ -43,9 +43,9 @@ n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even
 #ev_threshold = 0.005 # Downsample=4 # Mabe good with 0.005 for aprox 37000 observations..
 
 # downsample = 2 # Only uses every #th observation during the analysis for efficiency. 
-desired_num_of_samples = None #40000 # Subsample using 
-max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro-Volts)
-min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro-Volts)
+desired_num_of_samples = 20000 #40000 # Subsample using 
+max_amplitude = 1000 #500 # Remove CAPs with max amplitude higher than the specified value. (Micro-Volts)
+min_amplitude = 1 #2 # Remove CAPs with max amplitude lower than the specified value. (Micro-Volts)
 ev_thresh_fraction = 0.005 # Fraction of total event-rate used for thresholding. -- i.e 0.5%
 
 # Time interval of recording used for training:
@@ -53,7 +53,7 @@ start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
-m=2000 # Number of steps in pdf-gradient decent
+m= 0 #2000 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
@@ -68,7 +68,7 @@ view_GD_result = False # This reqires user to give input if to continue the scri
 plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candidate CAP manually inspecting plots.
 # ***********************
 
-run_automised_assesment = True # Cluster and evaluate hpdp by defined quantitative measure.
+run_automised_assesment = False # Cluster and evaluate hpdp by defined quantitative measure.
 
 # Evaluation Parameters using k*max(SD_min,SD) as threshold for "significant increase in ev." 
 #SD_min_eval = 0.2 # Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
@@ -111,6 +111,7 @@ verbose_main = 1
 #unique_start_string = '7_jan_40k_100epochs'
 
 unique_start_string = 'finalrun_first'
+unique_start_string = 'jan15_20k_amp_1_1000'
 
 # ***** Specify path to directory of recordings ******* 
 directory = '../matlab_files'
@@ -118,7 +119,7 @@ directory = '../matlab_files'
 
 # ***** Specify the starting scaracters in filename of recordings to analyse *****
 # if "ts" is not specified, then all files will be run twise since we have one file for timestamps and one for CAP-waveform with identical names, exept the starting ts/wf.
-start_string = '\\tsR10_Exp' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+start_string = '\\tsR10_Exp3' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # *****************************************************
 
 number_of_skipped_files = 0
@@ -157,7 +158,8 @@ for entry in scandir(directory):
 
         wf0,ts0 = preprocess_wf.get_desired_shape(waveforms,timestamps, start_time=10,end_time=90, 
                                                     dim_of_wf=141,desired_num_of_samples=None) # No downsampling. Used for evaluation 
-        
+        plot_amplitude_hist(waveforms)
+
         print(f'Shape before amplitude threshold : {waveforms.shape}')
         waveforms,timestamps = preprocess_wf.apply_amplitude_thresh(waveforms,timestamps,maxamp_threshold=max_amplitude, minamp_threshold=min_amplitude) # Remove "extreme-amplitude" CAPs-- otherwise risk that pdf-GD diverges..
         print()
