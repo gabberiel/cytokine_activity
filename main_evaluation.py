@@ -27,8 +27,9 @@ end_string = 'auto_assesment.npy'
 
 #specify_recording = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08' 
 specify_recording = 'R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05'
+specify_recording = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08'
 #specify_recording = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
-specify_recording = 'R10'
+specify_recording = 'R12'
 # ****************************************************************************
 # ** Find the responders from the files saved by "run_evaluation()" in main **
 # ****************************************************************************
@@ -52,7 +53,7 @@ else:
     plt.show()
 
 #for candidate_CAP in main_candidates:
-saveas2 = 'figures/cap_eval/'+'TNF_cand_13_jan'
-eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,similarity_measure='ssq',
+saveas2 = 'figures/cap_eval/'+'TNF_cand_second_18_jan'
+eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,file_name='',similarity_measure='ssq',
                                         similarity_thresh=0.3,assumed_model_varaince=0.5,saveas=saveas2,verbose=False)
 

@@ -146,8 +146,8 @@ def apply_amplitude_thresh(waveforms, timestamps, maxamp_threshold=200, minamp_t
     '''
     max_amps = np.max(waveforms, axis=1)
     min_amps = np.min(waveforms, axis=1)
-    keep_idx = (max_amps < maxamp_threshold)&(max_amps > minamp_threshold) & (min_amps > -max_amps)&(min_amps<-minamp_threshold)
-    #keep_idx = np.all((waveforms < maxamp_threshold) & (waveforms > -maxamp_threshold) & (waveforms > minamp_threshold) & (waveforms < minamp_threshold), axis=1)
+    keep_idx = (max_amps < maxamp_threshold)&(max_amps > minamp_threshold) & (min_amps > -max_amps) &(min_amps<-minamp_threshold)
+    #keep_idx = (max_amps < maxamp_threshold)&(max_amps > minamp_threshold) & (min_amps > -max_amps)
     return waveforms[keep_idx],timestamps[keep_idx]
 
 

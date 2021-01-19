@@ -396,7 +396,7 @@ def find_reponders(directory, start_string='', end_string='',specify_recordings=
                     # This is used to find how many, out of all considered recordings, that are showing promising results. 
     main_candidates = []
     for entry in scandir(directory):
-        if entry.path.startswith(directory+start_string+specify_recordings) & entry.path.endswith(end_string): # Specify any uniquness in the name of the files to be considered. 
+        if entry.path.startswith(directory+start_string+specify_recordings) & entry.path.endswith(end_string) & ~entry.path.startswith(directory+start_string+'R10_Exp3'): # Specify any uniquness in the name of the files to be considered. 
             result = np.load(entry.path, allow_pickle=True)
             responder_bool = False
             for injection_res in result: # "result" is a nested list where the first two elements are the results of the different injections.
@@ -503,13 +503,13 @@ def __evaluate_responder__(cytokine_candidate, matlab_directory, file_name,
                 plt.show()
             else:
                 plt.close('all')
-def eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,similarity_measure='ssq',
+def eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,file_name='',similarity_measure='ssq',
                                         similarity_thresh=0.4,assumed_model_varaince=0.5,saveas='Not_specified',verbose=True):
     '''
     Use candidate CAP to find similar waveforms in different recordings. 
     
     '''
-    __evaluate_responder__(candidate_CAP, matlab_directory, '', similarity_measure=similarity_measure, 
+    __evaluate_responder__(candidate_CAP, matlab_directory, file_name, similarity_measure=similarity_measure, 
                         similarity_thresh = similarity_thresh, assumed_model_varaince=assumed_model_varaince,saveas=saveas,verbose=verbose)
 
 

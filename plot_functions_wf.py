@@ -81,7 +81,7 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=Non
                 reconstructed = decoder.predict([latent_z,ev_label])
             else:
                 reconstructed = decoder.predict(latent_z)
-            ax.plot(reconstructed[0,0:-1:5])
+            ax.plot(reconstructed[0,0:-1:5]) # speed up plot a bit by only plotting every fifth datapoint. 
             ax.set(xticks=[], yticks=[])
             if j == resolution:
                 plt.xlabel(np.round(z1, decimals=1))
@@ -127,15 +127,17 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
     else:
         z_mean, log_var_out, z  = encoder.predict(data)
     
-    assert z_mean.shape[-1] == 2, 'PLOT ONLY WORK FOR 2D LATENT SPACE'
+    assert z_mean.shape[-1] == 2, 'PLOT ONLY POSSIBLE FOR 2D LATENT SPACE'
     #plt.figure(figsize=(10, 10))
+    labels = ['First','Second']
     for label_on in [0,1]:
         z_mean_labeled = z_mean[ev_label[:,label_on]==1]
-        plt.scatter(z_mean_labeled[:, 0], z_mean_labeled[:, 1])#, c=labels)
+        plt.scatter(z_mean_labeled[:, 0], z_mean_labeled[:, 1], label=labels[label_on])
     #plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
     #plt.colorbar()
     plt.xlabel("$\mu_{1}$")
     plt.ylabel("$\mu_{2}$")
+    plt.legend()
     if title is not None:
         plt.title(title)
     if saveas is not None:
@@ -164,7 +166,25 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
     if verbose==True:
         plt.show()
 
-
+def plot_waveforms_grid(waveforms,N, saveas=None,verbose=False,title=None):
+    ''' 
+    Plot N x N observed CAP-waveforms in grid. 
+    '''
+    num_wf = waveforms.shape[0]
+    wf_dim = waveforms.shape[-1]
+    t_axis = np.arange(0,3.5,3.5/wf_dim)
+    for i in range(N*N):
+        plt.subplot(N,N,i+1)
+        plt.xticks([]), plt.yticks([])
+        plt.plot(t_axis.T,waveforms[i,:])
+    #plt.xlabel('Time $(ms)$')
+    # plt.ylabel('Voltage $(\mu V)$')
+    if title is not None:
+        plt.title(title)
+    if saveas is not None:
+        plt.savefig(saveas, dpi=150)
+    if verbose==True:
+        plt.show()
         
 def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     ''' 
@@ -182,7 +202,7 @@ def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     #plt.plot(time,np.median(waveforms[ind,:,0],axis=0),color = (0.2,0.2,0.2),lw=1)
     else: 
         t_axis = np.arange(0,3.5,3.5/wf_dim)*np.ones((num_wf,1))
-        plt.plot(t_axis.T,waveforms.T, color =  (0.2,0.6,0.6),lw=0.5)
+        plt.plot(t_axis.T,waveforms.T,lw=2)#, color =  (0.2,0.6,0.6))
     plt.xlabel('Time $(ms)$')
     # plt.ylabel('Voltage $(\mu V)$')
     if title is not None:
@@ -374,8 +394,12 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
 def plot_amplitude_hist(waveforms, saveas=None,verbose=True):
     
     max_amps = np.max(waveforms,axis=1)
-    print(f'shape of max_amps: {max_amps}')
-    plt.hist(max_amps,bins=100,density=True)
+    min_amps = np.min(waveforms,axis=1)
+
+    print(f'shape of max_amps: {max_amps.shape}')
+    plt.hist(max_amps,bins=100,density=False)
+    plt.hist(min_amps,bins=100,density=False)
+
     plt.xlabel('Max Amplitude')
     plt.title('Distribution Max amplitudes')
     if saveas is not None:
@@ -383,6 +407,24 @@ def plot_amplitude_hist(waveforms, saveas=None,verbose=True):
     if verbose:
         plt.show()
 
+
+def plot_event_rate_stats_hist(ev_stats_tot,saveas=None,verbose=False):
+    plt.hist(ev_stats_tot[0],density=True,bins=40)
+    plt.xlabel('$\mu_{EV}$')
+    plt.title('Distribution of Mean Event-Rate.')
+    if saveas is not None:
+        plt.savefig(saveas+'tot_mean_ev',dpi=150)
+    if verbose is True:
+        plt.show()
+    plt.close()
+    plt.hist(ev_stats_tot[1],bins=40,density=True)
+    plt.xlabel('$\sigma_{EV}$')
+    plt.title('Distribution of Event-Rate Standard Deviations.')
+    if saveas is not None:
+        plt.savefig(saveas+'tot_std_ev',dpi=150)
+    if verbose is True:
+        plt.show()
+    plt.close()
 """
 def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', similarity_thresh=0.4, 
                             assumed_model_varaince=0.5,saveas='saveas_not_specified',verbose=False, return_candidates=False):

@@ -55,9 +55,9 @@ def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
                 real_clusters.append(cluster)
 
     return event_rate_results, real_clusters
-def get_average_ev(ev_stats):
+def __get_average_ev__(ev_stats):
     """
-    Extracts average event_rate and variance for full period using outputs of "delta_ev_measure()"
+    Extracts average event_rate and variance for full period using outputs of "__delta_ev_measure__()"
     OBS: assuming ev_stats for one cluster...
     Parameters
     ----------
@@ -84,7 +84,7 @@ def get_average_ev(ev_stats):
     return tot_means,tot_std
 
 
-def delta_ev_measure(event_rates,timestamps = None):
+def __delta_ev_measure__(event_rates,timestamps = None):
         '''
         Calculates measure of how event-rate differs before and after injections. 
         i.e changes at 30min and 60min into recording.
@@ -124,7 +124,7 @@ def delta_ev_measure(event_rates,timestamps = None):
             assert timestamps[-1] > 60*60, f'Invalid time range. End time {timestamps[-1]}, need to be After second injection.'
             injection_times = [np.int(timestamps[0][0]), 60*30, 60*60, np.int(timestamps[-1][0])]
         else:
-            warnings.warn('No timestamps given to "delta_ev_measure()". Assumes full time of recording.')
+            warnings.warn('No timestamps given to "__delta_ev_measure__()". Assumes full time of recording.')
             injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
 
         interval_ev_means = np.empty((num_intervals, num_clusters))
@@ -142,7 +142,7 @@ def delta_ev_measure(event_rates,timestamps = None):
         stats = [interval_ev_means, interval_ev_std]
         return delta_ev, stats
 
-def ev_label(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
+def __ev_label__(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
     '''
     Give waveform a label encoding how the event rate change at time of injections.
     The label is vector with 3 dimensions. The three values corresponds 
@@ -182,21 +182,21 @@ def ev_label(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
         interval_ev_std = ev_stats[1][:2] #.reshape((-1,2)) # Get standard deviation for first two periods.
         interval_ev_std[-1] = (interval_ev_std[0] + interval_ev_std[1])/2
 
-    ev_label = np.zeros((3,delta_ev.shape[-1]))
+    __ev_label__ = np.zeros((3,delta_ev.shape[-1]))
 
     # Find if there is a sufficient increase in event rates after injections: 
     is_increase = delta_ev > (n_std*interval_ev_std)
     if True in is_increase:
         largest_increase = np.argmax(delta_ev-(n_std*interval_ev_std))
-        ev_label[largest_increase] = 1
+        __ev_label__[largest_increase] = 1
         #is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
-        #ev_label[is_increase] = 1
-        #print(ev_label)
+        #__ev_label__[is_increase] = 1
+        #print(__ev_label__)
     else:
-        ev_label[-1] = 1
-        #print(ev_label)
+        __ev_label__[-1] = 1
+        #print(__ev_label__)
 
-    return ev_label
+    return __ev_label__
 
 def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measure='corr',
                     assumed_model_varaince=0.5,n_std_threshold=1):
@@ -255,11 +255,11 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
             for corr_vec in correlations.T:
                 bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
                 event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
-                delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
-                tot_mean,tot_std = get_average_ev(ev_stats)
+                delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
+                tot_mean,tot_std = __get_average_ev__(ev_stats)
                 ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
-                #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-                ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
+                #ev_labels = __ev_label__(delta_ev,ev_stats,n_std=1)
+                ev_labels[:,ii] = __ev_label__(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
                 ii +=1
             prev_substep = sub_step            
             if ii%(sub_steps*10)==0:
@@ -291,11 +291,11 @@ def get_ev_labels(wf_std,timestamps,threshold=0.6,saveas=None, similarity_measur
                 bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold,standardised_input=False)
 
             event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
-            delta_ev, ev_stats = delta_ev_measure(event_rates,timestamps=timestamps)
-            tot_mean,tot_std = get_average_ev(ev_stats)
+            delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
+            tot_mean,tot_std = __get_average_ev__(ev_stats)
             ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
-            #ev_labels = ev_label(delta_ev,ev_stats,n_std=1)
-            ev_labels[:,ii] = ev_label(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
+            #ev_labels = __ev_label__(delta_ev,ev_stats,n_std=1)
+            ev_labels[:,ii] = __ev_label__(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
             ii +=1
             if ii%1000==0:
                 print(f'On waveform {ii} in event-rate labeling')        
@@ -502,8 +502,8 @@ if __name__ == "__main__":
     runs_for_time = 1
     for i in range(runs_for_time):
         event_rates, real_clusters = get_event_rates(timestamps[:,0],labels,bin_width=1)
-        delta, ev_stats = delta_ev_measure(event_rates)
-        mean_,std_ = get_average_ev(ev_stats)
+        delta, ev_stats = __delta_ev_measure__(event_rates)
+        mean_,std_ = __get_average_ev__(ev_stats)
         
     end = time.time()
     print(f' Mean time for calculating event_rate : {(end-start)/runs_for_time * 1000} ms')
