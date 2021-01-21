@@ -29,13 +29,13 @@ end_string = 'auto_assesment.npy'
 specify_recording = 'R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05'
 specify_recording = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08'
 #specify_recording = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
-specify_recording = 'R12'
+specify_recording = 'R10'
 # ****************************************************************************
 # ** Find the responders from the files saved by "run_evaluation()" in main **
 # ****************************************************************************
 saveas = 'figures/Responders/'+start_string
 responders, main_candidates = find_reponders(directory, start_string=start_string, end_string=end_string,
-                            specify_recordings=specify_recording, saveas=saveas, verbose=True, 
+                            specify_recordings=specify_recording, saveas=saveas, verbose=False, 
                             matlab_directory=matlab_directory, return_main_candidates=True)
 exit()
 # ****************************************************************************

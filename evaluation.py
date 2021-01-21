@@ -174,23 +174,23 @@ def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eva
     Parameters
     ----------
     waveforms : (n_wf,d_wf), array_like
-        The waveforms which are used for similarity measure to evaluate hpdp-candidates.
+        The waveforms which are used for similarity measure to evaluate hpdp-candidates. (Usually all observations.)
     timestamps : (n_wf,) array_like
-        Corresponding timestamps
+        Corresponding timestamps.
     hpdp_list : (2,) python list with elements : (n_hpdp, d_wf) array_like
         The high probability datapointes under consideration to find cytokine-candidate for each injection.
     encoder : keras.Model
         Encoder part of tensorflow CVAE model.
     k_SD_eval : float
         multiplier-param in threshold for finding "responder". See docstring in "__evaluate_cytokine_candidates__()"
-    k_SD_eval : float
+    SD_min_eval : float
         Minimum standard deviation in threshold for finding "responder".
     labels_to_evaluate : python_list
         list of which labels to consider: 0 <=> "increase after first injection", 1 <=> "increase after second injection"  
-        e.g labels_to_evaluate = [0,1] => will consider increase after both injections. 
+        i.e. labels_to_evaluate = [0,1] => will consider increase after both injections. 
     k_clusters : integer or None
         Determines method to cluster hpdp.
-        If None then DBSCAN is used, elif integer then k-means is used with specified number of clusters. 
+        If None then DBSCAN is used, elif integer, then k-means is used with specified number of clusters. 
     db_eps, db_min_sample : float, Integer
         params for DBSCAN if that is chosen to be used.
     similarity_measure : sring, 'corr' or 'ssq'
@@ -212,9 +212,9 @@ def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eva
     '''
     responder_results = []
     for label_on in labels_to_evaluate:
-        hpdp = hpdp_list[label_on]
-        ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
-        ev_label_corr_shape[:,label_on] = 1
+        hpdp = hpdp_list[label_on] # Extract hpdp for one of the labels
+        ev_label_corr_shape = np.zeros((hpdp.shape[0],3)) # Create corresponding labels with the correct shape. 
+        ev_label_corr_shape[:,label_on] = 1 # Create corresponding labels with the correct shape. 
         encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
         if k_clusters is not None:
             if (hpdp.shape[0]<8) and (hpdp.shape[0] != 141):
@@ -325,7 +325,7 @@ def __evaluate_cytokine_candidates__(waveforms, timestamps, hpdp, k_labels, inje
         
         SD_thesh = k * np.max((SD_min, baseline_SD))
         cytokine_stats = __get_ev_stats__(event_rate,start_time=t_injection+10*60, end_time=t_injection+30*60, 
-                                            compare_to_theshold=baseline_MU+SD_thesh, conv_width=5)
+                                            compare_to_theshold=baseline_MU + SD_thesh, conv_width=5)
         #print(f'Cytokine candidate responder result for injection 1 is : {cytokine_stats[2]}')
         #print(f'Cytokine candidate responder result for injection 2 is : {second_cytokine_stats[2]}')
         if cytokine_stats[2] is True:

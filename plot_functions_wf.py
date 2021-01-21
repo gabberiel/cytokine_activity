@@ -117,7 +117,7 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
     saveas : 'path/to/save_fig' string_like
         if None then the figure is not saved
     verbose : integer_like
-        verbose>0 => plt.show()
+        verbose=1 => plt.show()
     ev_label : (num_of_wf, label_dim) array_like or None
         Determens if a vae or cvae model is used.
 

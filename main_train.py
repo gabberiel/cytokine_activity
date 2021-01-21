@@ -37,9 +37,9 @@ assumed_model_varaince = 0.7 # The  model variance assumed in ssq-similarity mea
 # This. however, differs quite a lot from one recording to another..
 # Otherwise maby 0.2..?
 
-n_std_threshold = 0.2 #(0.5)  # Number of standard deviation which the mean-even-rate need to increase after injection for a candidate-CAP to be labeled as "likely to encode cytokine-info".
+n_std_threshold = 0.2 # (0.5)  # Number of standard deviation which the mean-even-rate need to increase after injection for a candidate-CAP to be labeled as "likely to encode cytokine-info".
 
-desired_num_of_samples = None #40000 # Subsample using 
+desired_num_of_samples = None # 40000 # Subsample using 
 max_amplitude = 500 # Remove CAPs with max amplitude higher than the specified value. (Micro-Volts)
 min_amplitude = 2 # Remove CAPs with max amplitude lower than the specified value. (Micro-Volts)
 ev_thresh_fraction = 0.005 # Fraction of total event-rate used for thresholding. -- i.e 0.5%
@@ -49,22 +49,22 @@ start_time = 15; end_time = 90
 
 # pdf-GD params: 
 run_GD = True
-m= 2000 #2000 # Number of steps in pdf-gradient decent
+m= 0 #2000 # Number of steps in pdf-gradient decent
 gamma=0.02 # learning_rate in GD.
 eta=0.005 # Noise variable -- adds white noise with variance eta to datapoints during GD.
 
-# VAE training params:
+# CVAE training params:
 continue_train = False
 nr_epochs = 120 # if all train data is used -- almost no loss-decrease after 100 batches..
 batch_size = 128
 
 # ****** If using 2D-latent space dimension: *********
 view_cvae_result = False # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-view_GD_result = False # This reqires user to give input if to continue the script to clustering or not.
+view_GD_result = True # This reqires user to give input if to continue the script to clustering or not.
 plot_hpdp_assesments = False # Cluster and evaluate hpdp to find cytokine-candidate CAP manually inspecting plots.
 # ***********************
 
-run_automised_assesment = True # Cluster and evaluate hpdp by defined quantitative measure.
+run_automised_assesment = False # Cluster and evaluate hpdp by defined quantitative measure.
 
 # Evaluation Parameters using k*max(SD_min,SD) as threshold for "significant increase in ev." 
 SD_min_eval = 0.3 #0.3 Min value of SD s.t. mice is not classified as responder for insignificant increase in EV.
@@ -105,7 +105,7 @@ directory = '../matlab_files'
 
 # ***** Specify the starting scaracters in filename of recordings to analyse *****
 # if "ts" is not specified, then all files will be run twise since we have one file for timestamps and one for CAP-waveform with identical names, exept the starting ts/wf.
-start_string = '\\tsR12' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # *****************************************************
 
 for entry in scandir(directory):

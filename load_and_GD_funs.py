@@ -188,8 +188,10 @@ def run_pdf_GD(wf_ho,cvae,ev_label_ho,labels_to_evaluate=[0,1], m=100, gamma=0.0
             save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
             print(f'Visualising decoded latent space of hpdp...')
             print()
+            plt.figure(1)
             plot_encoded(encoder, wf_ho, saveas=save_figure+'_encoded_ho_wf'+str(label_on), verbose=1,ev_label=ev_label_ho,title=encoded_hpdp_title) 
-            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title=encoded_hpdp_title) 
+            plt.figure(2)
+            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title=encoded_hpdp_title)
     if view_GD_result:       
         continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
         all_fine = False
