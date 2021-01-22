@@ -52,7 +52,8 @@ def __create_encoder__(encoder_input,latent_dim,inp_label):
         Dense encoder model of CVAE
 
     '''
-    #e_i    = layers.Input(shape=(waveform_dim, ), name='encoder_input')
+    #latent_dim = hypes["cvae"]["latent_dim"]
+
     xi     = layers.Concatenate(axis=1)([encoder_input, inp_label])
     x      = layers.Dense(120, activation='relu')(xi)
     x      = layers.BatchNormalization()(x)
@@ -67,7 +68,6 @@ def __create_encoder__(encoder_input,latent_dim,inp_label):
 
     # CALCULATE LOSSES:
     kl_loss = Add_kl_loss()([z_mean,z_log_var])
-
 
     # Instantiate encoder
     encoder = keras.Model(inputs=[encoder_input,inp_label], outputs=[z_mean,z_log_var, z], name='encoder')
@@ -141,6 +141,10 @@ def get_cvae(waveform_dim,latent_dim,label_dim=3):
     cvae : keras.Model
         Full cvae model to be trained.
     '''
+    #waveform_dim = hypes["preprocess"]["dim_of_wf"]
+    #latent_dim,
+    #label_dim=3
+
     encoder_input = layers.Input(shape=(waveform_dim, ), name='encoder_input')
     inp_label = layers.Input(shape=(label_dim, ), name='ev_label_input')
     encoder = __create_encoder__(encoder_input, latent_dim, inp_label)

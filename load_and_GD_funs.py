@@ -6,17 +6,17 @@ from scipy.io import loadmat
 from vae_dense_wf import get_vae 
 from cvae_dense_wf import get_cvae
 from plot_functions_wf import plot_encoded
-#from event_rate_funs import evaluate_cytokine_candidates
-#from plot_functions_wf import evaluate_hpdp_candidates
-#from plot_functions_wf import plot_correlated_wf
-#from tensorflow.python.framework import ops
-#from sklearn.cluster import KMeans, DBSCAN
+# from event_rate_funs import evaluate_cytokine_candidates
+# from plot_functions_wf import evaluate_hpdp_candidates
+# from plot_functions_wf import plot_correlated_wf
+# from tensorflow.python.framework import ops
+# from sklearn.cluster import KMeans, DBSCAN
 
 
 from os import path
 import warnings
 
-def load_waveforms(path_to_wf,matlab_key, verbose=1):
+def load_waveforms(path_to_wf, matlab_key, verbose=1):
     """
     Load waveform-matlab file specified by "path_to_wf" and returns it as numpy array.
     Files saved locally on Asus-computer have matlab_key='waveforms'
@@ -27,73 +27,85 @@ def load_waveforms(path_to_wf,matlab_key, verbose=1):
     matlab_key : string_type
             key as specified when saving file in MATLAB.
     
-    standardize : boolean_type
-            If True, then data is standardized by subtracting column mean and devide by 
-            column standard diviation.
-
+    verbose : integer
+            > 0 allows prints about progress.
     Returns
     -------
     waveforms : (number_of_waveforms, size_of_waveform) array_like
             Numpy version of loaded matlab matrix. 
 
     """
-    if verbose>0:
-        print()
-        print('Loading matlab waveforms files...')
-        print()
+    if verbose > 0:
+        print('\n Loading matlab waveforms files... \n' )
     # Load matlab
     waveforms = loadmat(path_to_wf)[matlab_key]
-    if verbose>0:
-        print('waveforms loaded succesfully...')
-        print()
+    if verbose > 0:
+        print('waveforms loaded succesfully... \n')
         print(f'Shape of waveforms: {waveforms.shape}.')
     
     return waveforms
 
-def load_timestamps(path_to_ts,matlab_key,verbose=1):
+def load_timestamps(path_to_ts, matlab_key, verbose=1):
     """
     Load timestamp-matlab file specified by "path_to_ts" and returns it as numpy array.
     Files saved locally on Asus-computer have matlab_key='timestamps'
+    
     See Also
     --------
         doc_string in "load_waveforms()" for more extensive description.
     """
 
-    if verbose>0:
-        print()
-        print('Loading matlab timestamps file...')
-        print()
+    if verbose > 0:
+        print('\n Loading matlab timestamps file...\n ')
     # Load matlab
     timestamps = loadmat(path_to_ts)[matlab_key]
-    if verbose>0:
-        print('timestamps loaded succesfully...')
-        print()
+    if verbose > 0:
+        print('timestamps loaded succesfully... \n')
         print(f'Shape of timestamps: {timestamps.shape}.')
     return timestamps
 
 
-def get_pdf_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to_weights=None, 
-                continue_train=False, verbose=1,ev_label=None):
+def get_pdf_model(data_train, hypes, ev_label=None,path_to_weights=None, 
+                continue_train=False, verbose=1):
     """
-    Initiates or continues training of vae-model depending on existance of path_to_weights-file.
+    Initiates or continues training of cvae/vae-model depending on existance of path_to_weights-file.
 
     If ev_label is None the it assumes a VAE-model.
     Otherwise Conditional-VAE
     
     Parameters
     ----------
-    data_train : (num_train_data_pts, size_of_waveform) array_like
-    
-    latent_dim : integer_like
-            dimension of latent space.
-    
+    data_train : (num_train_data_pts, dim_of_waveform) array_like
+            CAP-waveforms to train model on
+    hypes : .json file
+            Containing the hyperparameters:
+                latent_dim : integer
+                        dimension of latent space.
+                nr_epochs : integer
+                        number of epochs in training.
+                batch_size : integer
+                        number of samples in each SGD step.
+    ev_label : (num_train_data_pts, 3) array_like or None
+            one-hot representation of labels for each CAP-waveform in CVAE.
+            If no labels are given, then function assumes that a VAE is to be used.
+
+    path_to_weights : string or None
+            specifies path to saved model-weights if any.
+    continue_train : booleon
+            determines if the training should continue or not if pretrained model exists
+    verbose : integer
+            level of verbosity
     ... 
 
     Returns
     -------
-    encoder, decoder, vae : keras model classes.
+    encoder, decoder, cvae/vae : keras model classes.
 
     """
+    latent_dim = hypes["cvae"]["latent_dim"]
+    nr_epochs = hypes["cvae"]["nr_epochs"]
+    batch_size = hypes["cvae"]["batch_size"]
+
     assert np.isnan(np.sum(data_train))==False, 'Nans in "data_train"'
     #ops.reset_default_graph()
 
@@ -108,18 +120,14 @@ def get_pdf_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to
     
     if path.isfile(path_to_weights+'.index'):
         if verbose>0:
-            print()
-            print(f'Loading {path_to_weights}...')
-            print()
+            print(f'\n Loading {path_to_weights}... \n')
         if ev_label is None:
             vae.load_weights(path_to_weights).expect_partial()
         else:
             cvae.load_weights(path_to_weights).expect_partial()
         if continue_train == True:
             if verbose>0:
-                print()
-                print(f'Continue training for {nr_epochs} epochs...')
-                print()
+                print(f'\nContinue training for {nr_epochs} epochs... \n')
             if ev_label is None:
                 history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
                 vae.save_weights(path_to_weights)
@@ -131,10 +139,8 @@ def get_pdf_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to
                 plt.show() 
     else:
         if verbose>0:
-            print()
-            print(f'Start training from scratch for {nr_epochs} epochs...')
-            print(f'Weights will be saved as {path_to_weights}')
-            print()
+            print(f'\n Start training from scratch for {nr_epochs} epochs...')
+            print(f'Weights will be saved as {path_to_weights} \n')
         if ev_label is None:
             history = vae.fit(data_train , data_train, epochs=nr_epochs, batch_size=batch_size)
             vae.save_weights(path_to_weights)
@@ -151,61 +157,103 @@ def get_pdf_model(data_train,latent_dim=2, nr_epochs=50, batch_size=128, path_to
 
 
 
-def run_pdf_GD(wf_ho,cvae,ev_label_ho,labels_to_evaluate=[0,1], m=100, gamma=0.01, eta=0.01,matlab_file='',
-                unique_string_for_figs='', path_to_hpdp='',verbose=False,
-                downsample_threshold=3000,view_GD_result=False,encoder=None):
+def run_pdf_GD(waveforms, cvae, ev_labels, hypes, 
+            matlab_file='',
+            unique_string_for_figs='',
+            path_to_hpdp='',
+            verbose=False, view_GD_result=False, encoder=None):
     '''
     Function to be called for running grandient decent of pdf using cvae.
 
     Encoder needed if view_GD_results is True.
-    '''
-    #label_on = 1
-    hpdp_list = []
-    #found_ho_wf = number_of_occurances[:-1]>0 # TODO: Not used, delete? 
-    for label_on in labels_to_evaluate: # Either 0, 1 (or 2)
-        waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
+     Parameters
+    ----------
+    waveforms : (number_of_wf, dim_of_wf) array_like
+        Only used to initiate GD if "path_to_hpdp" does not exist.
+    cvae : kera.Model class_instance
+        Fully trained CVAE/VAE model. 
+    ev_labels : (number_of_wf, 3) array_like or None
+        If None, then VAE is assumed. Otherwise CVAE
+    hypes : .json file
+            Containing the hyperparameters:
+                m,gamma,eta : integer/floats
+                    Parameters for GD of pdf
+                labels_to_evaluate : python list
+                    Specifies which labels that is to be used
+                downsample_threshold : integer
+                    If the number of waveforms with a given labele is > downsample_threshold,
+                    then every 4th wf is used. This to speed up computations.
+    path_to_hpdp : 'path/to/hpdp.npy'
+        If None then "data_points" is used to start GD.
+    verbose : booleon
+        verbosity of code..
+    view_GD_result : booleon
+        If True, then the encoded latent space is plotted before/after GD is performed for each label
+    encoder : None or keras.Model instance
+        Used for plotting.
+        Must be passed if view_GD_result is True.
 
-        print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
+    Returns
+    -------
+    hpdp_list : numpy list
+        Each element contains:
+            (number_of_wf, dim_of_wf) array_like
+                The resulting waveforms after running GD on all.
+    '''
+    m = hypes["pdf_GD"]["m"] 
+    gamma = hypes["pdf_GD"]["gamma"]
+    eta = hypes["pdf_GD"]["eta"]
+    labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"]
+    downsample_threshold = hypes["pdf_GD"]["downsample_threshold"]
+    # label_on = 1
+    hpdp_list = []
+    # found_ho_wf = number_of_occurances[:-1]>0 # TODO: Not used, delete? 
+    for label_on in labels_to_evaluate: # Either 0, 1 (or 2)
+        waveforms_increase = waveforms[ev_labels[:,label_on]==1]
+
+        print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}\n')
         if waveforms_increase.shape[0] == 0:
-            waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
-            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-            ev_label_corr_shape[:,label_on] = 1
+            waveforms_increase = np.append(np.zeros((1, 141)), waveforms_increase).reshape((1, 141))
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0], 3))
+            ev_label_corr_shape[:, label_on] = 1
             print('*************** OBS ***************')
-            print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
+            print(f'No waveforms with increased event rate at injection {label_on + 1} was found.')
             print(f'This considering the recording {matlab_file}')
         elif waveforms_increase.shape[0] > downsample_threshold: # Speed up process during param search..
-            waveforms_increase = waveforms_increase[::4,:]
-            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-            ev_label_corr_shape[:,label_on] = 1
+            waveforms_increase = waveforms_increase[::4, :]
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0], 3))
+            ev_label_corr_shape[:, label_on] = 1
         else:
-            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-            ev_label_corr_shape[:,label_on] = 1
+            ev_label_corr_shape = np.zeros((waveforms_increase.shape[0], 3))
+            ev_label_corr_shape[:, label_on] = 1
 
-        hpdp = __pdf_GD__(cvae, waveforms_increase,ev_label=ev_label_corr_shape, m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp+str(label_on),verbose=1)
+        hpdp = __pdf_GD__(cvae, waveforms_increase, ev_label=ev_label_corr_shape,
+                         m=m, gamma=gamma, eta=eta, path_to_hpdp=path_to_hpdp+str(label_on), verbose=verbose)
         hpdp_list.append(hpdp)
         if view_GD_result:
             encoded_hpdp_title = 'Visualisation of the Latent Variable Mean.'
             save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
-            print(f'Visualising decoded latent space of hpdp...')
-            print()
+            print(f'Visualising decoded latent space of hpdp... \n')
             plt.figure(1)
-            plot_encoded(encoder, wf_ho, saveas=save_figure+'_encoded_ho_wf'+str(label_on), verbose=1,ev_label=ev_label_ho,title=encoded_hpdp_title) 
+            plot_encoded(encoder, waveforms, saveas=save_figure+'_encoded_ho_wf'+str(label_on),
+                         verbose=1, ev_label=ev_labels, title=encoded_hpdp_title) 
             plt.figure(2)
-            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title=encoded_hpdp_title)
-    if view_GD_result:       
+            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), 
+                        verbose=1, ev_label=ev_label_corr_shape, title=encoded_hpdp_title)
+    if view_GD_result:     
         continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
         all_fine = False
-        while all_fine==False:
-            if continue_to_Clustering=='no':
+        while all_fine is False:
+            if continue_to_Clustering == 'no':
                 exit()
-            elif continue_to_Clustering=='yes':
+            elif continue_to_Clustering == 'yes':
                 print('Continues to "run_GD"')
                 all_fine = True
             else:
                 continue_to_Clustering = input('Invalid input, continue to Clustering? (yes/no) :')
     return hpdp_list
 
-def __pdf_GD__(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None,verbose=1):
+def __pdf_GD__(vae, data_points, ev_label=None, m=1000, gamma=0.01, eta=0.01, path_to_hpdp=None, verbose=1):
     '''
     Gradient decent of approximate probability ditribution using VAEs.
 
@@ -216,12 +264,12 @@ def __pdf_GD__(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, pat
     Parameters
     ----------
     vae : kera.Model class_instance
-        Fully trained VAE model. 
+        Fully trained CVAE/VAE model. 
     data_points : (number_of_wf, dim_of_wf) array_like
         Only used to initiate GD if "path_to_hpdp" does not exist.
     ev_labels : (number_of_wf, 3) array_like or None
         If None, then VAE is assumed. Otherwise CVAE
-    m,gamma,eta : integer/floats 
+    m,gamma,eta : integer/floats
         Parameters for GD of pdf
     path_to_hpdp : 'path/to/hpdp.npy'
         If None then "data_points" is used to start GD.
@@ -238,15 +286,12 @@ def __pdf_GD__(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, pat
     if m>0:
         if path.isfile(path_to_hpdp+'.npy'):
             if verbose>0:
-                print()
-                print(f'Loading {path_to_hpdp} to continue pdf-GD...')
-                print()
+                print(f'n Loading {path_to_hpdp} to continue pdf-GD... \n')
             data_points = np.load(path_to_hpdp+'.npy')
             assert np.isnan(np.sum(data_points))==False, 'NaNs in input data..'
 
             if verbose>0:
-                print(f'Saved clusters: "{path_to_hpdp}" loaded Succesfully...')
-                print()
+                print(f'Saved clusters: "{path_to_hpdp}" loaded Succesfully... \n')
                 print(f'Continues GD on file: {path_to_hpdp} for {m} iterations...')
             
             if ev_label is None:
@@ -258,14 +303,10 @@ def __pdf_GD__(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, pat
             np.save(path_to_hpdp,hpdp_x)
 
             if verbose>0:
-                print()
-                print(f'High prob. data-points (hpdp): "{path_to_hpdp}" saved Succesfully...')
-                print()
+                print(f'\n High prob. data-points (hpdp): "{path_to_hpdp}" saved Succesfully... \n')
         else:
             if verbose>0:
-                print()
-                print(f'Starting fresh for {m} iterations....')
-                print()
+                print(f'\n Starting fresh for {m} iterations.... \n')
             if ev_label is None:
                 hpdp_x = __cluster__(vae,data_points,eta,gamma,m)
             else:
@@ -274,22 +315,16 @@ def __pdf_GD__(vae, data_points,ev_label=None, m=1000, gamma=0.01, eta=0.01, pat
             assert np.isnan(np.sum(hpdp_x))==False, 'NaNs in hpdp_x after GD..'
             np.save(path_to_hpdp,hpdp_x)
             if verbose>0:
-                print()
-                print(f'High prob. data-points (hpdp): "{path_to_hpdp}" saved Succesfully...')
-                print()
+                print(f'\n High prob. data-points (hpdp): "{path_to_hpdp}" saved Succesfully... \n')
         return hpdp_x 
     else:
         if path.isfile(path_to_hpdp+'.npy'):
             if verbose>0:
-                print()
-                print(f'Loading {path_to_hpdp} as hpdp without performing GD...')
-                print()
+                print(f'\n Loading {path_to_hpdp} as hpdp without performing GD... \n')
             data_points = np.load(path_to_hpdp+'.npy')
             assert np.isnan(np.sum(data_points))==False, 'NaNs loaded hpdp...'
             if verbose>0:
-                print()
-                print(f'High prob. data-points (hpdp): "{path_to_hpdp}" loaded Succesfully...')
-                print()
+                print(f'\n High prob. data-points (hpdp): "{path_to_hpdp}" loaded Succesfully... \n')
         else:
             warnings.warn(f'{path_to_hpdp} not found and number of iterations set to 0. Returning input datapoints.')
         
@@ -313,8 +348,7 @@ def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
             ti = time.time()
             ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
             print(f'Running pdf-GD, iteration={i}')
-            print(f'ETA: {round(ETA_t)} seconds..')
-            print()
+            print(f'ETA: {round(ETA_t)} seconds.. \n')
             #assert np.isnan(np.sum(x))==False, 'NaNs in hpdp_x after GD..'
             if np.max(x) > 20: # Fix too hopefully keep code running even if some GD diverges...
                 print('Too large value encountered for x in GD. Stops the iterations..')
@@ -343,8 +377,7 @@ def __cluster__(vae,x,eta,gamma,m):
             ti = time.time()
             ETA_t = m/100 * (ti-t0)/(count) - (ti-t0) 
             print(f'Running pdf-GD, iteration={i}')
-            print(f'ETA: {round(ETA_t)} seconds..')
-            print()
+            print(f'ETA: {round(ETA_t)} seconds.. \n')
 
         #x_hat = x + eta*tf.random.normal(shape=x.shape)
         x_hat = x + eta * np.random.normal(size=x.shape)
@@ -392,7 +425,7 @@ def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eva
         print(f'Results for evaluation saved sucessfully as {saveas}.')
     return recording_results
 
-def run_DBSCAN_evaluation(wf_ho,ts_ho,wf0,ts0,ev_label_ho,clusters_to_evaluate=[0,1], saveas=None, np_saveas = None, 
+def run_DBSCAN_evaluation(wf_ho,ts_ho,wf0,ts0,ev_labels,clusters_to_evaluate=[0,1], saveas=None, np_saveas = None, 
                 db_eps=7, db_min_sample=10,matlab_file=None,similarity_measure='ssq',
                 similarity_thresh=0.1, assumed_model_varaince=0.5):
     '''
@@ -463,7 +496,7 @@ if __name__ == "__main__":
         plt.show()
     # ************************************************************************
 
-    encoder,decoder,vae = get_pdf_model(waveforms[:1000], nr_epochs=5, batch_size=128, path_to_weights=path_to_weights, 
+    encoder,decoder,vae = get_pdf_model(waveforms[:1000], hypes, path_to_weights=path_to_weights, 
                                         continue_train=False, verbose=1)
     
     

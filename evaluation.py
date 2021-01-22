@@ -10,11 +10,38 @@ from plot_functions_wf import plot_similar_wf, plot_event_rates, plot_encoded,pl
 from scipy.spatial.distance import cdist
 from sklearn.cluster import KMeans, DBSCAN
 
-def run_visual_evaluation(waveforms,timestamps,hpdp_list,encoder,labels_to_evaluate=[0,1],clustering_method='k-means', db_eps=0.15, db_min_sample=5,
-                     similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, unique_string_for_figs='no_unique_string_given',
-                     path_to_cytokine_candidate='no_path_given'):
-    ''' 
+# def run_visual_evaluation(waveforms,timestamps,hpdp_list,encoder,labels_to_evaluate=[0,1],clustering_method='k-means', db_eps=0.15, db_min_sample=5,
+#                      similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, unique_string_for_figs='no_unique_string_given',
+#                      path_to_cytokine_candidate='no_path_given'):
+def run_visual_evaluation(waveforms, timestamps, 
+                        hpdp_list, encoder, hypes, 
+                        unique_string_for_figs='no_unique_string_given',
+                        path_to_cytokine_candidate='no_path_given'):
     '''
+    Perform the clustering of the gradient-decsent results manually. 
+    If using k-means, the number of clusters are to be given by user 
+    after visualisation of encoded hpdp in latent space. 
+    If a CAP-shape is found to increase significantly after cytokine-injection, 
+    it can be saved by user.
+
+    Parameters
+    ----------
+
+
+
+    Returns
+    -------
+            No returns.
+    '''
+    labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"]
+    clustering_method = hypes["evaluation"]["clustering_method"]
+    # similarity_measure = hypes["evaluation"]["similarity_measure"] 
+    # similarity_thresh = hypes["evaluation"]["similarity_threshold"]
+    # assumed_model_varaince = hypes["evaluation"]["assumed_model_varaince"]
+    if clustering_method == 'dbscan':
+        db_eps = hypes["evaluation"]["db_eps"]
+        db_min_sample = hypes["evaluation"]["db_min_sample"]
+
     cytokine_candidates = np.zeros((2,waveforms.shape[-1]))
     for label_on in labels_to_evaluate:
         hpdp = hpdp_list[label_on]
@@ -23,23 +50,7 @@ def run_visual_evaluation(waveforms,timestamps,hpdp_list,encoder,labels_to_evalu
         title = 'CAPs With Identical Labels'
         #plot_similar_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
         plot_waveforms(hpdp,saveas=saveas+'_wf'+str(label_on),verbose=True,title=title)
-        #waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
-        ##print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}')
-        #if waveforms_increase.shape[0] == 0:
-        #    waveforms_increase = np.append(np.zeros((1,141)),waveforms_increase).reshape((1,141))
-        #    ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-        #    ev_label_corr_shape[:,label_on] = 1
-        #    print('*************** OBS ***************')
-        #    print(f'No waveforms with increased event rate at injection {label_on+1} was found.')
-        #    print(f'This considering the recording {matlab_file}')
-        #elif waveforms_increase.shape[0] > 3000: # Speed up process during param search..
-        #    waveforms_increase = waveforms_increase[::4,:]
-        #    ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-        #    ev_label_corr_shape[:,label_on] = 1
-        #else:
-        #    ev_label_corr_shape = np.zeros((waveforms_increase.shape[0],3))
-        #    ev_label_corr_shape[:,label_on] = 1   
-        
+
         #PLOT ENCODED wf_increase... :
         save_figure = 'figures/encoded_decoded/'+unique_string_for_figs
         #plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
@@ -61,18 +72,22 @@ def run_visual_evaluation(waveforms,timestamps,hpdp_list,encoder,labels_to_evalu
 
         saveas = 'figures/event_rate_labels/'+unique_string_for_figs + str(label_on)
 
-        possible_wf_candidates = evaluate_hpdp_candidates(waveforms,timestamps,hpdp,k_labels,saveas=saveas, similarity_measure=similarity_measure,
-                                similarity_thresh=similarity_thresh, assumed_model_varaince=assumed_model_varaince, verbose=True, return_candidates=True)
+        possible_wf_candidates = __evaluate_hpdp_candidates__(waveforms, timestamps, 
+                                                            hpdp, k_labels, hypes, 
+                                                            saveas=saveas, verbose=True, 
+                                                            return_candidates=True)
         k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
         if k_candidate != 'None':
             cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
     if k_candidate != 'None':
         np.save(path_to_cytokine_candidate, cytokine_candidates)
 
-def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', similarity_thresh=0.4, 
-                            assumed_model_varaince=0.5,saveas='saveas_not_specified',verbose=False, return_candidates=False):
+def __evaluate_hpdp_candidates__(wf0, ts0, hpdp, k_labels, hypes, 
+                                saveas='saveas_not_specified',
+                                verbose=False, return_candidates=False):
     '''
-    Main function to visually evaluate the clustered hpdp to find main-candidate waveforms.
+    Called by "run_visual_evaluation()".
+    Allows to visually evaluate the clustered hpdp to find main-candidate waveforms.
 
     Uses the specified similarity measure to find the event rate using the median of each hpdp cluster as "main candidate". 
     The clusters as specified by k_labels.
@@ -107,6 +122,10 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
             The median of each hpdp-cluster.
     
     '''
+    similarity_measure = hypes["evaluation"]["similarity_measure"] 
+    similarity_thresh = hypes["evaluation"]["similarity_threshold"]
+    assumed_model_varaince = hypes["evaluation"]["assumed_model_varaince"]
+
     k_clusters = np.unique(k_labels)  
     candidate_wf = np.empty((k_clusters.shape[0],wf0.shape[-1]))
     for cluster in k_clusters:
@@ -160,8 +179,11 @@ def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', si
 
 
 
-def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eval=0.15,labels_to_evaluate=[0,1],k_clusters=None, db_eps=0.15, db_min_sample=5,
-                     similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, saveas=None):
+# def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eval=0.15,labels_to_evaluate=[0,1],k_clusters=None, db_eps=0.15, db_min_sample=5,
+#                      similarity_measure='ssq', similarity_thresh=0.4, assumed_model_varaince=0.5, saveas=None):
+def run_evaluation(waveforms, timestamps, 
+                    hpdp_list, encoder, 
+                    hypes, saveas=None):
     '''
     Main function to evaluate the hpdp-results. i.e results obtained by performing gradient decent on the conditional probability function approximated by CVAE.
 
@@ -210,6 +232,17 @@ def run_evaluation(waveforms,timestamps,hpdp_list,encoder,k_SD_eval=1,SD_min_eva
             responder_CAP : (dim_of_wf,) numpy_array
             tuple_object : (MU, SD, responder, time_above_thresh), of type: (float,float,Booleon, int)
     '''
+    labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"]
+    k_clusters = hypes["evaluation"]["k_clusters"]
+    similarity_measure = hypes["evaluation"]["similarity_measure"] 
+    similarity_thresh = hypes["evaluation"]["similarity_threshold"]
+    assumed_model_varaince = hypes["evaluation"]["assumed_model_varaince"]
+    k_SD_eval = hypes["evaluation"]["k_SD_eval"]
+    SD_min_eval = hypes["evaluation"]["SD_min_eval"]
+    if k_clusters is None:
+        db_eps = hypes["evaluation"]["db_eps"]
+        db_min_sample = hypes["evaluation"]["db_min_sample"]
+
     responder_results = []
     for label_on in labels_to_evaluate:
         hpdp = hpdp_list[label_on] # Extract hpdp for one of the labels
@@ -516,12 +549,29 @@ def eval_candidateCAP_on_multiple_recordings(candidate_CAP,matlab_directory,file
 
 
 
-def run_DBSCAN_evaluation(wf_ho,wf0,ts0,ev_label_ho,labels_to_evaluate=[0,1], saveas=None, np_saveas = None, 
-                db_eps=7, db_min_sample=10,matlab_file=None,similarity_measure='ssq',
-                similarity_thresh=0.1, assumed_model_varaince=0.5):
+def run_DBSCAN_evaluation(wf_ho, wf0, ts0, 
+                        ev_label_ho, hypes, 
+                        saveas=None, np_saveas = None, 
+                        matlab_file=None):
     '''
+    qqq: TODO, add hypes input!
     Skipp everything after labeling and perform clustering using DBSCAN on labeled high-occurance waveforms. 
+    
+    Parameters
+    ----------
+
+    Returns
+    -------
+            No returns.
     '''
+    labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"] 
+    db_eps = hypes["DBSCAN"]["db_eps"] 
+    db_min_sample = hypes["DBSCAN"]["db_min_sample"] 
+    similarity_measure = hypes["DBSCAN"]["similarity_measure"] 
+    similarity_thresh = hypes["DBSCAN"]["similarity_threshold"]
+    assumed_model_varaince = hypes["DBSCAN"]["assumed_model_varaince"]
+
+
     cytokine_candidates = np.empty((2,wf_ho.shape[-1])) # To save the main candidates
     for label_on in labels_to_evaluate:
         waveforms_increase = wf_ho[ev_label_ho[:,label_on]==1]
@@ -546,8 +596,9 @@ def run_DBSCAN_evaluation(wf_ho,wf0,ts0,ev_label_ho,labels_to_evaluate=[0,1], sa
         dbscan.fit(waveforms_increase)
         labels = dbscan.labels_ #  Noisy samples are given the label -1
 
-        possible_wf_candidates = evaluate_hpdp_candidates(wf0,ts0,waveforms_increase,labels,saveas=saveas,similarity_measure=similarity_measure,
-                                similarity_thresh=similarity_thresh, assumed_model_varaince=assumed_model_varaince,verbose=True, return_candidates=True)
+        possible_wf_candidates = __evaluate_hpdp_candidates__(wf0, ts0, waveforms_increase, 
+                                                            labels, hypes, saveas=saveas,
+                                                            verbose=True, return_candidates=True)
         
         k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
         if k_candidate != 'None':

@@ -22,30 +22,35 @@ def standardise_wf(waveforms):
 
 
 
-def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=141, desired_num_of_samples=None):
+def get_desired_shape(waveforms,timestamps, hypes): # start_time=15,end_time=90,dim_of_wf=141, desired_num_of_samples=None):
     '''
-    Returns waveforms of the dimension specified by "dim_of_waveform" which are observed in the time interval ["start_time","end_time"].
+    Uses hyperparams from the "hypes" .json file and returns waveforms of the dimension specified by "dim_of_waveform",
+    which are observed in the time interval ["start_time","end_time"].
+    
     If desired_num_of_samples is not None, then every k:th observation is used to get as close as possible to the desired sample size.
 
-    To achieve the desired number of dimensions, each CAP is either cut of at dim. 141, or extended with zeros for missing dimensions.
+    To achieve the desired number of dimensions/samples, each CAP is either cut of at specified dim, or extended with zeros for missing dimensions.
 
     Parameters
     ----------
     waveforms : (number_of_waveforms, dim_of_waveform) array_like
-
+            CAP-waveforms
     timestaps : (number_of_waveforms, ) array_like 
-            Vector containing timestamp for each waveform in seconds
-    start_time/end_time : integer/float
-        time to consider given in minutes. 
-
-    dim_of_wf : integer
-        number of dimensions to be used.
-
+            Vector containing timestamp for each waveform in seconds.
+    hypes : .json file
+            Containing hyperparameters.
     Returns
     -------
+    waveforms : (new_number_of_waveforms, new_dim_of_waveform) array_like
 
+    timestamps : (new_number_of_waveforms, ) array_like
     '''
-
+    # *** Extract hyperparameters from json file: **
+    start_time = hypes["preprocess"]["start_time"] # Specifies time to consider given in minutes
+    end_time = hypes["preprocess"]["end_time"] # Specifies time to consider given in minutes
+    dim_of_wf = hypes["preprocess"]["dim_of_wf"] # Number of dimensions to be used. (number of samples in each CAP)
+    desired_num_of_samples = hypes["preprocess"]["desired_num_of_samples"]
+    # **********************************************
     d0_wf = waveforms.shape[0]
     firts_15_idx = np.where(timestamps<start_time*60)[0] # Find how many datapoints that corresponds to first 15 min of recording:  
     start = firts_15_idx[-1] 
@@ -84,9 +89,9 @@ def get_desired_shape(waveforms,timestamps,start_time=15,end_time=90,dim_of_wf=1
     return waveforms, timestamps
 
 
-def apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1,ev_labels=None, ev_thresh_procentage=False ):
+def apply_mean_ev_threshold(waveforms, timestamps, mean_event_rates, hypes, ev_labels=None): #, ev_threshold=1, ev_thresh_procentage=False ):
     '''
-    Applies threshold to only consider "high occurance"-CAPs as specified by threshold.
+    Applies threshold to only consider "high occurance"-CAPs as specified by a set threshold.
     If "ev_thresh_procentage" is Fasle: 
         Returns waveforms (with corresponding timestamps) which has a mean event rate above ev_threshold.
     If True:
@@ -96,19 +101,30 @@ def apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1
     Parameters
     ----------
     waveforms : (number_of_waveforms, dim_of_waveform) array_like
-
+            CAP-waveforms 
     timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds
 
     mean_event_rate : (n_wf,) array_like
             Estimated mean event rate during the considered recording time for all CAPs.
-    
+    hypes : .json file
+            Containing hyperparameters
+    ev_labels :  (3, n_wf) array_like
 
     Returns: 
-        
-    TODO : correct output shape of labels???? 
+    --------
+    high_occurance_wf : (n_ho_wf, dim_of_waveforms) array_like
+
+    high_occurance_ts : (n_ho_wf,) array_like
+
+    high_occurance_ev_labels: (n_ho_labels,3) array_like
+            OBS: transposed shape compared to input to be more consistent..
     '''
-    # TODO move to function:
+    # *** Extract hyperparameters from json file: **
+    ev_thresh_procentage = hypes["preprocess"]["ev_thresh_procentage"]
+    ev_threshold = hypes["preprocess"]["ev_thresh_fraction"]
+    # **********************************************
+
     # Select event-rate threshold unique for each recording.. 
     if ev_thresh_procentage:
         T  = timestamps[-1]-timestamps[0] # length of used recording in seconds.
@@ -129,9 +145,9 @@ def apply_mean_ev_threshold(waveforms,timestamps,mean_event_rates,ev_threshold=1
         return np.squeeze(high_occurance_wf), np.squeeze(high_occurance_ts) #[0,:,:],[:,0]
 
 
-def apply_amplitude_thresh(waveforms, timestamps, maxamp_threshold=200, minamp_threshold=0):
+def apply_amplitude_thresh(waveforms, timestamps, hypes): # maxamp_threshold=200, minamp_threshold=0):
     '''
-    Removes CAPs with amplitude above/below threeshold values.
+    Removes CAPs with amplitude above/below threeshold values in hypes .json file.
 
     Parameters
     ----------
@@ -139,11 +155,17 @@ def apply_amplitude_thresh(waveforms, timestamps, maxamp_threshold=200, minamp_t
 
     timestaps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds
+    hypes : .json file
+            Containing hyperparameters
     Returns
     -------
     waveforms_pre_thresh : (n_wf_pre_thresh, dim_of_waveform )
     Remaining waveforms after applied threshold
     '''
+    # *** Extract hyperparameters from json file: **
+    maxamp_threshold = hypes["preprocess"]["maxamp_threshold"]
+    minamp_threshold = hypes["preprocess"]["minamp_threshold"]
+    # **********************************************
     max_amps = np.max(waveforms, axis=1)
     min_amps = np.min(waveforms, axis=1)
     keep_idx = (max_amps < maxamp_threshold)&(max_amps > minamp_threshold) & (min_amps > -max_amps) &(min_amps<-minamp_threshold)

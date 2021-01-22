@@ -31,6 +31,7 @@ def wf_correlation(main_idx,std_waveforms):
 
 def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1, standardised_input=True):
     '''
+    qqq: TODO, Remove "var" from imputs..
     Similarity measure of waveforms based on Annulus theorem of Gaussians.
     H0: All observations (i.e waveforms) are assumed to be distributed as N(μ_x, σ^2*I),
     where mu_x is the candidate wavefrom specified by candidate_idx. 
@@ -162,17 +163,6 @@ def plot_correlated_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None
         plt.show()
     #plt.close()
 
-def sim_measure2():
-    '''
-    ...
-
-    Parameters
-    ----------
-    
-    Returns
-    -------
-    '''
-    pass
 
 if __name__ == "__main__":
     '''
