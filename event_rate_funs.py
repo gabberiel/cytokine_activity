@@ -2,6 +2,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from wf_similarity_measures import wf_correlation,similarity_SSQ
+# from evaluation import __get_ev_stats__
 #from plot_functions_wf import plot_event_rates
 import warnings
 
@@ -31,9 +32,7 @@ def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     event_rates : (total_time_in_seconds, number_of_clusters) array_like 
             Number of occurances of labeled waveforms in each one second window during time
             of recording. 
-
-    real_clusters : (number_of_real_clusters,) python_list
-            Returns the clusters which has a mean event rate larger than a threshold of 0.1
+    
     '''
     assert timestamps.shape[0] == labels.shape[0], f'Missmatch of labels and timestamps shape: ts: {timestamps.shape} & lb: {labels.shape}'
     
@@ -41,25 +40,16 @@ def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     if consider_only is None:
         clusters = np.unique(labels) # Get the different clusters for whcich to calculate event rate..
         event_rate_results = np.empty((bin_edges.shape[0]-1,clusters.shape[0]))
-        real_clusters = []
         for cluster_idx,cluster in enumerate(clusters):
                 event_count = np.histogram(timestamps[labels==cluster],bin_edges)
                 event_rate_results[:,cluster_idx] = event_count[0]
-                #cluster_idx += 1
-                if np.mean(event_count[0]) > 0.5: # 0.1 in MATLAB
-                        real_clusters.append(cluster)
-
     else:
         cluster = np.array((consider_only))       
         event_rate_results = np.empty((bin_edges.shape[0]-1,1))
-        real_clusters = []
         event_count = np.histogram(timestamps[labels==cluster],bin_edges)
         event_rate_results[:,0] = event_count[0]
-        #cluster_idx += 1
-        if np.mean(event_count[0]) > 0.5: # 0.1 in MATLAB
-                real_clusters.append(cluster)
 
-    return event_rate_results, real_clusters
+    return event_rate_results
 def __get_average_ev__(ev_stats):
     """
     Extracts average event_rate and variance for full period using outputs of "__delta_ev_measure__()"
@@ -87,7 +77,7 @@ def __get_average_ev__(ev_stats):
     assert np.isnan(np.sum(tot_means))==False, 'Nans in "ev_stats"'
     assert np.isnan(np.sum(tot_std))==False, 'Nans in "ev_stats"'
 
-    return tot_means,tot_std
+    return tot_means, tot_std
 
 
 def __delta_ev_measure__(event_rates, timestamps=None):
@@ -159,24 +149,24 @@ def __ev_label__(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
 
     Parameters
     ----------
-    delta_ev : (number_of_injections(=2), number_of_clusters) array_like
+    delta_ev : (number_of_injections(=2), 1) array_like
                 Changes in mean event rate after the two injections for each cluster.
-                (This function will only need/get "number_of_clusters" = 1. ??)
+                (This function will only need/get "1" = 1. ??)
     ev_stats :[interval_ev_means, interval_ev_std] python_list
-        interval_ev_means: (3, number_of_clusters) array_like
-        interval_ev_std : (3, number_of_clusters) array_like
+        interval_ev_means: (3, 1) array_like
+        interval_ev_std : (3, 1) array_like
             mean and standard deviation of event rates for all three periods for each cluster.
     n_std : float
         number of standard deviations that mean hase to change after injection for it to be 
         considered as increase/decrease
     Returns
     -------
-        label : :(3, number_of_clusters) array_like
+        label : (3, 1) array_like
 
     Example
     -------
+        label = [1,0,0] corresponds to increase in activity after first injections. 
         label = [0,1,0] corresponds to increase in activity after second injection. 
-        label = [1,1,0] corresponds to increase in activity after both injections. 
     '''
     # Define baseline standard deviation for second injection as mean of first two periods of recording..
     if new_variance_periods:
@@ -190,21 +180,115 @@ def __ev_label__(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
         interval_ev_std = ev_stats[1][:2] #.reshape((-1,2)) # Get standard deviation for first two periods.
         interval_ev_std[-1] = (interval_ev_std[0] + interval_ev_std[1])/2
 
-    __ev_label__ = np.zeros((3,delta_ev.shape[-1]))
+    ev_label = np.zeros((3,delta_ev.shape[-1]))
 
     # Find if there is a sufficient increase in event rates after injections: 
     is_increase = delta_ev > (n_std*interval_ev_std)
     if True in is_increase:
         largest_increase = np.argmax(delta_ev-(n_std*interval_ev_std))
-        __ev_label__[largest_increase] = 1
+        ev_label[largest_increase] = 1
         #is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
-        #__ev_label__[is_increase] = 1
-        #print(__ev_label__)
+        #ev_label[is_increase] = 1
+        #print(ev_label)
     else:
-        __ev_label__[-1] = 1
-        #print(__ev_label__)
+        ev_label[-1] = 1
+        #print(ev_label)
 
-    return __ev_label__
+    return ev_label
+
+def __new_ev_labeling__(event_rate, hypes):
+    '''
+    Give waveform a label encoding how the event rate change at time of injections.
+    The label is vector with 3 dimensions. The three values corresponds 
+    to "increase after first injection", "increase after second injection", "consant" -- respectively.
+
+    Parameters
+    ----------
+    event_rates : (total_time_in_seconds, 1) array_like 
+        Number of occurances of a CAP-waveform in each one second window during time
+        of recording. 
+    hypes : .json file
+        Containing hyperparameters
+    Returns
+    -------
+        label : (3,) array_like
+
+    Example
+    -------
+        label = [1,0,0] corresponds to increase in activity after first injections. 
+        label = [0,1,0] corresponds to increase in activity after second injection. 
+    '''
+    t0_baseline_SD =  hypes["labeling"]["t0_baseline_SD"]
+    time_baseline_MU =  hypes["labeling"]["time_baseline_MU"]
+    k = hypes["labeling"]["k_SD"]
+    SD_min = hypes["labeling"]["SD_min"]
+
+    ev_label = np.zeros((3,))
+    results = np.zeros((2,))
+    increase = False
+    # Find if there is a sufficient increase in event rates after each injections: 
+    for injection in [1,2]:
+        t_injection = 30*60*injection # Time of injection
+        _, baseline_SD = __get_ev_stats__(event_rate, start_time=t0_baseline_SD, end_time=30*60)
+        baseline_MU, _ =  __get_ev_stats__(event_rate, start_time=t_injection-time_baseline_MU, end_time=t_injection)
+        SD_thesh = k * np.max((SD_min,  baseline_SD))
+        cytokine_stats = __get_ev_stats__(event_rate, start_time=t_injection+10*60, end_time=t_injection+30*60, 
+                                            compare_to_theshold=baseline_MU + SD_thesh, conv_width=5)
+        if cytokine_stats[2] is True:
+            increase = True
+            results[injection-1] = cytokine_stats[3]
+    if increase is True:
+        largest_increase = np.argmax(results)
+        ev_label[largest_increase] = 1
+    else:
+        ev_label[-1] = 1
+        #print(ev_label)
+
+    return ev_label
+
+def __get_ev_stats__(event_rate, start_time=10*60, 
+                     end_time=90*60, 
+                     compare_to_theshold=None,
+                     conv_width=5):
+    '''
+    Called by "__new_ev_labeling__()" and "__evaluate_cytokine_candidates__()".
+
+    Get event-rate mean and standard deviation for a specified time-period.
+    If "compare_to_threshold" is not None, then the EV is compared to thresh to see if we have a "responder".
+
+    Returns
+    -------
+    if "compare_to_threshold" is not None:
+        returns: MU, SD, responder, time_above_thresh
+    else: 
+        returns: MU, SD
+    
+    MU : float
+        Mean event rate of considered period
+    SD : float
+        Mean Standard deviation of considered period
+    responder : booleon
+        True is the event-rate of specified period is larger than thesh for 1/3 of the period. 
+    time_above_thresh : float
+        How much time in seconds that the EV is above thresh.
+    '''
+    T = end_time-start_time # Length of time interval in seconds
+
+    event_rate_ = event_rate[start_time:end_time] # Event-rate under time-period of interest.
+    SD = np.std(event_rate_) # Standart deviation (SD) of period of interest
+    MU = np.mean(event_rate_) # Mean (MU) event-rate under period of interest
+    if compare_to_theshold is not None:
+        responder  = False
+        conv_kernel = np.ones((conv_width))* 1/conv_width
+        smoothed_EV = np.convolve(np.squeeze(event_rate_),conv_kernel,'same') # Smooth out event_rate
+        EV_above_thres = smoothed_EV > compare_to_theshold # Find all Event-rates larger then threshold
+        time_above_thresh = np.sum(EV_above_thres) # Total time, in seconds, above specified threshold. 
+        if time_above_thresh > T/3: # If responder, The EV has to be higher than thresh for at least 1/3 of the time period.
+            responder = True
+        return MU, SD, responder, time_above_thresh
+    else:
+        return MU, SD
+
 
 def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 similarity_measure='corr',
                    # assumed_model_varaince=0.5,n_std_threshold=1):
@@ -237,12 +321,12 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
                     be labeled as "likely to encode cytokine-info". 
     Returns
     -------
-        ev_labels : (n_wf,) array_like
+        ev_labels : (3, n_wf) array_like
 
-        ev_stats_tot : (2,n_wf)
+        ev_stats_tot : (2, n_wf)
             (tot_mean, tot_std)
     '''
-    print('Initiating event-rate labeling')
+    print('Initiating event-rate labeling \n')
 
     # *** Extract hyperparameters from json file: **
     similarity_measure = hypes["labeling"]["similarity_measure"]
@@ -257,8 +341,7 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
     if similarity_measure=='corr':
         print(f'Using Correlation as similarity measure...')
         print(f'threshold : {threshold}')
-        print(f'n_std_threshold : {n_std_threshold}')
-        print()
+        print(f'n_std_threshold : {n_std_threshold} \n')
         sub_steps = 1000
         ii = 0
         t0 = time.time()
@@ -270,7 +353,8 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
             correlations = wf_correlation(i_range,wf_std)
             for corr_vec in correlations.T:
                 bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
-                event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
+                event_rates = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
+                
                 delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
                 tot_mean,tot_std = __get_average_ev__(ev_stats)
                 ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
@@ -282,8 +366,8 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
                 print(f'On waveform {ii} in event-rate labeling')        
                 ti = time.time()
                 ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
-                print(f'ETA: {round(ETA_t)} seconds..')
-                print()
+                print(f'ETA: {round(ETA_t)} seconds.. \n')
+
     if similarity_measure=='ssq':
         print(f'Using Sum of squares (gaussian annulus theorem) as similarity measure. Paramterers:')
         print(f'assumed_model_varaince = {assumed_model_varaince}')
@@ -298,7 +382,7 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
             wf_downsampled = wf_std[:,::2] 
         #n_wf = wf_downsampled.shape[0]
         #ev_labels = np.zeros((3,n_wf))
-        #ev_stats_tot = np.zeros((2,n_wf))
+        ev_stats_tot = np.zeros((2,n_wf))
 
         # Loop through and lable all observed CAPs :
         for candidate_idx in range(n_wf):
@@ -307,19 +391,22 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
             else:
                 bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold,standardised_input=False)
 
-            event_rates, real_clusters = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
-            delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
-            tot_mean, tot_std = __get_average_ev__(ev_stats)
+            event_rates = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
+            
+            ev_labels[:,ii] = __new_ev_labeling__(event_rates, hypes)
+            # delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
+            # ev_labels[:,ii] = __ev_label__(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
+            # tot_mean,tot_std = __get_average_ev__(ev_stats)
+
+            tot_mean, tot_std = __get_ev_stats__(event_rates, start_time=10*60, 
+                                                 end_time=90*60)
             ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
-            #ev_labels = __ev_label__(delta_ev,ev_stats,n_std=1)
-            ev_labels[:,ii] = __ev_label__(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
             ii +=1
             if ii%1000==0:
                 print(f'On waveform {ii} in event-rate labeling')        
                 ti = time.time()
                 ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
-                print(f'ETA: {round(ETA_t)} seconds..')
-                print()
+                print(f'ETA: {round(ETA_t)} seconds.. \n')
     if saveas is not None:
         np.save(saveas,ev_labels)
         np.save(saveas+'tests_tot',ev_stats_tot)
@@ -382,14 +469,13 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------
     runs_for_time = 1
     for i in range(runs_for_time):
-        event_rates, real_clusters = get_event_rates(timestamps[:,0],labels,bin_width=1)
+        event_rates = get_event_rates(timestamps[:,0],labels,bin_width=1)
         delta, ev_stats = __delta_ev_measure__(event_rates)
         mean_,std_ = __get_average_ev__(ev_stats)
         
     end = time.time()
     print(f' Mean time for calculating event_rate : {(end-start)/runs_for_time * 1000} ms')
     print(f'event rates shape: {event_rates.shape}')
-    print(f'Real clusters: {real_clusters}')
 
     plot_event_rates(event_rates,timestamps,conv_width=100)
     plt.show()

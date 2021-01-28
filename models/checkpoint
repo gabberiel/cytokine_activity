@@ -1,2 +1,2 @@
-model_checkpoint_path: "test_runsR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
-all_model_checkpoint_paths: "test_runsR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
+model_checkpoint_path: "test_run2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"
+all_model_checkpoint_paths: "test_run2R12_BALBC_7.8.16_2 Saline Injections (200ul)_06"

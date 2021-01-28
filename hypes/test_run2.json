@@ -1,0 +1,73 @@
+{
+    "dir_and_files" : {
+        "start_string" : "finalrun_first",
+        "matlab_dir" :  "../matlab_files"        
+    },
+    "labeling" : {
+        "similarity_measure" : "ssq",
+        "similarity_thresh" : 0.1,
+        "assumed_model_varaince" : 0.7,
+        "n_std_threshold" : 0.05,
+        "t0_baseline_SD" : 600,
+        "time_baseline_MU" : 240,
+        "k_SD" : 0.5,
+        "SD_min" : 0.1
+    },
+    "preprocess" : {
+        "standardise_waveforms" : true,
+        "maxamp_threshold" : 500, 
+        "minamp_threshold" : 2,
+        "ev_thresh_procentage" : true,
+        "ev_thresh_fraction" : 0.005,
+        "desired_num_of_samples" : 30000,
+        "dim_of_wf" : 141,
+        "start_time" : 15,
+        "end_time" : 90
+    },
+    "preprocess_for_eval" : {
+        "desired_num_of_samples" : null,
+        "dim_of_wf" : 141,
+        "start_time" : 10,
+        "end_time" : 90
+    },
+    "pdf_GD" : {
+        "m" : 0,
+        "gamma" : 0.02,
+        "eta" : 0.005,
+        "labels_to_evaluate" : [0,1],
+        "downsample_threshold" : 4000
+    },
+    "cvae" : {
+        "latent_dim" : 2,
+        "label_dim" : 3,
+        "nr_epochs" : 120,
+        "batch_size" : 128,
+        "dense_net_nodes" : [120, 100, 80, 40],
+        "activation" : "relu",
+        "model_variance" : 0.1
+    },
+    "evaluation" : {
+        "SD_min_eval" : 0.3,
+        "k_SD_eval" : 2.5,
+        "clustering_method" : "k-means",
+        "similarity_threshold" : 0.4,
+        "assumed_model_varaince" : 0.5,
+        "similarity_measure" : "ssq",
+        "k_clusters" : 8,
+        "db_eps" : 0.15,
+        "db_min_sample" : 5
+    },
+    "marginal_likelihood" : {
+        "MC_sample_size" : 128
+    },
+    "DBSCAN" : {
+        "similarity_threshold" : 0.1,
+        "assumed_model_varaince" : 0.7,
+        "similarity_measure" : "ssq",
+        "db_eps" : 4,
+        "db_min_sample" : 3
+
+    }
+
+
+}

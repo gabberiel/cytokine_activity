@@ -22,7 +22,7 @@ def standardise_wf(waveforms):
 
 
 
-def get_desired_shape(waveforms,timestamps, hypes): # start_time=15,end_time=90,dim_of_wf=141, desired_num_of_samples=None):
+def get_desired_shape(waveforms,timestamps, hypes, training=True): # start_time=15,end_time=90,dim_of_wf=141, desired_num_of_samples=None):
     '''
     Uses hyperparams from the "hypes" .json file and returns waveforms of the dimension specified by "dim_of_waveform",
     which are observed in the time interval ["start_time","end_time"].
@@ -46,10 +46,16 @@ def get_desired_shape(waveforms,timestamps, hypes): # start_time=15,end_time=90,
     timestamps : (new_number_of_waveforms, ) array_like
     '''
     # *** Extract hyperparameters from json file: **
-    start_time = hypes["preprocess"]["start_time"] # Specifies time to consider given in minutes
-    end_time = hypes["preprocess"]["end_time"] # Specifies time to consider given in minutes
-    dim_of_wf = hypes["preprocess"]["dim_of_wf"] # Number of dimensions to be used. (number of samples in each CAP)
-    desired_num_of_samples = hypes["preprocess"]["desired_num_of_samples"]
+    if training:
+        start_time = hypes["preprocess"]["start_time"] # Specifies time to consider given in minutes
+        end_time = hypes["preprocess"]["end_time"] # Specifies time to consider given in minutes
+        dim_of_wf = hypes["preprocess"]["dim_of_wf"] # Number of dimensions to be used. (number of samples in each CAP)
+        desired_num_of_samples = hypes["preprocess"]["desired_num_of_samples"]
+    else:
+        start_time = hypes["preprocess_for_eval"]["start_time"] # Specifies time to consider given in minutes
+        end_time = hypes["preprocess_for_eval"]["end_time"] # Specifies time to consider given in minutes
+        dim_of_wf = hypes["preprocess_for_eval"]["dim_of_wf"] # Number of dimensions to be used. (number of samples in each CAP)
+        desired_num_of_samples = hypes["preprocess_for_eval"]["desired_num_of_samples"]
     # **********************************************
     d0_wf = waveforms.shape[0]
     firts_15_idx = np.where(timestamps<start_time*60)[0] # Find how many datapoints that corresponds to first 15 min of recording:  

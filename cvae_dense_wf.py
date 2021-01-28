@@ -31,7 +31,7 @@ class Add_kl_loss(layers.Layer):
         return kl_loss
 
 
-def __create_encoder__(encoder_input,latent_dim,inp_label):
+def __create_encoder__(encoder_input, inp_label, hypes):
     '''
     Initiates encoder of conditional variational autoencoder.
 
@@ -52,38 +52,33 @@ def __create_encoder__(encoder_input,latent_dim,inp_label):
         Dense encoder model of CVAE
 
     '''
-    #latent_dim = hypes["cvae"]["latent_dim"]
+    latent_dim = hypes["cvae"]["latent_dim"]
+    dense_net_nodes = hypes["cvae"]["dense_net_nodes"]
+    activation = hypes["cvae"]["activation"]
 
-    xi     = layers.Concatenate(axis=1)([encoder_input, inp_label])
-    x      = layers.Dense(120, activation='relu')(xi)
-    x      = layers.BatchNormalization()(x)
-    x      = layers.Dense(100, activation='relu')(x)
-    x      = layers.BatchNormalization()(x)
-    x      = layers.Dense(80, activation='relu')(x)
-    x      = layers.BatchNormalization()(x)
-    z_mean      = layers.Dense(latent_dim, name='latent_mu')(x)
-    z_log_var   = layers.Dense(latent_dim, name='latent_sigma')(x)
+    x = layers.Concatenate(axis=1)([encoder_input, inp_label])
+    for num_nodes in dense_net_nodes:
+        x = layers.Dense(num_nodes, activation=activation)(x)
+        x = layers.BatchNormalization()(x)
+    z_mean = layers.Dense(latent_dim, name='latent_mu')(x)
+    z_log_var = layers.Dense(latent_dim, name='latent_sigma')(x)
 
-    z = sample_z(z_mean,z_log_var)
+    z = sample_z(z_mean, z_log_var)
 
     # CALCULATE LOSSES:
-    kl_loss = Add_kl_loss()([z_mean,z_log_var])
+    kl_loss = Add_kl_loss()([z_mean, z_log_var])
 
     # Instantiate encoder
-    encoder = keras.Model(inputs=[encoder_input,inp_label], outputs=[z_mean,z_log_var, z], name='encoder')
+    encoder = keras.Model(inputs=[encoder_input,inp_label], outputs=[z_mean, z_log_var, z], name='encoder')
     encoder.add_loss(kl_loss)
     encoder.add_metric(kl_loss, name='kl_loss', aggregation='mean')
 
-    # TODO: add gmm_KL_loss
-    #encoder.add_loss(GMM_kl_loss)
-    #encoder.add_metric(GMM_kl_loss, name='GMM_kl_loss', aggregation='mean')
-
-    #encoder.summary()
+    # encoder.summary()
     
     return encoder
 
 
-def __create_decoder__(waveform_dim,latent_dim,inp_label):    
+def __create_decoder__(waveform_dim, inp_label, hypes):    
     '''
     Initiates decoder of conditional variational autoencoder.
 
@@ -93,10 +88,11 @@ def __create_decoder__(waveform_dim,latent_dim,inp_label):
     ----------
     wavefrom_dim : Integer - type
         Number of features in each waveform. To be used in reconstructed output
-    laten_dim : Integer 
-        dimension of latent space
     inp_label : keras.layers.Input - type
         Input label to condition on in the conditional VAE.
+    hypes : 
+    laten_dim : Integer 
+        dimension of latent space
 
     Returns
     -------
@@ -104,21 +100,23 @@ def __create_decoder__(waveform_dim,latent_dim,inp_label):
         Dense decoder model of CVAE
 
     '''
+    latent_dim = hypes["cvae"]["latent_dim"]
+    dense_net_nodes = hypes["cvae"]["dense_net_nodes"]
+    activation = hypes["cvae"]["activation"]
 
-    d_i    = layers.Input(shape=(latent_dim, ), name='decoder_input')
-    xi = layers.Concatenate(axis=1)([d_i, inp_label])
-    x      = layers.Dense(80, activation='relu')(xi)
-    x      = layers.BatchNormalization()(x)
-    x      = layers.Dense(100, activation='relu')(x)
-    x      = layers.BatchNormalization()(x)
-    x      = layers.Dense(120, activation='relu')(x)
-    x      = layers.BatchNormalization()(x)
-    o      = layers.Dense(waveform_dim, activation=None)(x)
+    d_i = layers.Input(shape=(latent_dim, ), name='decoder_input')
+    x = layers.Concatenate(axis=1)([d_i, inp_label])
 
-    decoder = keras.Model(inputs=[d_i,inp_label],outputs=o, name='decoder')
+    for num_nodes in dense_net_nodes[::-1]:
+        x = layers.Dense(num_nodes, activation=activation)(x)
+        x = layers.BatchNormalization()(x)
+
+    o = layers.Dense(waveform_dim, activation=None)(x)
+
+    decoder = keras.Model(inputs=[d_i, inp_label], outputs=o, name='decoder')
     return decoder
     
-def get_cvae(waveform_dim,latent_dim,label_dim=3):
+def get_cvae(hypes):
     '''
     Builds a Conditional Autoencoder with 1D input dimension specified by waveform_dim.
     Conditiones input with label of dimension label_dim.
@@ -141,14 +139,15 @@ def get_cvae(waveform_dim,latent_dim,label_dim=3):
     cvae : keras.Model
         Full cvae model to be trained.
     '''
-    #waveform_dim = hypes["preprocess"]["dim_of_wf"]
-    #latent_dim,
-    #label_dim=3
+    global model_variance
+    model_variance = hypes["cvae"]["model_variance"]
+    waveform_dim = hypes["preprocess"]["dim_of_wf"]
+    label_dim = hypes["cvae"]["label_dim"]
 
     encoder_input = layers.Input(shape=(waveform_dim, ), name='encoder_input')
     inp_label = layers.Input(shape=(label_dim, ), name='ev_label_input')
-    encoder = __create_encoder__(encoder_input, latent_dim, inp_label)
-    decoder = __create_decoder__(waveform_dim, latent_dim, inp_label)
+    encoder = __create_encoder__(encoder_input, inp_label, hypes)
+    decoder = __create_decoder__(waveform_dim, inp_label, hypes)
     
     reconstruction = decoder([encoder([encoder_input,inp_label])[2],inp_label])
     cvae = keras.Model(inputs=[encoder_input,inp_label], outputs=reconstruction, name='cvae')
@@ -180,12 +179,9 @@ def __reconstruction_loss__(data,target):
         Loss considered in backpropagation. 
 
     '''
-    variance = 0.5
-
-    reconstruction_loss = ( 0.5 / variance ) * tf.reduce_sum(
-                keras.losses.mean_squared_error(data, target)
-            )
-    #reconstruction_loss *= 141 # Corresponding to assuming a variance of 0.5... Looks reasonable when simulating new waveforms with noise..
+    variance = model_variance
+    reconstruction_loss = (0.5 / variance) * tf.reduce_sum(
+                keras.losses.mean_squared_error(data, target))
     return reconstruction_loss
 
 if __name__ == "__main__":
@@ -240,7 +236,7 @@ if __name__ == "__main__":
 
     ev_labels_wf = np.load(path_to_EVlabels+'.npy')
     waveform_dim = waveforms.shape[-1]
-    encoder,decoder,cvae = get_cvae(waveform_dim,2)
+    encoder,decoder,cvae = get_cvae(hypes)
     xx = waveforms[:130000,:]
     ev_labels = ev_labels_wf[:,:130000].T
 

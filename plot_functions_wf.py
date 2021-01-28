@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf
 from wf_similarity_measures import wf_correlation, label_from_corr, similarity_SSQ
-from event_rate_funs import get_event_rates
+# from event_rate_funs import get_event_rates
 '''
 SMALL_SIZE = 22
 MEDIUM_SIZE = 24
@@ -30,8 +30,6 @@ plt.rc('legend', fontsize=16)    # legend fontsize
 
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
-    TODO : Fix title/axes..
-
     Takes (resolution x resolution) samples from grid in latent space and plots the decoded x-mean.
     We assume x ~ N(mu_x,I). The functions then does as follows:
         * sample z. (takes values in evenly spaced grid.)
@@ -149,7 +147,8 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
 def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
     '''
     Plot of raw recording before MATLAB preprocessing.
-    Assumes downsampled (5) raw_rec such that the sample frequency is 8000 Hz
+    Assumes downsampled (5) raw_rec such that the sample frequency is 8000 Hz.
+
     Parameters
     ----------
 
@@ -168,7 +167,7 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
 
 def plot_waveforms_grid(waveforms,N, saveas=None,verbose=False,title=None):
     ''' 
-    Plot N x N observed CAP-waveforms in grid. 
+    Plot N x N grid of observed CAP-waveforms. 
     '''
     num_wf = waveforms.shape[0]
     wf_dim = waveforms.shape[-1]
@@ -392,7 +391,11 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
 
 
 def plot_amplitude_hist(waveforms, saveas=None,verbose=True):
-    
+    """
+    Plots histogram distribution of min/max - amplitude of 
+    CAP-waveforms. 
+    Mainly used to determine amplitide thresholds. 
+    """
     max_amps = np.max(waveforms,axis=1)
     min_amps = np.min(waveforms,axis=1)
 
@@ -409,6 +412,11 @@ def plot_amplitude_hist(waveforms, saveas=None,verbose=True):
 
 
 def plot_event_rate_stats_hist(ev_stats_tot,saveas=None,verbose=False):
+    """
+    Plots histrogram-distribution of mean event-rate and
+    standard deviation obtained during the labeling of CAPs.
+    "ev_stats_tot" is saved as .npy file by the function "get_ev_labels()".
+    """
     plt.hist(ev_stats_tot[0],density=True,bins=40)
     plt.xlabel('$\mu_{EV}$')
     plt.title('Distribution of Mean Event-Rate.')
@@ -425,83 +433,3 @@ def plot_event_rate_stats_hist(ev_stats_tot,saveas=None,verbose=False):
     if verbose is True:
         plt.show()
     plt.close()
-"""
-def evaluate_hpdp_candidates(wf0,ts0,hpdp,k_labels,similarity_measure='corr', similarity_thresh=0.4, 
-                            assumed_model_varaince=0.5,saveas='saveas_not_specified',verbose=False, return_candidates=False):
-    '''
-    Evaluates the results of clustered hpdp. Uses the specified similarity measure to find the event rate using the median
-    of each hpdp cluster as "main candidate". The clusters as specified by k_labels.
-    
-    Parameters
-    ----------
-    wf0 : (n_wf,d_wf), array_like
-        The waveforms which are used for similarity measure to evaluate candidates.
-    ts0 : (n_wf,) array_like
-        Corresponding timestamps
-    hpdp : (n_hpdp, d_wf) array_lika
-        The high probability datapointes under consideration to find cytokine-candidate.
-    k_labels : (n_hpdp,) array_like
-        labels for hpdp -- should correpond to the different maximas of conditional pdf.
-    
-    saveas : 'path/to/save_fig' string_like _or_ None
-            If None then the figure is not saved
-        verbose : Booleon
-            True => plt.show()
-    
-    Returns
-    -------
-    if return_candidates is True:
-        candidate_wf : (n_clusters, d_wf) array_like
-            The median of each hpdp-cluster.
-    
-    '''
-    k_clusters = np.unique(k_labels)  
-    candidate_wf = np.empty((k_clusters.shape[0],wf0.shape[-1]))
-    for cluster in k_clusters:
-        hpdp_cluster = hpdp[k_labels==cluster]
-        MAIN_CANDIDATE = np.median(hpdp_cluster,axis=0) # Median more robust to outlier..
-
-        added_main_candidate_wf = np.concatenate((MAIN_CANDIDATE.reshape((1,MAIN_CANDIDATE.shape[0])),wf0),axis=0)
-        assert np.sum(MAIN_CANDIDATE) == np.sum(added_main_candidate_wf[0,:]), 'Something wrong in concatenate..'
-        
-
-        # QUICK FIX FOR WAVEFORMS AMPLITUDE INCREASING AFTER GD-- standardise it.
-        # Should not be needed if GD works properly...
-        
-        #added_main_candidate_wf = preprocess_wf.standardise_wf(added_main_candidate_wf)
-
-        print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
-        # Get correlation cluster for Delta EV - increased_second hpdp
-        
-        if similarity_measure=='corr':
-            print('Using "corr" to evaluate final result')
-            correlations = wf_correlation(0,added_main_candidate_wf)
-            bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
-        if similarity_measure=='ssq':
-            print('Using "ssq" to evaluate final result')
-            if assumed_model_varaince is False:
-                #added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
-                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh,standardised_input=False)
-            else:
-                added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
-                bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
-        event_rates, _ = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
-        plt.figure(1)
-        median_wf = plot_similar_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=saveas+'Main_cand_wf',
-                            verbose=False, show_clustered=False,cluster=cluster,return_cand=True)
-        candidate_wf[cluster,:] = median_wf
-        plt.figure(2)
-        bool_labels[bool_labels==True] = cluster
-        plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'Main_cand_ev', verbose=False,cluster=cluster) 
-    plt.figure(3)
-    #plt.hist(ts0,bins=200)
-    event_rates, _ = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
-    plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=saveas+'overall_EV', verbose=False)     
-    
-    if saveas is not None:
-        plt.savefig(saveas, dpi=150)
-    if verbose:
-        plt.show()
-    if return_candidates:
-        return candidate_wf
-"""

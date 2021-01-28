@@ -9,10 +9,10 @@ import preprocess_wf
 import json
 from os import path, scandir
 from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model
-from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
-from event_rate_funs import get_ev_labels, get_event_rates,__delta_ev_measure__
+from wf_similarity_measures import similarity_SSQ
+from event_rate_funs import get_event_rates, __delta_ev_measure__
 from plot_functions_wf import *
-from evaluation import run_DBSCAN_evaluation, run_evaluation
+from evaluation import run_DBSCAN_evaluation, run_evaluation, marginal_log_likelihood
 from scipy.spatial.distance import cdist
 
 from scipy import stats
@@ -22,25 +22,26 @@ from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
 # **************** WHAT TO PLOT: ************************
-verbose_main = True
+verbose_main = True   # Wether to show or just save figures
+
 plot_raw_CAPs = False
 plot_ev_stats = False
-plot_ho_EVs = True
+plot_ho_EVs = False
 view_encoded_latent = False
-view_decoded_latent = False    # True => reqires user to give input if to continue the script to pdf-GD or not.. 
-plot_simulatated_path_from_model = False
+view_decoded_latent = False   
+plot_simulatated_path_from_model = True
 plot_wf_and_ev_for_the_different_ev_labels = False
 plot_acf_pacf = False
-
-
-# RESPONDERS:
-# matlab_file = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # 'R10'  / 'R12' for all case/control
-
-
+evaluate_probabilities = False
 ###############################
 directory = '../matlab_files'
-training_start_title = 'finalrun_first'
+figures_directory = 'figures_tests/'
+
+training_start_title = 'test_run2'   # Specify title of the "run" to use.
+
 rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+#rec_start_string = '\\tsR10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 
 # ************************************************************
 # ******************** Hyperparameters ****************************
@@ -65,13 +66,13 @@ for entry in scandir(directory):
         path_to_model_weights = 'models/'+unique_string_for_run
 
         # **************** Paths to save Figures************************
-        saveas_raw_CAPs = 'figures_tests/raw_CAPs/' + unique_for_figs
-        saveas_ev_stats = 'figures_tests/event_rate_stats/' + unique_for_figs
-        saveas_ho_EVs = 'figures_tests/event_rate_labels/' + unique_for_figs
-        saveas_vae_result = 'figures_tests/encoded_decoded/' + unique_for_figs
-        saveas_simulatated_path_from_model = 'figures_tests/model_assessment/' + unique_for_figs
-        saveas_wf_and_ev_for_the_different_ev_labels = 'figures_tests/event_rate_labels/' + unique_for_figs
-        savefig_acf_pacf = 'figures_tests/acf_pacf/' + unique_for_figs
+        saveas_raw_CAPs = figures_directory + 'raw_CAPs/' + unique_for_figs
+        saveas_ev_stats = figures_directory + 'event_rate_stats/' + unique_for_figs
+        saveas_ho_EVs = figures_directory + 'event_rate_labels/' + unique_for_figs
+        saveas_vae_result = figures_directory + 'encoded_decoded/' + unique_for_figs
+        saveas_simulatated_path_from_model = figures_directory + 'model_assessment/' + unique_for_figs
+        saveas_wf_and_ev_for_the_different_ev_labels = figures_directory + 'event_rate_labels/' + unique_for_figs
+        savefig_acf_pacf = figures_directory + 'acf_pacf/' + unique_for_figs
 
         # ******* Numpy File Paths ***********
         path_to_hpdp = "../numpy_files/numpy_hpdp/" + unique_string_for_run
@@ -95,7 +96,6 @@ for entry in scandir(directory):
                            saveas=saveas_raw_CAPs+'_zoomed', 
                            verbose=verbose_main, title='CAP-waveform')
             plt.close()
-
         # ************************************************************
         # ******************** Preprocess ****************************
         # ************************************************************
@@ -119,13 +119,15 @@ for entry in scandir(directory):
         else:
             print(f'OBS: did not find {path_to_EVlabels}... \n \
                     Visualisation Recuires saved files by "main_train.py" ')
+
         # ************************************************************
         # ******************** Event-rate-stats **********************
         # ************************************************************
         if plot_ev_stats:
             saveas = saveas_ev_stats
             plot_event_rate_stats_hist(ev_stats_tot, saveas=saveas, 
-                                       verbose=False)
+                                       verbose=verbose_main)
+
         # ************************************************************
         # ************* High occurance WF: **********************
         # ************************************************************
@@ -143,9 +145,8 @@ for entry in scandir(directory):
             saveas = saveas_ho_EVs
             for i in [10,40,80]:
                 bool_labels, _ = similarity_SSQ(i, wf_ho, epsilon=0.1, var=0.7, standardised_input=True)
-                event_rates, real_clusters = get_event_rates(ts_ho, bool_labels, bin_width=1, consider_only=1)
+                event_rates = get_event_rates(ts_ho, bool_labels, bin_width=1, consider_only=1)
                 delta_ev, ev_stats = __delta_ev_measure__(event_rates, timestamps=ts_ho)
-                #ev_labels = get_ev_labels(delta_ev,ev_stats,n_std=1)
                 plot_similar_wf(i, wf_ho, bool_labels, threshold, saveas=saveas+'_wf'+str(i), verbose=verbose_main, title=title_similarity)
                 plot_event_rates(event_rates, ts_ho, noise=None, conv_width=100, saveas=saveas+'_ev'+str(i), verbose=verbose_main) 
                 plt.close()
@@ -164,22 +165,16 @@ for entry in scandir(directory):
         # ************************************************************
         # **** PLOT Simulated wf. from N(mu_x,I) (CVAE) *********************
         # ************************************************************
-        # plot_simulatated_path_from_model = True
-        # saveas_simulatated_path_from_model = 'figures_tests/model_assessment/cvae_wf_'
+
         if plot_simulatated_path_from_model:
+            model_variance = hypes["cvae"]["model_variance"]
+            print(f'\n Model variance is set to : {model_variance} \n')
             for jj in [10, 40, 80]:
                 saveas = saveas_simulatated_path_from_model + str(jj)
                 x = wf_ho[jj, :].reshape((1, 141))
                 label = ev_label_ho[jj, :].reshape((1, 3))
-                plot_simulated(cvae, x, ev_label=label, n=1, var=0.5, saveas=saveas, verbose=verbose_main)
+                plot_simulated(cvae, x, ev_label=label, n=1, var=model_variance, saveas=saveas, verbose=verbose_main)
                 
-                # plot_simulated(cvae,x,ev_label=label,n=0,var=0.5, saveas=None, verbose=False)
-                # bool_labels,_ = similarity_SSQ(jj, wf_ho, epsilon=0.1, var=0.7, standardised_input=True)
-                # event_rates, real_clusters = get_event_rates(ts_ho,bool_labels,bin_width=1,consider_only=1)
-                # delta_ev, ev_stats = __delta_ev_measure__(event_rates)
-                # plot_similar_wf(jj,wf_ho,bool_labels,0.1,saveas='figures_tests/model_assessment/simulated_and_cluster_mean',cluster='mean',show_clustered=False, verbose=False,
-                #          title='Comparison of Cluster- and CVAE Mean')
-                #plt.show()
                 plt.close()
             print('Done.')
 
@@ -214,7 +209,7 @@ for entry in scandir(directory):
                 print(f'plotting wf and ev for cluster : {cluster}')    # 0="increase after first", 1="increase after second"
                 for i in idx_increase[0][10, 40, 80]:
                     bool_labels, _ = similarity_SSQ(i, waveforms, epsilon=0.1, var=0.7, standardised_input=True)
-                    event_rates, real_clusters = get_event_rates(timestamps[:, 0], bool_labels, bin_width=1, consider_only=1)
+                    event_rates = get_event_rates(timestamps[:, 0], bool_labels, bin_width=1, consider_only=1)
                     delta_ev, ev_stats = __delta_ev_measure__(event_rates)
                     plot_similar_wf(i, waveforms, bool_labels,
                                     threshold, saveas=saveas+'_wf_'+str(i),
@@ -230,8 +225,6 @@ for entry in scandir(directory):
         # ************************************************************
         # ******** Quick look at ACF/PACF  ***************************
         # ************************************************************
-        # plot_acf_pacf = False
-        # savefig_acf_pacf = 'figures_tests/acf_pacf/26_nov'
         if plot_acf_pacf:
             i = 0
             saveas = savefig_acf_pacf
@@ -255,27 +248,38 @@ for entry in scandir(directory):
                 if verbose_main:
                     plt.show()
 
+        if evaluate_probabilities:
+            saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title
+            responder_CAPs = np.load(saveas_responder_caps + '.npy')
 
-        '''
-        # TODO : -Fix plots of encoded/decoded Latent space.
-        #        -Event-rate plots? ---Njaa, finns i main..
-        # ************************************************************
-        # ******** Cluster-Results using "Test-statistic"  ***********
-        # ************************************************************
-        #plot_test_of_test_statistic = False
-        #savefig_test_of_test_statistic = 'figures_tests/test_statistic/26_nov_'
-        if plot_test_of_test_statistic:
-            print()
-            print(f'Plotting old test')
-            for c in [10,40,80]:
-                saveas = savefig_test_of_test_statistic
-                test_stat = waveforms - waveforms[c,:]
-                print(test_stat.shape)
-                mean = np.zeros((test_stat.shape[-1]))
-                var = np.eye(test_stat.shape[-1])
-                probs = stats.multivariate_normal.pdf(test_stat,mean,var)*1e57
-                threshold = 1e-25
-                bool_labels = probs>threshold
-                #sum(bool_labels)
-                plot_similar_wf(c,waveforms,bool_labels,threshold,saveas=saveas+'thres_'+str(threshold)+'_wf_'+str(c),verbose=verbose_main )
-        '''
+            N_evals = 10
+            probs = []
+            # Calculate marginal liklihood.
+            idx_for_label_one = np.where(ev_label_ho[:,2] == 1)
+            for wf_idx in idx_for_label_one[0][0:N_evals*10:10]:
+                v_prob = []
+                for i in range(10):
+                    log_prob_x = marginal_log_likelihood(wf_ho[wf_idx, :], np.array([0,0,1]), encoder, decoder, hypes)
+                    v_prob.append(log_prob_x)
+                probs.append(np.mean(v_prob))
+            plt.hist(probs, bins=50)
+            plt.show()
+            print(f'mean of likelihood = {np.mean(probs)}, using N = {len(probs)} samples.')
+            # Calculate marginal liklihood fr.
+            # plt.plot(responder_CAPs[0])
+            # plt.show()
+            probs = []
+            labels = np.array([[0,1,0],[1,0,0],[0,1,0],[1,0,0],[1,0,0],[0,1,0]])
+            label_i = 0
+            for responder_CAP in responder_CAPs:
+                v_prob = []
+                for i in range(10):
+                    log_prob_x = marginal_log_likelihood(responder_CAP, labels[label_i,:], encoder, decoder, hypes)
+                    v_prob.append(log_prob_x)
+                probs.append(np.mean(v_prob))
+                label_i  += 1
+            plt.hist(probs)
+            plt.show()
+            print(probs)
+            print(f'mean of likelihood = {np.mean(probs)}, for responder CAPs. (mean of 10 runs.)')
+            
