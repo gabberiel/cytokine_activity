@@ -1,17 +1,51 @@
 
 
-# Clustering Neural Signals Related to Cytokine Activity
+# Decoding Neural Signals Related to Cytokine Activity
+### Author: *Gabriel Andersson*
 
+This reposetory provides the python and matlab code for the master-thesis:
+
+
+
+Work is inspired by: <https://www.researchgate.net/publication/325035277_Identification_of_cytokine-specific_sensory_neural_signals_by_decoding_murine_vagus_nerve_activity>. 
+They also provided the MATLAB code wich only has been slighlty altered for this work.
 Neural recordings data as well as raw MATLAB code availible at: 
-<public.feinsteininstitute.org/cbem/PNAS%20Submission>.
+<https://public.feinsteininstitute.org/cbem/PNAS%20Submission>.
 
 Find Main Article at <https://www.researchgate.net/publication/325035277_Identification_of_cytokine-specific_sensory_neural_signals_by_decoding_murine_vagus_nerve_activity>. 
 
+
+## Dependencies & Instructions
+1. Install required packages
+```
+pip install -r requirements.txt
+```
+2. Download neural recordings (.plx files) at: 
+<https://public.feinsteininstitute.org/cbem/PNAS%20Submission>.
+
+
 ## Steps in workflow:
+### 1. Conversion of .plx files to .mat 
+Convert .plx files to .mat files, using the script ``` convert_plx.mat ```. 
 
-Raw input-file.plx --[Matlab-Preprocess (1)]--> waveforms & timestamps .mat files --[Preprocess and Label (2)]-->  waveforms & timestamps .npy files --[CVAE-training (3)]--> keras.Model 
---[ pdf GD (4)]--> high prob. data-points --[Candidate evaluation looking at Event-rates (5)]--> Result that can be infered from. 
+### 2. MATLAB preprocessing
+The MATLAB preprocessing can be done for specific file using qqq: .
+Alternatively, convert all file in specified  directory using qqq: . 
 
+This saves the CAP-waveforms data into matlab (N x d) matrix together with timestamps (N x 1).
+### 3. Main analysis
+The rest of the preprocessing and training is run by the script ```main_train.py``` .
+Including,
+* Similarity Measure and Data ,
+* Build and Train Probabilistiv Model (Conditional VAE),
+* Gradient Decent of Conditional Distribution,
+* Clustering. 
+
+## 4. Evaluation of Resultig CAP-Candidates.
+    ```main_evaluation.py```
+
+## 5. Visualisations and Model Assessments.
+    ```main_visualisations.py```
 
 =======
 * (1) : **MATLAB preprocessing of raw-recording.** Includes "adaptive threshold" and romoval of "bad"-datapoints influenced by cardiac events etc. In the MATLAB code we apply the steps:
