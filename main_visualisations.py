@@ -5,31 +5,35 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import preprocess_wf 
 import json
-from os import path, scandir
+from os import path, scandir, sys
+from scipy.spatial.distance import cdist
+from scipy import stats
+from statsmodels.tsa.stattools import acf
+from statsmodels.graphics.tsaplots import plot_acf
+from statsmodels.graphics.tsaplots import plot_pacf
+
+sys.path.insert(1,'src/')
+
+import preprocess_wf 
 from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model
 from wf_similarity_measures import similarity_SSQ
 from event_rate_funs import get_event_rates, __delta_ev_measure__
 from plot_functions_wf import *
 from evaluation import run_DBSCAN_evaluation, run_evaluation, marginal_log_likelihood
-from scipy.spatial.distance import cdist
 
-from scipy import stats
 
-from statsmodels.tsa.stattools import acf
-from statsmodels.graphics.tsaplots import plot_acf
-from statsmodels.graphics.tsaplots import plot_pacf
 
 # **************** WHAT TO PLOT: ************************
 verbose_main = True   # Wether to show or just save figures
 
 plot_raw_CAPs = False
 plot_ev_stats = False
+plot_ho_TOT_EVs = True
 plot_ho_EVs = False
 view_encoded_latent = False
 view_decoded_latent = False   
-plot_simulatated_path_from_model = True
+plot_simulatated_path_from_model = False
 plot_wf_and_ev_for_the_different_ev_labels = False
 plot_acf_pacf = False
 evaluate_probabilities = False
@@ -37,11 +41,13 @@ evaluate_probabilities = False
 directory = '../matlab_files'
 figures_directory = 'figures_tests/'
 
-training_start_title = 'test_run2'   # Specify title of the "run" to use.
+training_start_title = 'finalrun_second'   # Specify title of the "run" to use.
 
-rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
-#rec_start_string = '\\tsR10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+# Responders finalrun_first:
+rec_start_string = '\\tsR10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '\\tsR10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 
 # ************************************************************
 # ******************** Hyperparameters ****************************
@@ -49,8 +55,10 @@ rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' #.30.16
 with open('hypes/'+training_start_title+'.json', 'r') as f:
     hypes = json.load(f)
 # *****************************************************
-
+responder_count = 0
+responder_rec_list = hypes["Results"]["Responders"]
 for entry in scandir(directory):
+    rec_start_string = '\\ts' + responder_rec_list[responder_count]
     if entry.path.startswith(directory+rec_start_string):    # Find unique recording string. tsR10 for all cytokine injections, tsR12 for saline. 
         matlab_file = entry.path[len(directory+'\\ts'):-len('.mat')]    # extract only the matlab_file name from string.
         print(' \n *******************************************************************************')
@@ -73,6 +81,7 @@ for entry in scandir(directory):
         saveas_simulatated_path_from_model = figures_directory + 'model_assessment/' + unique_for_figs
         saveas_wf_and_ev_for_the_different_ev_labels = figures_directory + 'event_rate_labels/' + unique_for_figs
         savefig_acf_pacf = figures_directory + 'acf_pacf/' + unique_for_figs
+        savefig_log_likes = figures_directory + 'log_likes/' + unique_for_figs
 
         # ******* Numpy File Paths ***********
         path_to_hpdp = "../numpy_files/numpy_hpdp/" + unique_string_for_run
@@ -138,6 +147,9 @@ for entry in scandir(directory):
 
         print(f'After EV threshold: ("icreased after first","increased after second", "constant") = {np.sum(ev_label_ho,axis=0)} ')
 
+        if plot_ho_TOT_EVs:
+            ev_ho = get_event_rates(ts_ho, np.ones(ts_ho.shape[0]))
+            plot_event_rates(ev_ho, ts_ho)
         # Plotting EV etc. done for High occurance CAPs... :
         if plot_ho_EVs:
             threshold = 0.6
@@ -251,25 +263,34 @@ for entry in scandir(directory):
         if evaluate_probabilities:
             saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title
             responder_CAPs = np.load(saveas_responder_caps + '.npy')
-
-            N_evals = 10
+            
+            N_evals = 1000
             probs = []
             # Calculate marginal liklihood.
-            idx_for_label_one = np.where(ev_label_ho[:,2] == 1)
+            labels = np.array([[0,1,0],[0,1,0],[0,1,0],[1,0,0],[0,1,0],[1,0,0]])
+            """
+            use_label = labels[responder_count,:]
+            label_nr = np.where(use_label==1)
+            idx_for_label_one = np.where(ev_label_ho[:,label_nr] == 1)
             for wf_idx in idx_for_label_one[0][0:N_evals*10:10]:
                 v_prob = []
-                for i in range(10):
-                    log_prob_x = marginal_log_likelihood(wf_ho[wf_idx, :], np.array([0,0,1]), encoder, decoder, hypes)
+                for i in range(1):
+                    log_prob_x = marginal_log_likelihood(wf_ho[wf_idx, :], use_label, encoder, decoder, hypes)
                     v_prob.append(log_prob_x)
                 probs.append(np.mean(v_prob))
-            plt.hist(probs, bins=50)
-            plt.show()
+            plt.hist(probs, bins=100)
+            plt.savefig(savefig_log_likes + '.png', dpi=150)
+            plt.close()
+            #plt.show()
             print(f'mean of likelihood = {np.mean(probs)}, using N = {len(probs)} samples.')
             # Calculate marginal liklihood fr.
             # plt.plot(responder_CAPs[0])
             # plt.show()
+            """
             probs = []
-            labels = np.array([[0,1,0],[1,0,0],[0,1,0],[1,0,0],[1,0,0],[0,1,0]])
+            # labels = np.array([[0,1,0],[1,0,0],[0,1,0],[1,0,0],[1,0,0],[0,1,0]])
+            # labels = np.array([[0,1,0],[0,1,0],[0,1,0],[1,0,0],[0,1,0],[1,0,0]])
+            
             label_i = 0
             for responder_CAP in responder_CAPs:
                 v_prob = []
@@ -283,3 +304,4 @@ for entry in scandir(directory):
             print(probs)
             print(f'mean of likelihood = {np.mean(probs)}, for responder CAPs. (mean of 10 runs.)')
             
+        responder_count += 1

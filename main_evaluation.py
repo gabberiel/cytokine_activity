@@ -3,19 +3,23 @@
 # In main, the  
 
 import numpy as np
-import json
-from evaluation import find_reponders, eval_candidateCAP_on_multiple_recordings
 import matplotlib.pyplot as plt
+import json
+from os import sys
+sys.path.insert(1,'src/')
+
+from evaluation import find_reponders, eval_candidateCAP_on_multiple_recordings
 
 responder_directory = '../numpy_files/cytokine_candidates/' # path to saved numpy result files.
 
 #matlab_directory = '../matlab_saline'
 matlab_directory = '../matlab_files'
 
-save_main_candidates_CAPs = True
+save_main_candidates_CAPs = False
 load_saved_candidate = False
 
-training_start_title = 'test_run2'   # Specify title of the "run" to evaluate.
+verbose = True
+training_start_title = 'finalrun_second'   # Specify title of the "run" to evaluate.
 
 end_string = 'auto_assesment.npy' 
 # ************* Interesting recordings: *********************
@@ -36,7 +40,7 @@ with open('hypes/' + training_start_title + '.json', 'r') as f:
 # ****************************************************************************
 saveas = 'figures/Responders/' + training_start_title
 responders, main_candidates = find_reponders(responder_directory, hypes, start_string=training_start_title, end_string=end_string,
-                            specify_recordings=specify_recording, saveas=saveas, verbose=False, 
+                            specify_recordings=specify_recording, saveas=saveas, verbose=verbose, 
                             return_main_candidates=True)
 if save_main_candidates_CAPs:
     saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title

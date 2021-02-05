@@ -11,19 +11,21 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import preprocess_wf
 import json
-from os import path, scandir
+from os import path, scandir, sys
+from sklearn.cluster import DBSCAN
+
+sys.path.insert(1,'src/')
+import preprocess_wf
 from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model, run_pdf_GD  
 #from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
-from event_rate_funs import get_ev_labels  #  , get_event_rates
-from plot_functions_wf import plot_decoded_latent, plot_amplitude_hist
+from event_rate_funs import get_ev_labels # , get_event_rates
+from plot_functions_wf import plot_decoded_latent, plot_amplitude_hist #, plot_event_rates
 from evaluation import run_DBSCAN_evaluation, run_evaluation, run_visual_evaluation
-from sklearn.cluster import DBSCAN
 
 
 continue_train = False    # Tensorflow CVAE-model.
-run_GD = True
+run_GD = False
 # ****** If using 2D-latent space dimension: *********
 view_cvae_result = False    # True => reqires user to give input if to continue-
                             # -the script to pdf-GD or not.
@@ -40,7 +42,7 @@ verbose_main = 1
 
 # *****************************************************************************
 # Specify unique title for the run.
-training_start_title = 'finalrun_first'  
+training_start_title = 'finalrun_second'  
 # *****************************************************************************
 
 # ************************************************************
@@ -58,7 +60,7 @@ directory = '../matlab_files'
 # If "ts" is not specified, then all files will be run twise, since we have 
 # one file for timestamps and one for CAP-waveform with identical names, 
 # exept the starting ts/wf.
-rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '\\tsR12' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # rec_start_string = '\\tsR10_Exp2_7.20'   # .16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15'
 
 # rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
@@ -191,7 +193,8 @@ for entry in scandir(directory):
         # Perform GD on pdf to find high prob. data-points (hpdp)   
         if run_GD:
             print('\n Running pdf_GD to get hpdp... \n')
-            hpdp_list = run_pdf_GD(wf_ho, cvae, ev_label_ho, hypes, matlab_file=matlab_file,
+            hpdp_list = run_pdf_GD(wf_ho, cvae, ev_label_ho, hypes, 
+                                   matlab_file=matlab_file,
                                    unique_string_for_figs=unique_string_for_figs,
                                    path_to_hpdp=path_to_hpdp,
                                    verbose=False,
@@ -213,7 +216,7 @@ for entry in scandir(directory):
         if run_automised_assesment:
             saveas = path_to_cytokine_candidate+'auto_assesment'
             run_evaluation(wf0, ts0, hpdp_list, 
-                        encoder, hypes, saveas=saveas)
+                           encoder, hypes, saveas=saveas)
 
         # ************************************************************
         # ************************ DBSCAN ****************************
