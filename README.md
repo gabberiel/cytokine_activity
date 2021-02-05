@@ -29,57 +29,31 @@ pip install -r requirements.txt
 Convert .plx files to .mat files, using the script ``` convert_plx.mat ```. 
 
 ### 2. MATLAB preprocessing
-The MATLAB preprocessing can be done for specific file using qqq: .
-Alternatively, convert all file in specified  directory using qqq: . 
+For MATLAB-preprocessing steps, see README file in the MATLAB-folder. 
 
-This saves the CAP-waveforms data into matlab (N x d) matrix together with timestamps (N x 1).
+The final results are CAP-waveforms saved as a (N x d) matrix, together with correspondong timestamps (N x 1).
 ### 3. Main analysis
 The rest of the preprocessing and training is run by the script ```main_train.py``` .
-Including,
-* Similarity Measure and Data ,
-* Build and Train Probabilistiv Model (Conditional VAE),
-* Gradient Decent of Conditional Distribution,
-* Clustering. 
-
-## 4. Evaluation of Resultig CAP-Candidates.
-    ```main_evaluation.py```
-
-## 5. Visualisations and Model Assessments.
-    ```main_visualisations.py```
-
-=======
-* (1) : **MATLAB preprocessing of raw-recording.** Includes "adaptive threshold" and romoval of "bad"-datapoints influenced by cardiac events etc. In the MATLAB code we apply the steps:
-    * Apply Gain
-    * Butterworth high-pass filter
-    * Downsample with Nd=5
-    * Adaptive threshold
-**OUT** : waveforms.mat, timestamps.mat
-
-* (2) : **Python preprocessing and label of waveforms.** 
-    * Remove observations occuring before 15min and after 90 minutes of recording. (From visual inspection of raw-file.) 
+Including: \
+**Preprocessing and label of waveforms.** 
+    * Remove observations occuring before 10- and after 90 minutes of recording. (From visual inspection of raw-file.) 
     * Standardisation of waveforms (favourable for Neural Network input.)
     * Event-rate calculation based on similarity measure.
-    * Remove data-point which has a mean-event-rate less then specified threshold. (consider these as noise.)
-    * Label waveform based on how the event rate changes at the injection-times, representing if they are likely or not to encode cytokine-information.
-**OUT** : waveforms.npy, timestamps.npy, ev_labels.npy, (numpy_arrays)
+    * Remove data-point which has a mean event-rate less then specified threshold. (consider these as noise.)
+    * Label waveform based on how the event rate changes at the injection-times, representing if they are likely or not to encode cytokine-information. \
+    **Returns** : waveforms.npy, timestamps.npy, ev_labels.npy, (numpy_arrays) 
 
-* (3) : **Build and train CVAE model** to achieve approximate probability model -- variational inference approach. Latent representation of data etc. \
-**OUT** : Conditional Variational autoencoder + weights (keras.Model)
+**Build and train CVAE model** to achieve approximate probability model using variational inference. \
+**Returns** : Conditional Variational autoencoder + weights (keras.Model)
 
-* (4) **Preform pdf-gradient decent** on I(x) = -log p(x|label="increased event-rate"), to find high probability data-points (hpdp) in the probability space . \
-**OUT** : hpdp<-->"increase after first injection", hpdp-<-->"increase after second injection" (numpy arrays)
-
-* (5) : **Candidate evaluation looking at Event-rates.** Consider the hpdp and cluster these using k-means. The median of each cluster is then considered as main-candidate CAPs for encoding cytokine. Looking at the Event-rate for each of the main-canditate to see if there is a significant increase at time of injection or not. \ 
+**Preform pdf-gradient decent** on I(x) = -log p(x|label="increased event-rate"), to find high probability data-points (hpdp) in the probability space . \
+**Returns** : hpdp<-->"increase after first injection", hpdp-<-->"increase after second injection" (numpy arrays)
 
 
-## Code structure
-
-MAIN files as of 30 november. (Which are to be called directly.)
-**main_cvae.py** : Can runs all parts of pipeline depending on settings. -- Mainly to be able to train model over night using 'caffinate'
-**visualisations_main.py** : Assumes all files from training exists and load these to visualise results.
-**CVAE_pipeline_main.ipnb** : Combination of the above to run one "step of workflow" at a time and visualise results in between.
-
-Source Tree is as follows: 
+## 4. Evaluation of Resultig CAP-Candidates.
+Evaluation is run in ```main_evaluation.py```. \
+Considers the hpdp and cluster these using k-means. The mean of each cluster is then considered as main-candidate CAPs for encoding cytokine. The event-rate for each of the main-canditate is considered to see if there is a significant increase after injection or not.
+## 5. Visualisations and Model Assessments.
+```main_visualisations.py```
 
 
-OBS. main reads matlab files currently assumed to be in a folder "matlab_files" one step back in pwd.
