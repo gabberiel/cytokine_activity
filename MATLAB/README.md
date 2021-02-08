@@ -1,15 +1,16 @@
-#### From original zanos-paper: ###
+# Comments from original zanos-paper: 
 Download the following dependencies and add to the matlab path
-https://www.mathworks.com/matlabcentral/fileexchange/52905-dbscan-clustering-algorithm
-https://lvdmaaten.github.io/drtoolbox/
-https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip
+<https://www.mathworks.com/matlabcentral/fileexchange/52905-dbscan-clustering-algorithm>
+<https://lvdmaaten.github.io/drtoolbox/>
+<https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip>
 
 nrdemo.m one cell at a time
 There may be parameters you need to set in each cell
 
 
-###### Gabriel Comments: #########
-## The steps performed for thesis:
+
+# The steps performed for thesis:
+Main script: ```MAIN_preprocess.m```.
 1. .plx-file coversion to .mat files as done by firts cell in "MAIN_preprocess.m". 
 Note that file-name inputs must be specified by the characters "", not ''. 
 
