@@ -16,13 +16,11 @@ from statsmodels.graphics.tsaplots import plot_pacf
 sys.path.insert(1,'src/')
 
 import preprocess_wf 
-from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model
+from load_and_GD_funs import load_mat_file, get_pdf_model
 from wf_similarity_measures import similarity_SSQ
 from event_rate_funs import get_event_rates, __delta_ev_measure__
 from plot_functions_wf import *
 from evaluation import run_DBSCAN_evaluation, run_evaluation, marginal_log_likelihood
-
-
 
 # **************** WHAT TO PLOT: ************************
 verbose_main = True   # Wether to show or just save figures
@@ -30,23 +28,19 @@ verbose_main = True   # Wether to show or just save figures
 plot_raw_CAPs = False
 plot_ev_stats = False
 plot_ho_TOT_EVs = True
-plot_ho_EVs = False
+plot_ho_EVs = True
 view_encoded_latent = False
 view_decoded_latent = False   
 plot_simulatated_path_from_model = False
 plot_wf_and_ev_for_the_different_ev_labels = False
 plot_acf_pacf = False
 evaluate_probabilities = False
-###############################
+# ************************************************
 directory = '../matlab_files'
 figures_directory = 'figures_tests/'
 
 training_start_title = 'finalrun_second'   # Specify title of the "run" to use.
 
-rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
-# Responders finalrun_first:
-rec_start_string = '\\tsR10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
-rec_start_string = '\\tsR10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 
 # ************************************************************
@@ -56,12 +50,13 @@ with open('hypes/'+training_start_title+'.json', 'r') as f:
     hypes = json.load(f)
 # *****************************************************
 responder_count = 0
-responder_rec_list = hypes["Results"]["Responders"]
+responder_rec_list = hypes["Results"]["Responders"]   # The found responders from evaluation
 for entry in scandir(directory):
-    rec_start_string = '\\ts' + responder_rec_list[responder_count]
+    # Uncomment the next line if you only want to consider the found responders from the evaluation. (saved in .json file)
+    # rec_start_string = '\\ts' + responder_rec_list[responder_count] 
     if entry.path.startswith(directory+rec_start_string):    # Find unique recording string. tsR10 for all cytokine injections, tsR12 for saline. 
         matlab_file = entry.path[len(directory+'\\ts'):-len('.mat')]    # extract only the matlab_file name from string.
-        print(' \n *******************************************************************************')
+        print('\n'+'*'*40)
         print(f'Starting analysis on recording : {matlab_file} \n')
 
         path_to_matlab_wf = directory + '/wf' + matlab_file + '.mat'    # This is how the waveforms are saved. path + wf+MATLAB_FILE_NAME.mat
@@ -92,8 +87,8 @@ for entry in scandir(directory):
         # ************************************************************
         load_data = True
         if load_data:
-            waveforms = load_waveforms(path_to_matlab_wf, 'waveforms', verbose=1)
-            timestamps = load_timestamps(path_to_matlab_ts, 'timestamps', verbose=1)
+            waveforms = load_mat_file(path_to_matlab_wf, 'waveforms', verbose=1)
+            timestamps = load_mat_file(path_to_matlab_ts, 'timestamps', verbose=1)
         # ************************************************************
         # ******************** Plot "raw" CAPs ***********************
         # ************************************************************
@@ -160,7 +155,8 @@ for entry in scandir(directory):
                 event_rates = get_event_rates(ts_ho, bool_labels, bin_width=1, consider_only=1)
                 delta_ev, ev_stats = __delta_ev_measure__(event_rates, timestamps=ts_ho)
                 plot_similar_wf(i, wf_ho, bool_labels, threshold, saveas=saveas+'_wf'+str(i), verbose=verbose_main, title=title_similarity)
-                plot_event_rates(event_rates, ts_ho, noise=None, conv_width=100, saveas=saveas+'_ev'+str(i), verbose=verbose_main) 
+                plot_event_rates(event_rates, ts_ho, saveas=saveas+'_ev'+str(i), 
+                                 verbose=verbose_main) 
                 plt.close()
 
         # ************************************************************
@@ -227,7 +223,6 @@ for entry in scandir(directory):
                                     threshold, saveas=saveas+'_wf_'+str(i),
                                     verbose=verbose_main)
                     plot_event_rates(event_rates, timestamps,
-                                     noise=None, conv_width=100,
                                      saveas=saveas+'_wf_'+str(i)+'_ev', 
                                      verbose=verbose_main)
             
@@ -261,47 +256,45 @@ for entry in scandir(directory):
                     plt.show()
 
         if evaluate_probabilities:
+            use_sample_from_responder_rec = False
+            use_responders = True
             saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title
             responder_CAPs = np.load(saveas_responder_caps + '.npy')
-            
+            responder_labels = hypes["Results"]["labels"]
+
             N_evals = 1000
             probs = []
             # Calculate marginal liklihood.
-            labels = np.array([[0,1,0],[0,1,0],[0,1,0],[1,0,0],[0,1,0],[1,0,0]])
-            """
-            use_label = labels[responder_count,:]
-            label_nr = np.where(use_label==1)
-            idx_for_label_one = np.where(ev_label_ho[:,label_nr] == 1)
-            for wf_idx in idx_for_label_one[0][0:N_evals*10:10]:
-                v_prob = []
-                for i in range(1):
-                    log_prob_x = marginal_log_likelihood(wf_ho[wf_idx, :], use_label, encoder, decoder, hypes)
-                    v_prob.append(log_prob_x)
-                probs.append(np.mean(v_prob))
-            plt.hist(probs, bins=100)
-            plt.savefig(savefig_log_likes + '.png', dpi=150)
-            plt.close()
-            #plt.show()
-            print(f'mean of likelihood = {np.mean(probs)}, using N = {len(probs)} samples.')
-            # Calculate marginal liklihood fr.
-            # plt.plot(responder_CAPs[0])
-            # plt.show()
-            """
-            probs = []
-            # labels = np.array([[0,1,0],[1,0,0],[0,1,0],[1,0,0],[1,0,0],[0,1,0]])
-            # labels = np.array([[0,1,0],[0,1,0],[0,1,0],[1,0,0],[0,1,0],[1,0,0]])
-            
-            label_i = 0
-            for responder_CAP in responder_CAPs:
-                v_prob = []
-                for i in range(10):
-                    log_prob_x = marginal_log_likelihood(responder_CAP, labels[label_i,:], encoder, decoder, hypes)
-                    v_prob.append(log_prob_x)
-                probs.append(np.mean(v_prob))
-                label_i  += 1
-            plt.hist(probs)
-            plt.show()
-            print(probs)
-            print(f'mean of likelihood = {np.mean(probs)}, for responder CAPs. (mean of 10 runs.)')
+            if use_sample_from_responder_rec:
+                use_label = responder_labels[responder_count,:]
+                label_nr = np.where(use_label==1)
+                idx_for_label_one = np.where(ev_label_ho[:,label_nr] == 1)
+                for wf_idx in idx_for_label_one[0][0:N_evals*10:10]:
+                    v_prob = []
+                    for i in range(1):
+                        log_prob_x = marginal_log_likelihood(wf_ho[wf_idx, :], use_label, encoder, decoder, hypes)
+                        v_prob.append(log_prob_x)
+                    probs.append(np.mean(v_prob))
+                plt.hist(probs, bins=100)
+                plt.savefig(savefig_log_likes + '.png', dpi=150)
+                plt.close()
+                if verbose:
+                    plt.show()
+                print(f'mean of likelihood = {np.mean(probs)}, using N = {len(probs)} samples.')
+            if use_responders:            
+                probs = []
+                label_i = 0
+                for responder_CAP in responder_CAPs:
+                    v_prob = []
+                    for i in range(10):
+                        log_prob_x = marginal_log_likelihood(responder_CAP, responder_labels[label_i,:], encoder, decoder, hypes)
+                        v_prob.append(log_prob_x)
+                    probs.append(np.mean(v_prob))
+                    label_i  += 1
+                if verbose:
+                    plt.hist(probs)
+                    plt.show()
+                print(probs)
+                print(f'mean of likelihood = {np.mean(probs)}, for responder CAPs. (mean of 10 runs.)')
             
         responder_count += 1

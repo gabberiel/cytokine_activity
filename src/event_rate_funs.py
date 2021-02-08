@@ -1,9 +1,9 @@
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from wf_similarity_measures import wf_correlation,similarity_SSQ
+from wf_similarity_measures import wf_correlation, similarity_SSQ
 # from evaluation import __get_ev_stats__
-#from plot_functions_wf import plot_event_rates
+# from plot_functions_wf import plot_event_rates
 import warnings
 
 def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
@@ -52,6 +52,7 @@ def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     return event_rate_results
 def __get_average_ev__(ev_stats):
     """
+    TODO: REMOVE? 
     Extracts average event_rate and variance for full period using outputs of "__delta_ev_measure__()"
     OBS: assuming ev_stats for one cluster...
     Parameters
@@ -79,9 +80,9 @@ def __get_average_ev__(ev_stats):
 
     return tot_means, tot_std
 
-
 def __delta_ev_measure__(event_rates, timestamps=None):
         '''
+        TODO: REMOVE? 
         Calculates measure of how event-rate differs before and after injections. 
         i.e changes at 30min and 60min into recording.
 
@@ -143,6 +144,7 @@ def __delta_ev_measure__(event_rates, timestamps=None):
 
 def __ev_label__(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
     '''
+    TODO: REMOVE? 
     Give waveform a label encoding how the event rate change at time of injections.
     The label is vector with 3 dimensions. The three values corresponds 
     to "increase after first injection", "increase after second injection", "consant" -- respectively.
@@ -242,8 +244,6 @@ def __new_ev_labeling__(event_rate, hypes):
         ev_label[largest_increase] = 1
     else:
         ev_label[-1] = 1
-        #print(ev_label)
-
     return ev_label
 
 def __get_ev_stats__(event_rate, start_time=10*60, 
@@ -290,8 +290,7 @@ def __get_ev_stats__(event_rate, start_time=10*60,
         return MU, SD
 
 
-def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 similarity_measure='corr',
-                   # assumed_model_varaince=0.5,n_std_threshold=1):
+def get_ev_labels(wf_std,timestamps, hypes, saveas=None): 
     '''
     Complete pipeline of labeling standardised waveforms based on change in event rates.
     Steps in process:
@@ -348,18 +347,20 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
         prev_substep = 0
         #wf_downsampled = wf_std/assumed_model_varaince # Will no longer be normalised--not suitible for corr..??
         for sub_step in np.arange(sub_steps,n_wf,sub_steps):
-            #print(sub_step)
             i_range = np.arange(prev_substep,sub_step)
             correlations = wf_correlation(i_range,wf_std)
             for corr_vec in correlations.T:
-                bool_labels = label_from_corr(corr_vec,threshold=threshold,return_boolean=True)
+                bool_labels = corr_vec > threshold
                 event_rates = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
                 
-                delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
-                tot_mean,tot_std = __get_average_ev__(ev_stats)
-                ev_stats_tot[:,ii] = np.array((tot_mean,tot_std)).reshape(2,)
-                #ev_labels = __ev_label__(delta_ev,ev_stats,n_std=1)
-                ev_labels[:,ii] = __ev_label__(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
+                ev_labels[:,ii] = __new_ev_labeling__(event_rates, hypes)
+                # delta_ev, ev_stats = __delta_ev_measure__(event_rates,timestamps=timestamps)
+                # ev_labels[:,ii] = __ev_label__(delta_ev,ev_stats,n_std=n_std_threshold)[:,0]
+                # tot_mean,tot_std = __get_average_ev__(ev_stats)
+
+                tot_mean, tot_std = __get_ev_stats__(event_rates, start_time=10*60, 
+                                                    end_time=90*60)
+                ev_stats_tot[:,ii] = np.array((tot_mean, tot_std)).reshape(2,)
                 ii +=1
             prev_substep = sub_step            
             if ii%(sub_steps*10)==0:
@@ -373,15 +374,12 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None): #  threshold=0.6 simil
         print(f'assumed_model_varaince = {assumed_model_varaince}')
         print(f'n_std_threshold = {n_std_threshold}')
         print(f'Epsilon = {threshold} \n')
-        # assumed_model_varaince = 0.5
         ii = 0
         t0 = time.time()
         if assumed_model_varaince is not False:
             wf_downsampled = wf_std[:,::2]/assumed_model_varaince # 0.5 in CVAE atm. 
         else:
             wf_downsampled = wf_std[:,::2] 
-        #n_wf = wf_downsampled.shape[0]
-        #ev_labels = np.zeros((3,n_wf))
         ev_stats_tot = np.zeros((2,n_wf))
 
         # Loop through and lable all observed CAPs :
@@ -436,7 +434,7 @@ if __name__ == "__main__":
     waveforms = loadmat(wf_name)
     #print(f' keys of matlab file: {waveforms.keys()}')
     waveforms = waveforms['waveforms']
-    timestamps = loadmat(ts_name)['gg_timestamps']
+    timestamps = loadmat(ts_name)['timestamps']
     print('MATLAB files loaded succesfully...')
     print()
     print(f'Shape of waveforms: {waveforms.shape}.')
@@ -470,13 +468,14 @@ if __name__ == "__main__":
     runs_for_time = 1
     for i in range(runs_for_time):
         event_rates = get_event_rates(timestamps[:,0],labels,bin_width=1)
-        delta, ev_stats = __delta_ev_measure__(event_rates)
-        mean_,std_ = __get_average_ev__(ev_stats)
+        __new_ev_labeling__(event_rates, hypes)
+        #delta, ev_stats = __delta_ev_measure__(event_rates)
+        #mean_,std_ = __get_average_ev__(ev_stats)
         
     end = time.time()
     print(f' Mean time for calculating event_rate : {(end-start)/runs_for_time * 1000} ms')
     print(f'event rates shape: {event_rates.shape}')
 
-    plot_event_rates(event_rates,timestamps,conv_width=100)
+    #plot_event_rates(event_rates,timestamps,conv_width=100)
     plt.show()
 

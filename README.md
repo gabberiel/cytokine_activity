@@ -8,11 +8,11 @@ This reposetory provides the python and matlab code for the master-thesis:
 
 
 Work is inspired by: <https://www.researchgate.net/publication/325035277_Identification_of_cytokine-specific_sensory_neural_signals_by_decoding_murine_vagus_nerve_activity>. 
-They also provided the MATLAB code wich only has been slighlty altered for this work.
+
+Which also provided the MATLAB code wich only has been slighlty altered for this work.
+
 Neural recordings data as well as raw MATLAB code availible at: 
 <https://public.feinsteininstitute.org/cbem/PNAS%20Submission>.
-
-Find Main Article at <https://www.researchgate.net/publication/325035277_Identification_of_cytokine-specific_sensory_neural_signals_by_decoding_murine_vagus_nerve_activity>. 
 
 
 ## Dependencies & Instructions
@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 ## Steps in workflow:
 ### 1. Conversion of .plx files to .mat 
-Convert .plx files to .mat files, using the script ``` convert_plx.mat ```. 
+Convert .plx files to .mat files. See "README" in the MATLAB folder. 
 
 ### 2. MATLAB preprocessing
 For MATLAB-preprocessing steps, see README file in the MATLAB-folder. 
@@ -54,6 +54,6 @@ Including: \
 Evaluation is run in ```main_evaluation.py```. \
 Considers the hpdp and cluster these using k-means. The mean of each cluster is then considered as main-candidate CAPs for encoding cytokine. The event-rate for each of the main-canditate is considered to see if there is a significant increase after injection or not.
 ## 5. Visualisations and Model Assessments.
-```main_visualisations.py```
+Run ```main_visualisations.py``` with parameters of your choosing.
 
 

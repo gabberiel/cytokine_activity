@@ -3,7 +3,7 @@
 %datafile = 'test';
 clear all; close all; clc;
 
-%path_to_matlab_files = '../../"Google Drive/Data/mat_filer/'
+%path_to_matlab_files = '../../../../"Google Drive/Data/mat_filer/'
 
 datafile='' % R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01'
 nr = NeuralRecording(datafile);
@@ -68,7 +68,7 @@ save([datafile,'rawrec.mat'], 'rawrec', '-double')
 
 %% Automating process to loop through and preprocess all plx-converted Recordings:
 clear all; clc; close all
-files = dir('../../Google Drive/Data/mat_filer/*.mat');
+files = dir('../../../../Google Drive/Data/mat_filer/*.mat');
 for file = files(22:72)'%(22:35)' % 65:72 saline injections
     %close all
     file_path = ['../../Google Drive/Data/mat_filer/',file.name]
@@ -112,7 +112,7 @@ end
 %% Save plots of all raw recordings
 clear all; clc; close all
 
-%files = dir('../../Google Drive/Data/mat_filer/*.mat');
+%files = dir('../../../../Google Drive/Data/mat_filer/*.mat');
 files = dir('converted_plx/*.mat');
 
 %set(gcf,'Visible','off');
@@ -141,7 +141,7 @@ for file = files'%(22:35)' % 65:72 saline injections
     importplxfiles(file_path,save_to_path)
 end
 
-%% ALLT OVAN ÄR VAD SOM ANVÄNDES SOM PREPROCESSING AV GABRIEL
+%% ALLT OVAN ï¿½R VAD SOM ANVï¿½NDES SOM PREPROCESSING AV GABRIEL
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -181,7 +181,7 @@ else
     perpl = 50;
     no_dims = 2;
     videofile = '';  % 'temp.avi';
-    maxiter = 500; %gg: Gör föga skillnad..?
+    maxiter = 500; %gg: Gï¿½r fï¿½ga skillnad..?
     nTrain = min(10e3, size(nr.waveforms.X, 1));
     traininds = round(linspace(1, size(nr.waveforms.X, 1), nTrain));
     Xtr = nr.waveforms.X(traininds, :);

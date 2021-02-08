@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf 
 import json
-from load_and_GD_funs import load_timestamps, load_waveforms
+from load_and_GD_funs import load_mat_file
 from os import path, scandir
-from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
+from wf_similarity_measures import wf_correlation, similarity_SSQ
 from event_rate_funs import __get_ev_stats__, get_event_rates
-from plot_functions_wf import plot_similar_wf, plot_event_rates, plot_encoded,plot_waveforms
+from plot_functions_wf import plot_similar_wf, plot_event_rates, plot_encoded, plot_waveforms
 from scipy.spatial.distance import cdist
 from sklearn.cluster import KMeans, DBSCAN
 from scipy.stats import multivariate_normal
@@ -161,7 +161,7 @@ def __evaluate_hpdp_candidates__(waveforms, timestamps, hpdp, k_labels, hypes,
         if similarity_measure=='corr':
             print('Using "corr" to evaluate final result')
             correlations = wf_correlation(0,added_main_candidate_wf)
-            bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
+            bool_labels = correlations > similarity_thresh
         if similarity_measure=='ssq':
             print('Using "ssq" to evaluate final result')
             if assumed_model_varaince is False:
@@ -178,11 +178,13 @@ def __evaluate_hpdp_candidates__(waveforms, timestamps, hpdp, k_labels, hypes,
         candidate_wf[cluster,:] = median_wf
         plt.figure(2)
         bool_labels[bool_labels==True] = cluster
-        plot_event_rates(event_rates,timestamps,noise=None,conv_width=100,saveas=saveas+'Main_cand_ev', verbose=False,cluster=cluster) 
+        plot_event_rates(event_rates, timestamps, saveas=saveas+'Main_cand_ev', 
+                         verbose=False, cluster=cluster) 
     plt.figure(3)
     #plt.hist(timestamps,bins=200)
     event_rates = get_event_rates(timestamps,np.ones((timestamps.shape[0],)),bin_width=1,consider_only=1)
-    plot_event_rates(event_rates,timestamps,noise=None,conv_width=100,saveas=saveas+'overall_EV', verbose=False)     
+    plot_event_rates(event_rates, timestamps, saveas=saveas+'overall_EV', 
+                     verbose=False)     
     
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
@@ -366,7 +368,7 @@ def __evaluate_cytokine_candidates__(waveforms, timestamps,
         if similarity_measure=='corr':
             print('Using "corr" to evaluate final result')
             correlations = wf_correlation(0,added_main_candidate_wf)
-            bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
+            bool_labels = correlations > similarity_thresh
         if similarity_measure=='ssq':
             print('Using "ssq" to evaluate final result')
             if assumed_model_varaince is None:
@@ -390,49 +392,6 @@ def __evaluate_cytokine_candidates__(waveforms, timestamps,
             print(f'CAP nr. {cluster} found to have a sufficient increase in firing rate for injection {injection}.')
     return prel_results
         
-
-def __old_get_ev_stats__(event_rate, start_time=10*60, 
-                     end_time=90*60, 
-                     compare_to_theshold=None,
-                     conv_width=5):
-    '''
-    Called by "__evaluate_cytokine_candidates__()".
-
-    Get event-rate mean and standard deviation for a specified time-period.
-    If "compare_to_threshold" is not None, then the EV is compared to thresh to see if we have a "responder".
-
-    Returns
-    -------
-    if "compare_to_threshold" is not None:
-        returns: MU, SD, responder, time_above_thresh
-    else: 
-        returns: MU, SD
-    
-    MU : float
-        Mean event rate of considered period
-    SD : float
-        Mean Standard deviation of considered period
-    responder : booleon
-        True is the event-rate of specified period is larger than thesh for 1/3 of the period. 
-    time_above_thresh : float
-        How much time in seconds that the EV is above thresh.
-    '''
-    T = end_time-start_time # Length of time interval in seconds
-
-    event_rate_ = event_rate[start_time:end_time] # Event-rate under time-period of interest.
-    SD = np.std(event_rate_) # Standart deviation (SD) of period of interest
-    MU = np.mean(event_rate_) # Mean (MU) event-rate under period of interest
-    if compare_to_theshold is not None:
-        responder  = False
-        conv_kernel = np.ones((conv_width))* 1/conv_width
-        smoothed_EV = np.convolve(np.squeeze(event_rate_),conv_kernel,'same') # Smooth out event_rate
-        EV_above_thres = smoothed_EV > compare_to_theshold # Find all Event-rates larger then threshold
-        time_above_thresh = np.sum(EV_above_thres) # Total time, in seconds, above specified threshold. 
-        if time_above_thresh > T/3: # If responder, The EV has to be higher than thresh for at least 1/3 of the time period.
-            responder = True
-        return MU, SD, responder, time_above_thresh
-    else:
-        return MU, SD
 
 
 def find_reponders(candidate_directory, hypes, 
@@ -485,12 +444,13 @@ def find_reponders(candidate_directory, hypes,
     responders = [] # We will ad a 1 if a recording in specified candidate_directory corresponds to a "responder", otherwise 0. 
                     # This is used to find how many, out of all considered recordings, that are showing promising results. 
     main_candidates = []
-    responder_files = []
+    responder_files = []   # To be saved in .json file
+    responder_labels = []   # To be saved in .json file
     for entry in scandir(candidate_directory):
         if entry.path.startswith(candidate_directory+start_string+specify_recordings) & entry.path.endswith(end_string) & ~entry.path.startswith(candidate_directory+start_string+'R10_Exp3'): # Specify any uniquness in the name of the files to be considered. 
             result = np.load(entry.path, allow_pickle=True)
             responder_bool = False
-            injection = ["first", "second"]
+            injection = ["first", "second"]   # Used for print.
             for jj, injection_res in enumerate(result): # "result" is a nested list where the first two elements are the results of the different injections.
                 if len(injection_res)==0: # If no responders where found for this injection
                     pass
@@ -500,6 +460,9 @@ def find_reponders(candidate_directory, hypes,
                     print(f'{"*"*40} \n The recording which was found to be a responder : {recording}')
                     print(f' This regarding the {injection[jj]} injection')
                     responder_files.append(recording)
+                    responder_label = [0,0,0]   # To be saved in .json file
+                    responder_label[jj] = 1    # To be saved in .json file
+                    responder_labels.append(responder_label)
                     if injection_res.shape==(2,): # Only one cluster fullfilled the requerement to be defined as a responder
                         waveform = injection_res[0]
                         main_candidates.append(waveform)  
@@ -534,6 +497,7 @@ def find_reponders(candidate_directory, hypes,
         data = json.load(json_file)
         temp = data['Results']
         temp.update({"Responders" : responder_files}) 
+        temp.update({"labels" : responder_labels})
     with open('hypes/' + start_string + '.json','w') as f: 
         json.dump(data, f, indent=3) 
 
@@ -575,8 +539,8 @@ def __evaluate_responder__(cytokine_candidate,
             print(f'DATA FILE : {matlab_file}')
             load_data = True
             if load_data:
-                wf0 = load_waveforms(path_to_wf,'waveforms', verbose=0) # Load the candidate's corresponding matlab file 
-                ts0 = load_timestamps(path_to_ts,'timestamps',verbose=0)
+                wf0 = load_mat_file(path_to_wf,'waveforms', verbose=0) # Load the candidate's corresponding matlab file 
+                ts0 = load_mat_file(path_to_ts,'timestamps',verbose=0)
 
             wf0,ts0 = preprocess_wf.get_desired_shape(wf0,ts0,hypes, training=False)
             # wf0,ts0 = preprocess_wf.get_desired_shape(wf0,ts0,start_time=10,end_time=90,dim_of_wf=141,desired_num_of_samples=None)
@@ -588,11 +552,9 @@ def __evaluate_responder__(cytokine_candidate,
             #print(f'Shape of test-dataset (now considers all observations): {added_main_candidate_wf.shape}')
 
             if similarity_measure=='corr':
-                #print('Using "corr" to evaluate final result')
                 correlations = wf_correlation(0,added_main_candidate_wf)
-                bool_labels = label_from_corr(correlations,threshold=similarity_thresh,return_boolean=True)
+                bool_labels = correlations > similarity_thresh
             if similarity_measure=='ssq':
-                #print('Using "ssq" to evaluate final result')
                 added_main_candidate_wf = added_main_candidate_wf/assumed_model_varaince  # (0.7) Assumed var in ssq
                 bool_labels,_ = similarity_SSQ(0,added_main_candidate_wf,epsilon=similarity_thresh)
             event_rates = get_event_rates(ts0,bool_labels[1:],bin_width=1,consider_only=1)
@@ -601,13 +563,17 @@ def __evaluate_responder__(cytokine_candidate,
             overall_ev_title = 'Event-Rate for all Observed CAPs'
             cluster_ev_title = 'Event-Rate for Candidate-CAP'
             plt.figure(1)
-            plot_similar_wf(0,added_main_candidate_wf,bool_labels,similarity_thresh,saveas=savefig+'Main_cand'+'_wf',
-                                verbose=False, show_clustered=False,cluster='Mean',title=wf_title)
+            plot_similar_wf(0, added_main_candidate_wf, bool_labels, 
+                            similarity_thresh, saveas=savefig+'Main_cand'+'_wf',
+                            verbose=False, show_clustered=False,cluster='Mean',title=wf_title)
             plt.figure(2)
-            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'Main_cand'+'_ev', verbose=False,title=cluster_ev_title) 
+            plot_event_rates(event_rates, ts0, saveas=savefig+'Main_cand'+'_ev', 
+                             verbose=False,title=cluster_ev_title) 
             plt.figure(3)
-            event_rates = get_event_rates(ts0,np.ones((ts0.shape[0],)),bin_width=1,consider_only=1)
-            plot_event_rates(event_rates,ts0,noise=None,conv_width=100,saveas=savefig+'overall_EV', verbose=False,title=overall_ev_title ) 
+            event_rates = get_event_rates(ts0, np.ones((ts0.shape[0],)), 
+                                          bin_width=1, consider_only=1)
+            plot_event_rates(event_rates, ts0, saveas=savefig+'overall_EV', 
+                             verbose=False, title=overall_ev_title ) 
             if verbose is True:
                 plt.show()
             else:
@@ -728,5 +694,5 @@ if __name__ == "__main__":
         hypes = json.load(f)
     directory = '../matlab_files'
     matlab_file = 'R10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01'
-    waveforms = load_waveforms(directory + '/wf' + matlab_file + '.mat', 'waveforms')
-    timestamps = load_timestamps(directory + '/ts' + matlab_file + '.mat', 'timestamps')
+    waveforms = load_mat_file(directory + '/wf' + matlab_file + '.mat', 'waveforms')
+    timestamps = load_mat_file(directory + '/ts' + matlab_file + '.mat', 'timestamps')

@@ -19,18 +19,17 @@ save_main_candidates_CAPs = False
 load_saved_candidate = False
 
 verbose = True
-training_start_title = 'finalrun_second'   # Specify title of the "run" to evaluate.
+training_start_title = 'finalrun_corr'   # Specify title of the "run" to evaluate.
 
-end_string = 'auto_assesment.npy' 
+end_string = 'auto_assesment.npy'   # This is how the files were saved. 
+
 # ************* Interesting recordings: *********************
-# An empty string:'', will take all recordings used for the specifed run (training_start_title), into consideration. 'R10' the cytokine injections and 'R12' the saline injection.
-# If a specific recording is of interest then this file name is given. E.g: 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08'
+# An empty string:'', will take all recordings used for the specifed run (training_start_title), 
+# into consideration. 'R10' the cytokine injections and 'R12' the saline injection.
+# If a specific recording is of interest then this file name is given. 
+# E.g: 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08'
 
-# specify_recording = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08' 
-# specify_recording = 'R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05'
-# specify_recording = 'R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08'
 # specify_recording = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
-specify_recording = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
 specify_recording = 'R10'
 
 with open('hypes/' + training_start_title + '.json', 'r') as f:
@@ -49,18 +48,18 @@ exit()
 # ****************************************************************************
 # ***** Use CAP as candidate over multiple different recordings  *************
 # ****************************************************************************
-# Can either load a saved CAP-candidates in specified path or use the "main_candidates" above.
+# Can either load a saved CAP-candidates in specified path or use the found "main_candidates" from above.
 if load_saved_candidate:
     recording_candidate = 'R10_Exp2_7.15.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_10'
     unique_start_string = '10_dec_nstd_02and01_ds1_ampthresh' 
     path_to_cytokine_candidate = '../numpy_files/cytokine_candidates/'+unique_start_string + recording_candidate
     main_candidates = np.load(path_to_cytokine_candidate+'.npy')
 else:
-    candidate_CAP = main_candidates[0]
+    candidate_CAP = main_candidates[0]   # Select one of the found CAP-candidates. 
     plt.plot(candidate_CAP)
     plt.show()
 
-#for candidate_CAP in main_candidates:
+# for candidate_CAP in main_candidates:
 saveas2 = 'figures/cap_eval/'+'TNF_cand_second_18_jan'
 eval_candidateCAP_on_multiple_recordings(candidate_CAP, hypes,
                                          file_name='',

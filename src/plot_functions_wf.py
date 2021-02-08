@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf
-from wf_similarity_measures import wf_correlation, label_from_corr, similarity_SSQ
+# from wf_similarity_measures import wf_correlation, similarity_SSQ
 # from event_rate_funs import get_event_rates
 '''
 SMALL_SIZE = 22
@@ -24,9 +24,8 @@ plt.rc('axes', titlesize=18)
 plt.rc('ytick', labelsize=11) 
 plt.rc('xtick', labelsize=11)
 plt.rc('legend', fontsize=16)    # legend fontsize
-#plt.rc(set_minor_formatter(FormatStrFormatter('% 1.2f'))
-
-#plt.rc("figure", figsize=(10, 8))
+# plt.rc(set_minor_formatter(FormatStrFormatter('% 1.2f'))
+# plt.rc("figure", figsize=(10, 8))
 
 def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=None):
     '''
@@ -63,9 +62,7 @@ def plot_decoded_latent(decoder,resolution=6,saveas=None, verbose=1,ev_label=Non
     z1,z2 in R^2 --- decoder --> waveform in R^141
 
     '''
-    print()
-    print('Constructing plot of decoded latent space...')
-    print()
+    print('\nConstructing plot of decoded latent space...\n')
     fig = plt.figure(constrained_layout=True)
     resolution = 6
     spec = fig.add_gridspec(ncols=resolution+1, nrows=resolution+1)
@@ -126,13 +123,10 @@ def plot_encoded(encoder, data, saveas=None,verbose=1,ev_label=None,title=None):
         z_mean, log_var_out, z  = encoder.predict(data)
     
     assert z_mean.shape[-1] == 2, 'PLOT ONLY POSSIBLE FOR 2D LATENT SPACE'
-    #plt.figure(figsize=(10, 10))
     labels = ['First','Second']
     for label_on in [0,1]:
         z_mean_labeled = z_mean[ev_label[:,label_on]==1]
         plt.scatter(z_mean_labeled[:, 0], z_mean_labeled[:, 1], label=labels[label_on])
-    #plt.scatter(z_mean[:, 0], z_mean[:, 1])#, c=labels)
-    #plt.colorbar()
     plt.xlabel("$\mu_{1}$")
     plt.ylabel("$\mu_{2}$")
     plt.legend()
@@ -154,7 +148,6 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
 
     '''
     timeline = np.arange(0,rawrec.shape[0]) /sample_freq /60 # Timeline in minutes
-    #plt.figure(figsize=(10, 10))
     plt.plot(timeline, rawrec)#, c=labels)
     plt.xlabel("Time (min)")
     # plt.ylabel("Voltage ($\mu V$)")
@@ -266,8 +259,10 @@ def plot_simulated(cvae,waveform,ev_label=None,n=3,var=0.5, saveas=None, verbose
         plt.show()
     #plt.close()
 
-def plot_similar_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,verbose=True,
-                        show_clustered=True,cluster=None, return_cand=False, title=None):
+def plot_similar_wf(candidate_idx, waveforms, bool_labels,
+                    threshold,saveas=None,verbose=True,
+                    show_clustered=True,cluster=None, 
+                    return_cand=False, title=None):
     '''
     TODO Remove "Threshold" input and write more in docstring
     Plots wavefroms specified as True in bool_label. candidate_idx gives index for the Candidate-wavform under consideration.
@@ -296,7 +291,7 @@ def plot_similar_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,ve
     
     nr_of_wf_in_cluster = np.sum(bool_labels)
     print(f'Number of waveforms above threshold for wf_idx={candidate_idx} : {nr_of_wf_in_cluster}.')
-    # If there is more than 1000 wavforms in cluster, then 500 indexes is sampled to speed up plotting.
+    # If more than 500 wavforms are given, then 500 indexes is sampled to speed up plotting.
 
     if np.sum(bool_labels)>500:
         true_idx = np.where(bool_labels==True)
@@ -334,7 +329,10 @@ def plot_similar_wf(candidate_idx,waveforms,bool_labels,threshold,saveas=None,ve
     #plt.close()
 
       
-def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=None,verbose=True,cluster=None,title=None):
+def plot_event_rates(event_rates, timestamps, 
+                     conv_width=100, 
+                     saveas=None, verbose=True, 
+                     cluster=None,title=None):
     '''
     Plots event rates by smoothing kernel average of width "conv_width".
     convolution done including boundary effects but returns vector of same size.
@@ -359,21 +357,12 @@ def plot_event_rates(event_rates,timestamps, conv_width=100, noise=None, saveas=
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
 
-    if noise is not None:
-        print('Noise...')
-        for i,ev in enumerate(event_rates.T):
-            if i != noise:
-                smothed_ev = np.convolve(ev,conv_kernel,'same')
-                plt.plot(time.T, smothed_ev, linestyle='-',lw=0.5, label=f'CAP cluster {i}') #color=colors[i%3]
-                plt.legend() 
-    else:
-        #print('No given noise..')
-        for i,ev in enumerate(event_rates.T):
-            smothed_ev = np.convolve(ev,conv_kernel,'same')
-            if cluster is not None:
-                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=1) #, label=f'Cluster {cluster}') #color=colors[i%3]
-            else:
-                plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=2) #, label=f'Cluster {i}') #color=colors[i%3]
+    for i,ev in enumerate(event_rates.T):
+        smothed_ev = np.convolve(ev,conv_kernel,'same')
+        if cluster is not None:
+            plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=1) #, label=f'Cluster {cluster}') #color=colors[i%3]
+        else:
+            plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-',lw=2) #, label=f'Cluster {i}') #color=colors[i%3]
     
     plt.xlabel('Time of Recording (min)')
     plt.ylabel('Event-Rate (CAPs/sec)')

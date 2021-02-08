@@ -1,12 +1,12 @@
 {
-   "Commentary": "Using 'new_ev_labeling' ",
+   "Commentary": "Using 'new_ev_labeling' and 'corr'",
    "dir_and_files": {
-      "start_string": "finalrun_first",
+      "start_string": "finalrun_corr",
       "matlab_dir": "../matlab_files"
    },
    "labeling": {
-      "similarity_measure": "ssq",
-      "similarity_thresh": 0.1,
+      "similarity_measure": "corr",
+      "similarity_thresh": 0.7,
       "assumed_model_varaince": 0.7,
       "n_std_threshold": 0.05,
       "t0_baseline_SD": 600,
@@ -80,12 +80,7 @@
       "Responders": [
          "R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01",
          "R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05",
-         "R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05",
-         "R10_7.1.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_06",
-         "R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08",
-         "R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08",
-         "R10_Exp2_7.19.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_13",
-         "R10_Exp2_7.20.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15"
+         "R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05"
       ],
       "labels": [
          [
@@ -101,31 +96,6 @@
          [
             1,
             0,
-            0
-         ],
-         [
-            0,
-            1,
-            0
-         ],
-         [
-            1,
-            0,
-            0
-         ],
-         [
-            0,
-            1,
-            0
-         ],
-         [
-            1,
-            0,
-            0
-         ],
-         [
-            0,
-            1,
             0
          ]
       ]

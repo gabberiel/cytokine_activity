@@ -15,17 +15,17 @@ import json
 from os import path, scandir, sys
 from sklearn.cluster import DBSCAN
 
-sys.path.insert(1,'src/')
+sys.path.insert(1,'src/')   # Add directory to path for function-imports
+
 import preprocess_wf
-from load_and_GD_funs import load_waveforms, load_timestamps, get_pdf_model, run_pdf_GD  
-#from wf_similarity_measures import wf_correlation, similarity_SSQ, label_from_corr
+from load_and_GD_funs import load_mat_file, get_pdf_model, run_pdf_GD  
 from event_rate_funs import get_ev_labels # , get_event_rates
-from plot_functions_wf import plot_decoded_latent, plot_amplitude_hist #, plot_event_rates
+from plot_functions_wf import plot_decoded_latent, plot_amplitude_hist 
 from evaluation import run_DBSCAN_evaluation, run_evaluation, run_visual_evaluation
 
 
 continue_train = False    # Tensorflow CVAE-model.
-run_GD = False
+run_GD = True
 # ****** If using 2D-latent space dimension: *********
 view_cvae_result = False    # True => reqires user to give input if to continue-
                             # -the script to pdf-GD or not.
@@ -35,14 +35,14 @@ plot_hpdp_assesments = False    # Cluster and evaluate hpdp to find -
                                 # -cytokine-candidate CAP manually inspecting plots.
 # ***********************
 
-run_automised_assesment = False    # Cluster and evaluate hpdp by defined quantitative measure.
+run_automised_assesment = True    # Cluster and evaluate hpdp by defined quantitative measure.
 run_DBscan = False
 
 verbose_main = 1
 
 # *****************************************************************************
 # Specify unique title for the run.
-training_start_title = 'finalrun_second'  
+training_start_title = 'finalrun_corr'  
 # *****************************************************************************
 
 # ************************************************************
@@ -60,7 +60,7 @@ directory = '../matlab_files'
 # If "ts" is not specified, then all files will be run twise, since we have 
 # one file for timestamps and one for CAP-waveform with identical names, 
 # exept the starting ts/wf.
-rec_start_string = '\\tsR12' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '\\tsR10_6' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # rec_start_string = '\\tsR10_Exp2_7.20'   # .16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15'
 
 # rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
@@ -95,8 +95,8 @@ for entry in scandir(directory):
         # ************************************************************
         # ******************** Load Files ****************************
         # ************************************************************
-        waveforms = load_waveforms(path_to_wf, 'waveforms')
-        timestamps = load_timestamps(path_to_ts, 'timestamps')
+        waveforms = load_mat_file(path_to_wf, 'waveforms')
+        timestamps = load_mat_file(path_to_ts, 'timestamps')
 
         # ************************************************************
         # ******************** Preprocess ****************************

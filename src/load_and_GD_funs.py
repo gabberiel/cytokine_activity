@@ -10,52 +10,34 @@ from cvae_dense_wf import get_cvae
 from plot_functions_wf import plot_encoded
 
 
-def load_waveforms(path_to_wf, matlab_key, verbose=1):
+def load_mat_file(path_to_file, matlab_key, verbose=1):
     """
-    Load waveform-matlab file specified by "path_to_wf" and returns it as numpy array.
+    Load waveform- or timestamps-matlab file specified by "path_to_file" and returns it as numpy array.
     Files saved locally on Asus-computer have matlab_key='waveforms'
     Parameters
     ----------
-    path_to_wf : 'path/to/file.mat' string_type
+    path_to_file : 'path/to/file.mat' string_type
             Path to saved .mat file
     matlab_key : string_type
             key as specified when saving file in MATLAB.
+            Either 'waveforms' or 'timestamps'
     verbose : integer
             > 0 allows prints about progress.
     Returns
     -------
-    waveforms : (number_of_waveforms, size_of_waveform) array_like
+    mat_file : (number_of_waveforms, size_of_waveform) array_like or
+               (number_of_waveforms, 1) array_like
             Numpy version of loaded matlab matrix. 
 
     """
     if verbose > 0:
-        print('\n Loading matlab waveforms files... \n' )
+        print('\n Loading matlab'+ matlab_key +' files... \n' )
     # Load matlab
-    waveforms = loadmat(path_to_wf)[matlab_key]
+    mat_file = loadmat(path_to_file)[matlab_key]
     if verbose > 0:
-        print('waveforms loaded succesfully... \n')
-        print(f'Shape of waveforms: {waveforms.shape}.')
-    
-    return waveforms
-
-def load_timestamps(path_to_ts, matlab_key, verbose=1):
-    """
-    Load timestamp-matlab file specified by "path_to_ts" and returns it as numpy array.
-    Files saved locally on Asus-computer have matlab_key='timestamps'
-    
-    See Also
-    --------
-        doc_string in "load_waveforms()" for more extensive description.
-    """
-
-    if verbose > 0:
-        print('\n Loading matlab timestamps file...\n ')
-    # Load matlab
-    timestamps = loadmat(path_to_ts)[matlab_key]
-    if verbose > 0:
-        print('timestamps loaded succesfully... \n')
-        print(f'Shape of timestamps: {timestamps.shape}.')
-    return timestamps
+        print(f'{matlab_key} loaded succesfully... \n')
+        print(f'Shape of {matlab_key}: {mat_file.shape}.')
+    return mat_file
 
 
 def get_pdf_model(data_train, hypes, ev_label=None,path_to_weights=None, 
@@ -361,7 +343,7 @@ def __cluster_CVAE__(cvae,x,label,eta,gamma,m):
 
 def __cluster__(vae,x,eta,gamma,m):
     '''
-    VAE-version...
+    VAE-version... TODO: DELETE? 
     The Gradient decent loop used in "__pdf_GD__()". 
     '''
     count = 0
