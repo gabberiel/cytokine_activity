@@ -59,14 +59,16 @@ def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, var=1, standardised_in
     upper_buond = 3*np.exp(-n*(epsilon**2)) # Theoretical convergence rate of mass towards annulus
     candidate_wf = waveforms[candidate_idx,:]
     candidate_standardised = waveforms - candidate_wf # Mean shifted
-    assert np.sum(candidate_standardised[candidate_idx,:]) == 0, 'Mean shift in ssq not correct'
+    # assert np.sum(candidate_standardised[candidate_idx,:]) == 0, 'Mean shift in ssq not correct'
     # TODO: Which type of variance to use..? 
     if standardised_input is not True:
         candidate_standardised = candidate_standardised / (np.var(candidate_wf)*var) # All elements now assumed to be iid N(0,var)
     #print(candidate_standardised.shape)
     # Sum of Squares:
     ssq = np.sum(np.square(candidate_standardised),axis=1) # Under H0, we should have: (n(1-epsilon) < ssq < n(1+epsilon)), with prob. = 1 as n --> inf.
-    similarity_evaluation = (n*(1-epsilon) < ssq ) & ( ssq < n*(1+epsilon)) # Those waveform s.t. ssq/sqrt(n) is close to 1 is assumed to be in the same cluster..
+    # similarity_evaluation = (n*(1-epsilon) < ssq ) & ( ssq < n*(1+epsilon)) # Those waveform s.t. ssq/sqrt(n) is close to 1 is assumed to be in the same cluster..
+    similarity_evaluation =  ssq < n*(1+epsilon) # Those waveform s.t. ssq/sqrt(n) is close to 1 is assumed to be in the same cluster..
+    
     return similarity_evaluation, upper_buond
 
 

@@ -27,7 +27,7 @@ verbose_main = True   # Wether to show or just save figures
 
 plot_raw_CAPs = False
 plot_ev_stats = False
-plot_ho_TOT_EVs = True
+plot_ho_TOT_EVs = False
 plot_ho_EVs = True
 view_encoded_latent = False
 view_decoded_latent = False   
@@ -192,7 +192,8 @@ for entry in scandir(directory):
         # ************************************************************
         if view_encoded_latent:
             encoded_hpdp_title = 'Encoded Latent Variable Mean.'
-            plot_encoded(encoder, wf_ho, saveas=saveas_vae_result+'_encoded_ho_wf', verbose=verbose_main,ev_label=ev_label_ho,title=encoded_hpdp_title)
+            plot_encoded(encoder, wf_ho, saveas=saveas_vae_result+'_encoded_ho_wf',
+                         verbose=verbose_main, ev_label=ev_label_ho, title=encoded_hpdp_title)
             plt.close()
         if view_decoded_latent:
             plot_decoded_latent(decoder, saveas=saveas_vae_result+'_decoded_constant', 

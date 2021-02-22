@@ -7,7 +7,8 @@
 # wf := waveforms, CAP := compound action potential (wf/waveform/CAPa are used interchangeably).
 # ho := High Occurance, ts := timestamps
 # EV := event-rate [CAPs/sec]
-# hodp := high probability data points.
+# hpdp := high probability data points.
+# GD := Gradient Descent
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,7 +25,7 @@ from plot_functions_wf import plot_decoded_latent, plot_amplitude_hist
 from evaluation import run_DBSCAN_evaluation, run_evaluation, run_visual_evaluation
 
 
-continue_train = False    # Tensorflow CVAE-model.
+continue_train = True    # Tensorflow CVAE-model.
 run_GD = True
 # ****** If using 2D-latent space dimension: *********
 view_cvae_result = False    # True => reqires user to give input if to continue-
@@ -38,11 +39,11 @@ plot_hpdp_assesments = False    # Cluster and evaluate hpdp to find -
 run_automised_assesment = True    # Cluster and evaluate hpdp by defined quantitative measure.
 run_DBscan = False
 
-verbose_main = 1
+verbose_main = 0
 
 # *****************************************************************************
 # Specify unique title for the run.
-training_start_title = 'finalrun_corr'  
+training_start_title = 'finalrun_third'  
 # *****************************************************************************
 
 # ************************************************************
@@ -60,7 +61,7 @@ directory = '../matlab_files'
 # If "ts" is not specified, then all files will be run twise, since we have 
 # one file for timestamps and one for CAP-waveform with identical names, 
 # exept the starting ts/wf.
-rec_start_string = '\\tsR10_6' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # rec_start_string = '\\tsR10_Exp2_7.20'   # .16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15'
 
 # rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
@@ -90,7 +91,6 @@ for entry in scandir(directory):
         path_to_hpdp = "../numpy_files/numpy_hpdp/" + unique_string_for_run 
         path_to_EVlabels = "../numpy_files/EV_labels/" + unique_string_for_run
         path_to_cytokine_candidate = '../numpy_files/cytokine_candidates/' + unique_string_for_run
-        
         
         # ************************************************************
         # ******************** Load Files ****************************

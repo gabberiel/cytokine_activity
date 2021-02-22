@@ -1,2 +1,2 @@
-model_checkpoint_path: "finalrun_corrR10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05"
-all_model_checkpoint_paths: "finalrun_corrR10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05"
+model_checkpoint_path: "finalrun_thirdR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
+all_model_checkpoint_paths: "finalrun_thirdR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"

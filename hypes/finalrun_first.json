@@ -5,6 +5,7 @@
    },
    "labeling": {
       "similarity_measure": "ssq",
+      "ssq_downsample" : 2,
       "similarity_thresh": 0.1,
       "assumed_model_varaince": 0.7,
       "n_std_threshold": 0.05,
@@ -76,7 +77,50 @@
    },
    "Results": {
       "Responders": [
-         "R12_BALBC_7.11.16_2 Saline Injections (200ul)_07"
+         "R10_6.27.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_01",
+         "R10_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03",
+         "R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05",
+         "R10_6.30.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_05",
+         "R10_7.1.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_06",
+         "R10_Exp2_7.13.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_08",
+         "R10_Exp2_7.20.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15"
+      ],
+      "labels": [
+         [
+            0,
+            1,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ],
+         [
+            1,
+            0,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ],
+         [
+            1,
+            0,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ]
       ]
    }
 }

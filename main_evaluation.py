@@ -18,8 +18,8 @@ matlab_directory = '../matlab_files'
 save_main_candidates_CAPs = False
 load_saved_candidate = False
 
-verbose = True
-training_start_title = 'finalrun_corr'   # Specify title of the "run" to evaluate.
+verbose = False
+training_start_title = 'finalrun_first'   # Specify title of the "run" to evaluate.
 
 end_string = 'auto_assesment.npy'   # This is how the files were saved. 
 

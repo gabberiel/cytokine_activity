@@ -1,10 +1,8 @@
-import numpy as np
 import time
+import warnings
+import numpy as np
 import matplotlib.pyplot as plt
 from wf_similarity_measures import wf_correlation, similarity_SSQ
-# from evaluation import __get_ev_stats__
-# from plot_functions_wf import plot_event_rates
-import warnings
 
 def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
     '''
@@ -332,6 +330,7 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None):
     assumed_model_varaince = hypes["labeling"]["assumed_model_varaince"]
     n_std_threshold = hypes["labeling"]["n_std_threshold"]
     threshold = hypes["labeling"]["similarity_thresh"]
+    ssq_downsample = hypes["labeling"]["ssq_downsample"]
     # ***********************************************
 
     n_wf = wf_std.shape[0]
@@ -377,9 +376,9 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None):
         ii = 0
         t0 = time.time()
         if assumed_model_varaince is not False:
-            wf_downsampled = wf_std[:,::2]/assumed_model_varaince # 0.5 in CVAE atm. 
+            wf_downsampled = wf_std[:,::ssq_downsample]/assumed_model_varaince # 0.5 in CVAE atm. 
         else:
-            wf_downsampled = wf_std[:,::2] 
+            wf_downsampled = wf_std[:,::ssq_downsample] 
         ev_stats_tot = np.zeros((2,n_wf))
 
         # Loop through and lable all observed CAPs :

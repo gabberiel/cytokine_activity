@@ -202,6 +202,10 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
                           ev_label=ev_label_corr_shape,
                           path_to_hpdp=path_to_hpdp+str(label_on), 
                           verbose=verbose)
+        # if label_on == 0:
+        #     hpdp_copy = np.copy(hpdp)
+        #     ev_label_copy = np.copy(ev_label_corr_shape)
+
         hpdp_list.append(hpdp)
         if view_GD_result:
             encoded_hpdp_title = 'Visualisation of the Latent Variable Mean.'
@@ -213,6 +217,15 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
             plt.figure(2)
             plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), 
                         verbose=1, ev_label=ev_label_corr_shape, title=encoded_hpdp_title)
+    
+    # hpdp_for_plot = np.concatenate((hpdp_copy,hpdp))
+    # ev_label_for_plots = np.concatenate((ev_label_copy, ev_label_corr_shape))
+    # plt.figure(2)
+    # plot_encoded(encoder, hpdp_for_plot, saveas=save_figure+'_encoded_hpdp'+'both', 
+    #             verbose=0, ev_label=ev_label_for_plots, title=encoded_hpdp_title)
+    # plt.close()
+
+    # view_GD_result = False  # TODO: REMOVE!!!
     if view_GD_result:     
         continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
         all_fine = False

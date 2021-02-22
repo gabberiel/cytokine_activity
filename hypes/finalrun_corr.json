@@ -6,6 +6,7 @@
    },
    "labeling": {
       "similarity_measure": "corr",
+      "ssq_downsample" : 2,
       "similarity_thresh": 0.7,
       "assumed_model_varaince": 0.7,
       "n_std_threshold": 0.05,
