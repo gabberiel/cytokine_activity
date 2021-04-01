@@ -48,153 +48,6 @@ def get_event_rates(timestamps,labels,bin_width=1,consider_only=None):
         event_rate_results[:,0] = event_count[0]
 
     return event_rate_results
-def __get_average_ev__(ev_stats):
-    """
-    TODO: REMOVE? 
-    Extracts average event_rate and variance for full period using outputs of "__delta_ev_measure__()"
-    OBS: assuming ev_stats for one cluster...
-    Parameters
-    ----------
-    ev_stats :[interval_ev_means, interval_ev_std] python_list
-        interval_ev_means: (3, number_of_clusters) array_like
-        interval_ev_std : (3, number_of_clusters) array_like
-            mean and standard deviation of event rates for all three periods for each cluster.
-    Returns
-    -------
-    tot_mean : float
-        mean over complete recording
-    tot_std : float
-        standard deviation over complete recording
-
-    """
-    assert np.isnan(np.sum(ev_stats))==False, 'Nans in "ev_stats"'
-    means = ev_stats[0]
-    stds = ev_stats[1]
-
-    tot_means = np.mean(means,axis=0)
-    tot_std = np.mean(stds,axis=0)    
-    assert np.isnan(np.sum(tot_means))==False, 'Nans in "ev_stats"'
-    assert np.isnan(np.sum(tot_std))==False, 'Nans in "ev_stats"'
-
-    return tot_means, tot_std
-
-def __delta_ev_measure__(event_rates, timestamps=None):
-        '''
-        TODO: REMOVE? 
-        Calculates measure of how event-rate differs before and after injections. 
-        i.e changes at 30min and 60min into recording.
-
-        Could explore many different types of measures. especially take variance into account.
-        However mu/var for instance could end up with division by zero..
-        For now, a simple difference in mean of event-rates during each period will be considered.
-
-        TODO: Could add an input of "real clusters" to assure positive event rate to be able to 
-        divide by variance..
-
-        Parameters
-        ----------
-        event_rates : (total_time_in_seconds, number_of_clusters) array_like 
-                Number of occurances of labeled waveforms in each one second window during time
-                of recording. 
-
-        timestamps : (number_of_waveforms, ) array_like or None
-            Vector containing timestamp for each waveform in seconds from started recording. 
-            Used to extract start and end time. If None, then the time are assumed to be 0min and 90min.
-
-        Returns
-        -------
-        delta_ev : (number_of_injections, number_of_clusters) array_like
-                Changes in mean event rate after the two injections for each cluster.
-
-        ev_stats :[interval_ev_means, interval_ev_std] python_list
-            interval_ev_means: (3, number_of_clusters) array_like
-            interval_ev_std : (3, number_of_clusters) array_like
-                mean and standard deviation of event rates for all three periods for each cluster.
-
-        '''
-        num_intervals = 3
-        num_clusters = event_rates.shape[-1]
-        # OBS. recording last longer than 90 minutes. 
-        # Could change to end time but then intervals have different lengths.
-        if timestamps is not None:
-            assert timestamps[0] < 60*30, f'Invalid time range. Start time {timestamps[0]}, need to be before first injection.'
-            assert timestamps[-1] > 60*60, f'Invalid time range. End time {timestamps[-1]}, need to be After second injection.'
-            injection_times = [np.int(timestamps[0]), 60*30, 60*60, np.int(timestamps[-1])]
-            #injection_times = [np.int(timestamps[0][0]), 60*30, 60*60, np.int(timestamps[-1][0])]
-        else:
-            warnings.warn('No timestamps given to "__delta_ev_measure__()". Assumes full time of recording.')
-            injection_times = [0, 60*30, 60*60, 60*90] # injections occur 30 and 60 min into recording (in seconds).
-
-        interval_ev_means = np.empty((num_intervals, num_clusters))
-        interval_ev_std = np.empty((num_intervals, num_clusters))
-
-        for i in range(num_intervals):
-                interval_ev_means[i,:] = np.mean(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
-                interval_ev_std[i,:] = np.std(event_rates[injection_times[i]:injection_times[i+1]],axis=0) 
-        assert np.isnan(np.sum(interval_ev_means))==False, 'Nans in "interval_ev_means"'
-        assert np.isnan(np.sum(interval_ev_std))==False, 'Nans in "interval_ev_std"'
-        # Could explore many differnt times of measures...
-        # For now, difference in mean event-rate will be considered.
-        delta_ev = interval_ev_means[1:,:] - interval_ev_means[:-1,:]
-
-        stats = [interval_ev_means, interval_ev_std]
-        return delta_ev, stats
-
-def __ev_label__(delta_ev,ev_stats,n_std=1, new_variance_periods=True):
-    '''
-    TODO: REMOVE? 
-    Give waveform a label encoding how the event rate change at time of injections.
-    The label is vector with 3 dimensions. The three values corresponds 
-    to "increase after first injection", "increase after second injection", "consant" -- respectively.
-
-    Parameters
-    ----------
-    delta_ev : (number_of_injections(=2), 1) array_like
-                Changes in mean event rate after the two injections for each cluster.
-                (This function will only need/get "1" = 1. ??)
-    ev_stats :[interval_ev_means, interval_ev_std] python_list
-        interval_ev_means: (3, 1) array_like
-        interval_ev_std : (3, 1) array_like
-            mean and standard deviation of event rates for all three periods for each cluster.
-    n_std : float
-        number of standard deviations that mean hase to change after injection for it to be 
-        considered as increase/decrease
-    Returns
-    -------
-        label : (3, 1) array_like
-
-    Example
-    -------
-        label = [1,0,0] corresponds to increase in activity after first injections. 
-        label = [0,1,0] corresponds to increase in activity after second injection. 
-    '''
-    # Define baseline standard deviation for second injection as mean of first two periods of recording..
-    if new_variance_periods:
-        # Will probably reduce variance threshold assuming variance is lower during second period
-        interval_ev_std = np.empty(ev_stats[1][:2].shape)
-        var_thres_first = (ev_stats[1][0] + ev_stats[1][1])/2 *0.5 # Mean variance over firts two periods
-        var_thres_second = (ev_stats[1][0] + ev_stats[1][1] + ev_stats[1][2] )/3 # Mean variance over whole recording
-        interval_ev_std[0] = var_thres_first
-        interval_ev_std[1] = var_thres_second
-    else:
-        interval_ev_std = ev_stats[1][:2] #.reshape((-1,2)) # Get standard deviation for first two periods.
-        interval_ev_std[-1] = (interval_ev_std[0] + interval_ev_std[1])/2
-
-    ev_label = np.zeros((3,delta_ev.shape[-1]))
-
-    # Find if there is a sufficient increase in event rates after injections: 
-    is_increase = delta_ev > (n_std*interval_ev_std)
-    if True in is_increase:
-        largest_increase = np.argmax(delta_ev-(n_std*interval_ev_std))
-        ev_label[largest_increase] = 1
-        #is_increase = np.append(is_increase,np.array((False)).reshape((1,1)),axis=0)
-        #ev_label[is_increase] = 1
-        #print(ev_label)
-    else:
-        ev_label[-1] = 1
-        #print(ev_label)
-
-    return ev_label
 
 def __new_ev_labeling__(event_rate, hypes):
     '''
@@ -384,9 +237,11 @@ def get_ev_labels(wf_std,timestamps, hypes, saveas=None):
         # Loop through and lable all observed CAPs :
         for candidate_idx in range(n_wf):
             if assumed_model_varaince is not False:
-                bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold,standardised_input=True)
+                bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, 
+                                                epsilon=threshold, standardised_input=True)
             else:
-                bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled, epsilon=threshold,standardised_input=False)
+                bool_labels, _ = similarity_SSQ(candidate_idx, wf_downsampled,
+                                                epsilon=threshold, standardised_input=False)
 
             event_rates = get_event_rates(timestamps[:,0],bool_labels,bin_width=1,consider_only=1)
             
