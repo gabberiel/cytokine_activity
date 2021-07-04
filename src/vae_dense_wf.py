@@ -1,4 +1,10 @@
-# BUILD MODEL
+'''
+OBS! OLD version where VAE is used instead of CVAE..
+
+This is still imported in "load_and_GD_funs()", but not used in analysis..
+The functions therefore not sufficiently documented with docstings etc..
+
+'''
 import tensorflow as tf
 import numpy as np
 from tensorflow import keras

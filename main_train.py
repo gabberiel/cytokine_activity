@@ -1,15 +1,34 @@
-# ************************************************************
-# Main file in cytokine-identification process. 
-#
-# Master Thesis, KTH , Gabriel Andersson
-# ************************************************************
-# Notation used throughout:
-# wf := waveforms, CAP := compound action potential (wf/waveform/CAPa are used interchangeably).
-# ho := High Occurance, ts := timestamps
-# EV := event-rate [CAPs/sec]
-# hpdp := high probability data points.
-# GD := Gradient Descent
+'''
+ ************************************************************
+ Main file for identifying cytokine-encoding CAPs. 
+ i.e, the first script to run after the MATLAB preprocessing of the raw recordings.
 
+ Loads preprocessed "waveforms" (wf)- and "timestamps" (ts)- data. (.mat files)
+ These are the resulting CAPs from the MATLAB preprocessing of the raw VN-recordings.
+ 
+ The "output" of the analysis in this files are a number of saved files, which is 
+ loaded in the script for the second and last step of the analysis; "main_evaluation.py".
+
+ The following data is saved:
+    * event-rate labels : "path_to_EVlabels" + ".npy"
+    * event-rate stats : "path_to_EVlabels" + "tests_tot.npy"
+        (EV-Mean, EV-SD) for full time of recording for each CAP.
+    * CVAE-network weights : 
+    * hpdp : "path_to_hpdp" + "0" or "1" + ".npy"
+        High probability data points. Result from CVAE-gradient descent for each injection-label.
+    * cytokine_candidates : "path_to_cytokine_candidate" + "auto_assesment" + .npy
+
+ --------------------------------------
+ Master Thesis, KTH , Gabriel Andersson
+ ************************************************************
+ Notation used throughout:
+ wf := waveforms, CAP := compound action potential (wf/waveform/CAPa are used interchangeably).
+ ho := High Occurance, ts := timestamps
+ EV := event-rate [CAPs/sec]
+ hpdp := high probability data points.
+ GD := Gradient Descent
+ pdf := probability density function
+'''
 import numpy as np
 import matplotlib.pyplot as plt
 import json
@@ -20,30 +39,32 @@ sys.path.insert(1,'src/')   # Add directory to path for function-imports
 
 import preprocess_wf
 from load_and_GD_funs import load_mat_file, get_pdf_model, run_pdf_GD  
-from event_rate_funs import get_ev_labels # , get_event_rates
+from event_rate_funs import get_ev_labels 
 from plot_functions_wf import plot_decoded_latent, plot_amplitude_hist 
 from evaluation import run_DBSCAN_evaluation, run_evaluation, run_visual_evaluation
 
 
-continue_train = True    # Tensorflow CVAE-model.
+continue_train = False    # Tensorflow CVAE-model.
 run_GD = True
+zero_GD_iterations = True # True if you only want to e.g. only rerun assessment 
 # ****** If using 2D-latent space dimension: *********
 view_cvae_result = False    # True => reqires user to give input if to continue-
                             # -the script to pdf-GD or not.
 view_GD_result = False    # This reqires user to give input if to continue the-
                           # -script to clustering or not.
 plot_hpdp_assesments = False    # Cluster and evaluate hpdp to find -
-                                # -cytokine-candidate CAP manually inspecting plots.
+                               # -cytokine-candidate CAP manually inspecting plots.
 # ***********************
 
 run_automised_assesment = True    # Cluster and evaluate hpdp by defined quantitative measure.
 run_DBscan = False
 
-verbose_main = 0
+verbose_main = 1
 
 # *****************************************************************************
 # Specify unique title for the run.
-training_start_title = 'finalrun_third'  
+training_start_title =  'zanos_0702' # 
+training_start_title =  'chan_pre_proced_KI' # 
 # *****************************************************************************
 
 # ************************************************************
@@ -53,27 +74,35 @@ training_start_title = 'finalrun_third'
 with open('hypes/'+ training_start_title+'.json', 'r') as f:
     hypes = json.load(f)
 
+if zero_GD_iterations:
+    # This assumes that the full training has been complete, and the run is only for assessment..
+    hypes['pdf_GD']['m'] = 0
+
+
 # ***** Specify path to directory of recordings ******* 
 directory = '../matlab_files'
+directory = 'MATLAB/preprocessed2'
 # *****************************************************
 
 # ***** Specify the starting scaracters in filename of recordings to analyse *****
 # If "ts" is not specified, then all files will be run twise, since we have 
 # one file for timestamps and one for CAP-waveform with identical names, 
 # exept the starting ts/wf.
-rec_start_string = '\\tsR10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = 'R10' #.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # rec_start_string = '\\tsR10_Exp2_7.20'   # .16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15'
 
-# rec_start_string = '\\tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
+# rec_start_string = 'R10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
+rec_start_string = '_final' # '_10min_KCl_10min_210617_122538A-000'
 # *****************************************************
 labeling_results = {}
 # Loop through all saved recordings .mat files in specified directory.
 for entry in scandir(directory):
+
     # Find unique recording string. tsR10 for all cytokine injections, tsR12 for saline. 
-    if entry.path.startswith(directory+rec_start_string): 
+    if entry.name.startswith('ts' + rec_start_string): 
         # Extract only the matlab_file name from full file name.
-        matlab_file = entry.path[len(directory+'\\ts'):-len('.mat')] 
-        print('\n ******************************************************************************* \n')
+        matlab_file = entry.path[len(directory+'/ts'):-len('.mat')] 
+        print('\n' + '*'*80 + '\n')
         print(f'Starting analysis on recording : {matlab_file}')
 
         # This is titles of the waveforms and timestamps files saved from matlab.
@@ -97,6 +126,7 @@ for entry in scandir(directory):
         # ************************************************************
         waveforms = load_mat_file(path_to_wf, 'waveforms')
         timestamps = load_mat_file(path_to_ts, 'timestamps')
+        
 
         # ************************************************************
         # ******************** Preprocess ****************************
@@ -105,7 +135,7 @@ for entry in scandir(directory):
         # Furthermore a downsampling is applied to speed up training. 
 
         # First, saves copy without any downsampling. Used for evaluation:
-        wf0, ts0 = preprocess_wf.get_desired_shape(waveforms, timestamps, hypes, training=False)
+        wf0, ts0 = preprocess_wf.get_desired_shape(waveforms, timestamps, hypes, training=False )
         #plot_amplitude_hist(waveforms)
 
         print(f'Shape before amplitude threshold : {waveforms.shape} \n')
@@ -115,15 +145,15 @@ for entry in scandir(directory):
         print(f'Shape after amplitude threshold : {waveforms.shape} \n')
 
         waveforms, timestamps = preprocess_wf.get_desired_shape(waveforms, timestamps, 
-                                                                hypes, training=True)
+                                                                hypes, training=True )
         print(f'Shape after shape-preprocessing : {waveforms.shape}')
 
         standardise_waveforms = hypes["preprocess"]["standardise_waveforms"]
         if standardise_waveforms:
             # Standardise waveforms for more stable training.
             print(f' \n Standardises waveforms... \n')
-            waveforms = preprocess_wf.standardise_wf(waveforms)
-            wf0 = preprocess_wf.standardise_wf(wf0)
+            waveforms = preprocess_wf.standardise_wf(waveforms, hypes)
+            wf0 = preprocess_wf.standardise_wf(wf0, hypes)
 
         # ************************************************************
         # ******************** Event-rate Labeling *******************
@@ -214,7 +244,7 @@ for entry in scandir(directory):
                                   path_to_save_candidate=path_to_cytokine_candidate)
         # Evaluation with prespecified number of clusters etc. No user input required. 
         if run_automised_assesment:
-            saveas = path_to_cytokine_candidate+'auto_assesment'
+            saveas = path_to_cytokine_candidate + 'auto_assesment'
             run_evaluation(wf0, ts0, hpdp_list, 
                            encoder, hypes, saveas=saveas)
 
@@ -223,7 +253,7 @@ for entry in scandir(directory):
         # ************************************************************
         # Run DBSCAN on labeled data to see if the obtained results are similar. 
         if run_DBscan:
-            saveas = 'figures/dbscan/'+unique_string_for_figs + 'DBSCAN'
+            saveas = 'figures/dbscan/' + unique_string_for_figs + 'DBSCAN'
             np_saveas = path_to_cytokine_candidate + 'DBSCAN'
             run_DBSCAN_evaluation(wf_ho, wf0, ts0, 
                                   ev_label_ho, hypes, 

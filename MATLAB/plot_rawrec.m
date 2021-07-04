@@ -1,4 +1,4 @@
-function [] = save_rawrec(nr,rec_string,show)
+function [] = save_rawrec(nr,rec_string,show, fig_saveas)
 % PLOT downsampled recording. 
 
 X = nr.datadec.Data;
@@ -14,19 +14,20 @@ else
     set(fig,'Visible','off');
     %hold on;
     plot(T,X(:,1));
+    axis([0 inf -1500 1500])
     xlabel('Time (min)','interpret','Latex','FontSize',fontsize);
     ylabel('Voltage $\mu V$','interpret','Latex','FontSize',fontsize);
     title('Raw Recording','FontSize',fontsize)
-    saveas(fig,['Figures/y1_raw_rec_',rec_string,'.png'])
+    saveas(fig, fig_saveas)
     close(fig)
     
-    fig=figure(1);
-    set(fig,'Visible','off');
-    %hold on;
-    plot(T,X(:,2));
-    xlabel('Time (min)','interpret','Latex','FontSize',fontsize);
-    ylabel('Voltage $\mu V$','interpret','Latex','FontSize',fontsize);
-    title('Raw Recording','FontSize',fontsize)
-    saveas(fig,['Figures/y2_raw_rec_',rec_string,'.png'])
-    close(fig)
+%     fig=figure(1);
+%     set(fig,'Visible','off');
+%     %hold on;
+%     plot(T,X(:,2));
+%     xlabel('Time (min)','interpret','Latex','FontSize',fontsize);
+%     ylabel('Voltage $\mu V$','interpret','Latex','FontSize',fontsize);
+%     title('Raw Recording','FontSize',fontsize)
+%     saveas(fig,['Figures/y2_raw_rec_',rec_string,'.png'])
+%     close(fig)
 end

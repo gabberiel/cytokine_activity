@@ -9,7 +9,6 @@ from tensorflow.keras import backend as K
 # Supress tensorflow warnings..:
 #tf.logging.set_verbosity(tf.logging.ERROR) najn
 
-
 def sample_z(mu,sigma):
     '''
     Reparametrisation step of encoder to consider the stochastic sampling of latent variable as an input to network -- enabeling backprop.

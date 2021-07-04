@@ -1,2 +1,2 @@
-model_checkpoint_path: "finalrun_thirdR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
-all_model_checkpoint_paths: "finalrun_thirdR10_6.27.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_01"
+model_checkpoint_path: "zanos_0702R10_Exp2_7.20.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15"
+all_model_checkpoint_paths: "zanos_0702R10_Exp2_7.20.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15"

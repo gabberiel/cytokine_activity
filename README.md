@@ -3,13 +3,13 @@
 # Decoding Neural Signals Related to Cytokine Activity
 ### Author: *Gabriel Andersson*
 
-This reposetory provides the python and matlab code for the master-thesis:
-
+This reposetory provides the python and matlab code for the master-thesis: \
+qqq: To be added when published in DIVA...
 
 
 Work is inspired by: <https://www.researchgate.net/publication/325035277_Identification_of_cytokine-specific_sensory_neural_signals_by_decoding_murine_vagus_nerve_activity>. 
 
-They also provided the MATLAB code, which only has been slighlty altered for this work.
+They also provided the MATLAB code for extracting the neural events from the raw-recordings, which only has been slighlty altered for this work.
 
 Neural recordings data as well as raw MATLAB code availible at: 
 <https://public.feinsteininstitute.org/cbem/PNAS%20Submission>.

@@ -1,0 +1,80 @@
+{
+    "Commentary": "This json file is meant to explain each of the hyperparameters in the hypes.json files. ",
+    "OBS": "It can be that some older .josn files are outdated in terms of structure.. They can still be run but has to be restructured into this format. ",
+    "dir_and_files": {
+       "start_string": "string : Name of Run (title of json file..) .",
+       "matlab_dir": "string : Path to directory of saved waveforms and timestamps (.mat files) for recordings. "
+    },
+    "experiment_setup": {
+       "injection_t_period": "scalar : The time between injections. (30 for Zanos-recordings).",
+       "start_time": "scalar. : Disregard the part of the recording prior to this time. (e.g. due to unstable sleep state in mice.)",
+       "end_time": "scalar. : Disregard the part of the recording post to this time.",
+       "t_delay_post_injection": "scalar. : Number of minutes to wait before studing the event-rate post injection"
+    },
+    "labeling": {
+       "similarity_measure": "Either 'ssq' or 'corr'. This defines which similarity measure that is used to define 'similar waveforms'. ",
+       "ssq_downsample": "Int. : SSQ is very computationally demanding. this is a downsampling integer. i.e 1=> full dimension. 2=> use wf[::2]",
+       "similarity_thresh": "scalar > 0 :  Using 'corr' => min correlation. Using 'ssq' => epsilon in Gaussian annulus theorem.",
+       "assumed_model_varaince": "scalar > 0 : The assumed variance for wf ssq-similarity measure during labeling. small variance implies more similarity within the 'similarity-cluster'",
+       "n_std_threshold": "No longer used..?  ",
+       "t0_baseline_SD": "scalar > 0 : The start-time for calculating baseline standard deviation that is used to define response.. the SD is calculated using the time from this starting value to the time of the first recording. ",
+       "time_baseline_MU": "scalar > 0 : The number of minutes before an injection where the baseline mean is calculated.",
+       "k_SD": "scalar > 0 :The minimum standard deviations that EV has to increase for labeling...",
+       "SD_min":"scalar > 0 :The minimum standard deviation in definition of how much the EV has to increase to be assumed likely to encode the injected substance.",
+       "relative_EV": "Boolean. Determine weather or not to normalise EV with total-EV in 'get_event_rates()'."
+      },
+    "preprocess": {
+       "standardise_waveforms": "Boolean. : Specify if waveforms (wf) should be standardised or not.",
+       "standardise_type": "str. 'var' or 'max' : The type of standardisation. 'var' => divide by variance of each wf. 'max' => divide by max allowed amplitude. ",
+       "maxamp_threshold": "scalar. : The Largest allowed amplitude (+&- in uV) for a wf. Otherwise considered as noise.",
+       "minamp_threshold": "scalar. : The smallest allowed amplitude (uV) for a wf. Otherwise considered as noise.",
+       "ev_thresh_procentage": "Boolean. : True => Fraction of total ev is used for EV-threshold",
+       "ev_thresh_fraction": "scalar. : If a wf has a EV that is lower than this fraction of the total EV, then the wf is considered as nooise and removed.",
+       "desired_num_of_samples": "int. or null. : null => all sample is used. A samller sample can be used to speed up computations. The number of datapoints will not be this value but the closest value that can be achieved when dividing by integer.",
+       "dim_of_wf": "int. : The dimension of each waveform. All waveforms are forced to be this dimension by either adding zeros or croping the exceeding indices. "
+    },
+    "preprocess_for_eval": {
+       "desired_num_of_samples": "int. or null. : null => all sample is used. Here, null is specified to use all datapoints during evaluation."
+    },
+    "pdf_GD": {
+       "m": "int. : Number of GD-iterations",
+       "gamma": "Scalar. : Param for pdf-GD ",
+       "eta": "Scalar : Param for pdf-GD",
+       "labels_to_evaluate": "List of int. e.g. [0,1] : The Labels that are of interest to find responders. I.e. labels corresponding to 'increse after injection'",
+       "downsample_threshold": "Int. : If number of datapoints with a label is larger than this value, only a subsample is used for GD to speed up computations."
+    },
+    "cvae": {
+       "latent_dim": "Int. :  dimension of latent space in CVAE",
+       "label_dim": "Int. : Number of different labels",
+       "nr_epochs": "Int. : Training of CVAE ",
+       "batch_size": "Int. : Training of CVAE ",
+       "dense_net_nodes": "List of int. : A given int, x, at position i, gives the the number of nodes x for hidden layer i. Number of hidden layers= length of this list.",
+       "activation": "string : Activation of nodes in network. (only used 'relu')",
+       "model_variance": "scalar > 0 :The CVAE variance that is used in Loss. small variance => Main loss based on reconstruction. Large variance => Main loss based on KL-divergence.   "
+    },
+    "evaluation": {
+       "SD_min_eval": "scalar > 0 :The minimum standard deviation in definition of 'responder'.",
+       "k_SD_eval": "scalar > 0 :Number of standard deviations that EV has to increase after injection to be a 'responder'",
+       "clustering_method": "Either 'k-means' or 'dbscan'. Used in 'run_visual_evaluation()'" ,
+       "similarity_threshold": " Using 'corr' => min correlation. Using 'ssq' => epsilon in Gaussian annulus theorem.",
+       "assumed_model_varaince": "The assumed variance for wf ssq- similarity measure during evaluation. Set to smaller value than in 'labeling'.. this forces the 'similar wf' to be more similar in the evaluation than in labeling",
+       "similarity_measure": "Either 'ssq' or 'corr'. This defines which similarity measure that is used for wf.",
+       "k_clusters": "int. or None. : Constant number of cluster, if k-means is chosen for clustering..",
+       "db_eps": "Param for DB-scan if that is chosen for clustering..",
+       "db_min_sample": "Param for DB-scan if that is chosen for clustering.."
+    },
+    "marginal_likelihood": {
+       "MC_sample_size": "Used in 'marginal_log_likelihood' to estimate P(x|label) using CVAE.."
+    },
+    "DBSCAN": {
+       "similarity_threshold": 0.1,
+       "assumed_model_varaince": 0.7,
+       "similarity_measure": "ssq",
+       "db_eps": 4,
+       "db_min_sample": 3
+    },
+    "Results": {
+       "Responders": "After running evaluation, the found responder file-names will be saved here.",
+       "labels": "Shows which label the 'Responders' correspond to."
+    }
+ }

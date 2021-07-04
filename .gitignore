@@ -2,5 +2,9 @@ __pycache__
 numpy_hpdp
 figures
 figures_tests
+MATLAB/preprocessed
+MATLAB/preprocessed2
+MATLAB/unused
+MATLAB/Figures
 .DS_Store
 .tmp.drivedownload

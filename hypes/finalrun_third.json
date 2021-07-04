@@ -4,14 +4,20 @@
       "start_string": "finalrun_third",
       "matlab_dir": "../matlab_files"
    },
+   "experiment_setup" : {
+      "injection_t_period" : 30,
+      "start_time" : 10,
+      "end_time" : 90,
+      "t_delay_post_injection" : 10
+   },
    "labeling": {
       "similarity_measure": "ssq",
       "ssq_downsample" : 2,
       "similarity_thresh": 0.1,
       "assumed_model_varaince": 0.7,
       "n_std_threshold": 0.05,
-      "t0_baseline_SD": 600,
-      "time_baseline_MU": 240,
+      "t0_baseline_SD": 10,
+      "time_baseline_MU": 4,
       "k_SD": 0.5,
       "SD_min": 0.01
    },
@@ -27,10 +33,7 @@
       "end_time": 90
    },
    "preprocess_for_eval": {
-      "desired_num_of_samples": null,
-      "dim_of_wf": 141,
-      "start_time": 10,
-      "end_time": 90
+      "desired_num_of_samples": null
    },
    "pdf_GD": {
       "m": 0,

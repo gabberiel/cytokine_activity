@@ -1,0 +1,99 @@
+{
+   "Commentary": "See if code still runs.. ",
+   "dir_and_files": {
+      "start_string": "KI_standardise_on_max",
+      "matlab_dir": "MATLAB/preprocessed2"
+   },
+   "experiment_setup": {
+      "injection_t_period": 10,
+      "start_time": 1,
+      "end_time": 30,
+      "t_delay_post_injection": 1
+   },
+   "labeling": {
+      "similarity_measure": "ssq",
+      "ssq_downsample": 2,
+      "similarity_thresh": 0.1,
+      "assumed_model_varaince": 0.7,
+      "t0_baseline_SD": 2,
+      "time_baseline_MU": 4,
+      "k_SD": 0.5,
+      "SD_min": 0.01
+   },
+   "preprocess": {
+      "standardise_waveforms": true,
+      "standardise_type": "var",
+      "maxamp_threshold": 800,
+      "minamp_threshold": 2,
+      "ev_thresh_procentage": true,
+      "ev_thresh_fraction": 0.005,
+      "desired_num_of_samples": 40000,
+      "dim_of_wf": 107
+   },
+   "preprocess_for_eval": {
+      "desired_num_of_samples": null
+   },
+   "pdf_GD": {
+      "m": 0,
+      "gamma": 0.02,
+      "eta": 0.005,
+      "labels_to_evaluate": [
+         0,
+         1
+      ],
+      "downsample_threshold": 6000
+   },
+   "cvae": {
+      "latent_dim": 2,
+      "label_dim": 3,
+      "nr_epochs": 80,
+      "batch_size": 128,
+      "dense_net_nodes": [
+         120,
+         100,
+         80,
+         40
+      ],
+      "activation": "relu",
+      "model_variance": 0.5
+   },
+   "evaluation": {
+      "SD_min_eval": 0.3,
+      "k_SD_eval": 0.1,
+      "clustering_method": "k-means",
+      "similarity_threshold": 0.3,
+      "assumed_model_varaince": 0.5,
+      "similarity_measure": "ssq",
+      "k_clusters": 8,
+      "db_eps": 0.15,
+      "db_min_sample": 5
+   },
+   "marginal_likelihood": {
+      "MC_sample_size": 128
+   },
+   "DBSCAN": {
+      "similarity_threshold": 0.1,
+      "assumed_model_varaince": 0.7,
+      "similarity_measure": "ssq",
+      "db_eps": 4,
+      "db_min_sample": 3
+   },
+   "Results": {
+      "Responders": [
+         "first_test_KIA-003",
+         "first_test_KIA-003"
+      ],
+      "labels": [
+         [
+            1,
+            0,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ]
+      ]
+   }
+}
