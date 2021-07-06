@@ -1,4 +1,10 @@
-# Functions used to evaluate results after training is complete. 
+'''
+Functions used to evaluate results after training is complete. 
+The main file for "auto" - evaluation is "run_evaluation()".
+
+The evaluation assumes that the the resulting .npy files from main_train.py exists.
+
+'''
 import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf 
@@ -18,7 +24,7 @@ def run_visual_evaluation(waveforms, timestamps,
                         unique_title_for_figs='no_unique_string_given',
                         path_to_save_candidate='no_path_given'):
     '''
-    Perform the clustering of the gradient-decsent results manually. 
+    Perform the clustering of the gradient-decsent results manually. \\
     If using k-means, the number of clusters are to be given by user 
     after visualisation of encoded hpdp in latent space. 
     If a CAP-shape is found to increase significantly after cytokine-injection, 
@@ -53,6 +59,12 @@ def run_visual_evaluation(waveforms, timestamps,
     Returns
     -------
             No returns.
+
+    Saves:
+    ------
+    cytokine_candidates : (n_user_inputs, dim_wf)
+        CAPs as specified by user-input.
+
     '''
     labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"]
     clustering_method = hypes["evaluation"]["clustering_method"]
@@ -65,17 +77,18 @@ def run_visual_evaluation(waveforms, timestamps,
     for label_on in labels_to_evaluate:
         hpdp = hpdp_list[label_on]
         bool_labels = np.ones((hpdp.shape[0])) == 1 # Label all as True (same cluster) to plot the average form of increased EV-hpdp
-        saveas = 'figures/hpdp/'+unique_title_for_figs
+        saveas = 'figures/hpdp/' + unique_title_for_figs
         title = 'CAPs With Identical Labels'
-        #plot_similar_wf(0,hpdp,bool_labels,None,saveas=saveas+'_wf'+str(label_on),verbose=True)
-        plot_waveforms(hpdp,saveas=saveas+'_wf'+str(label_on),verbose=True,title=title)
+        #plot_similar_wf(0, hpdp, bool_labels, None, saveas=saveas+'_wf'+str(label_on),verbose=True)
+        plot_waveforms(hpdp, saveas=saveas+'_wf'+str(label_on), verbose=True,title=title)
 
         #PLOT ENCODED wf_increase... :
         save_figure = 'figures/encoded_decoded/'+unique_title_for_figs
         #plot_encoded(encoder,  waveforms_increase, ev_label =ev_label_corr_shape, saveas=save_figure+'_encoded'+str(label_on), verbose=True)
         ev_label_corr_shape = np.zeros((hpdp.shape[0],3))
         ev_label_corr_shape[:,label_on] = 1
-        plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
+        plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), 
+                     verbose=1,ev_label=ev_label_corr_shape,title='Encoded hpdp') 
 
         if clustering_method=='k-means':
             K_string  = input('Number of clusters? (integer) :')
@@ -97,7 +110,7 @@ def run_visual_evaluation(waveforms, timestamps,
                                                             return_candidates=True)
         k_candidate  = input('which CAP-cluster seems most likely to encode the cytokine? (integer or None) :')
         if k_candidate != 'None':
-            cytokine_candidates[label_on,:] = possible_wf_candidates[int(k_candidate),:]
+            cytokine_candidates[label_on, :] = possible_wf_candidates[int(k_candidate),:]
     if k_candidate != 'None':
         np.save(path_to_save_candidate, cytokine_candidates)
 
@@ -182,7 +195,6 @@ def __evaluate_hpdp_candidates__(waveforms, timestamps, hpdp, k_labels, hypes,
         plot_event_rates(event_rates, timestamps, saveas=saveas+'Main_cand_ev', 
                          verbose=False, cluster=cluster) 
     plt.figure(3)
-    #plt.hist(timestamps,bins=200)
     event_rates = get_event_rates(timestamps, hypes )
     plot_event_rates(event_rates, timestamps, saveas=saveas+'overall_EV', 
                      verbose=False)     
@@ -250,14 +262,14 @@ def run_evaluation(waveforms, timestamps,
             responder_CAP : (dim_of_wf,) numpy_array \\
             tuple_object : (MU, SD, responder, time_above_thresh) 
                 of type: (float, float, Boolean, int)
+
+    Saves:
+    ------
+    responder_results : python-list
+
     '''
     labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"]
     k_clusters = hypes["evaluation"]["k_clusters"]
-    # similarity_measure = hypes["evaluation"]["similarity_measure"] 
-    # similarity_thresh = hypes["evaluation"]["similarity_threshold"]
-    # assumed_model_varaince = hypes["evaluation"]["assumed_model_varaince"]
-    # k_SD_eval = hypes["evaluation"]["k_SD_eval"]
-    # SD_min_eval = hypes["evaluation"]["SD_min_eval"]
     dim_of_wf =  hypes["preprocess"]["dim_of_wf"]
 
     if k_clusters is None:
@@ -270,16 +282,37 @@ def run_evaluation(waveforms, timestamps,
         ev_label_corr_shape = np.zeros((hpdp.shape[0],3))   # Create corresponding labels with the correct shape. 
         ev_label_corr_shape[:,label_on] = 1   # Create corresponding labels with the correct shape. 
         encoded_hpdp,_,_ = encoder([hpdp,ev_label_corr_shape])
+        encoded_hpdp = encoded_hpdp.numpy()
         if k_clusters is not None:
+            # Run k-means clustering on latent-space-representation of hpdp.
             if (hpdp.shape[0]<8) and (hpdp.shape[0] != dim_of_wf):
                 kmeans = KMeans(n_clusters=1, random_state=0).fit(encoded_hpdp)
             else:
                 kmeans = KMeans(n_clusters=k_clusters, random_state=0).fit(encoded_hpdp)
             k_labels = kmeans.labels_
         else:
-            dbscan = DBSCAN(eps=db_eps, min_samples=db_min_sample, metric='euclidean')
+            # "Persistent Homology" approach using DBSCAN.
+            # Run DBSCAN for different scales of epsilon, fixing the number of min_samples.
+            # Give most persistent epsilon manually as input.
+            
+            eps_range =  np.arange(0.01, 2, 0.02)
+            persistent_hom = []
+            for epsilon in eps_range:
+                dbscan = DBSCAN(eps=epsilon, min_samples=db_min_sample, metric='euclidean')
+                dbscan.fit(encoded_hpdp)
+                k_labels = dbscan.labels_
+                n_clusters = np.sum(np.unique(k_labels)) - 1
+                persistent_hom.append( n_clusters )
+            plt.plot(eps_range, persistent_hom)
+            plt.show()
+            input_epsilon = float(input('Most persistent epsilon : '))
+            dbscan = DBSCAN(eps=input_epsilon, min_samples=db_min_sample, metric='euclidean')
             dbscan.fit(encoded_hpdp)
             k_labels = dbscan.labels_
+            for k_label in np.unique(k_labels):
+                plt.scatter(encoded_hpdp[k_labels==k_label, 0],encoded_hpdp[k_labels==k_label, 1] , label=k_label)
+            plt.show()
+            # Plot resulting kluster in latent space. 
 
         responders = __evaluate_cytokine_candidates__(waveforms, timestamps, 
                                                       hpdp, k_labels, hypes, 
@@ -287,7 +320,7 @@ def run_evaluation(waveforms, timestamps,
         responder_results.append(np.array(responders))
     responder_results = np.array(responder_results)
     if saveas is not None:
-        np.save(saveas,np.squeeze(responder_results))
+        np.save(saveas, np.squeeze(responder_results))
         print(f'Results for evaluation saved sucessfully as {saveas}.')
     return responder_results
 
@@ -435,6 +468,7 @@ def find_reponders(candidate_directory, hypes,
         If None then the figures is not saved
     return_main_candidates : boolean
         Wether to return the responder CAPs or not.
+
     Returns
     -------
     if return_main_candidates is True:
@@ -446,6 +480,10 @@ def find_reponders(candidate_directory, hypes,
     else: 
         responders : (number_of_considered_recordings) python list
             Elements are 1 if responder is found, otherwise 0.
+
+    Saves:
+    ------
+    Writes the recording-file-names where a responder was found under "Results" in .json hypes-file.
     ''' 
     responders = [] # We will ad a 1 if a recording in specified candidate_directory corresponds to a "responder", otherwise 0. 
                     # This is used to find how many, out of all considered recordings, that are showing promising results. 
@@ -514,14 +552,26 @@ def find_reponders(candidate_directory, hypes,
 
 def __evaluate_responder__(cytokine_candidate, 
                            file_name, hypes,
-                           saveas=None,verbose=True):
+                           saveas=None, verbose=True):
     '''
-    Called by "find_responers()" 
+    Visual evaluation of "cytokine_candidate".
+    Plots similarity-clusters and event-rate for "cytokine_candidate"-waveform. This needs the matlab-recording to be specified.
 
-    Plots event rate for "cytokine_candidate"-waveform. This needs the matlab-recording to be specified.
+    Called by "find_responers()" and "eval_candidateCAP_on_multiple_recordings()"
 
     Parameters
     ----------
+    cytokine_candidate :  (dim_wf, ) array_like
+        The CAP-candidate under evaluation.
+    file_name : string.
+        Specify which file/files to go through and plot similar waveforms to candidate.
+    hypes : dict.
+        Hyperparams
+    saveas : 'path/to/save_fig' string_like _or_ None
+        If None then the figures is not saved.
+    verbose : Boolean
+        ``True`` => plt.show() \\
+        ``False`` => plt.close('all')
 
     '''
     matlab_directory = hypes["dir_and_files"]["matlab_dir"]
@@ -645,8 +695,7 @@ def run_DBSCAN_evaluation(wf_ho, wf0, ts0,
                         saveas=None, np_saveas=None, 
                         matlab_file=None):
     '''
-    qqq: TODO, add hypes input!
-    Skipp everything after labeling and perform clustering using DBSCAN on labeled high-occurance waveforms. 
+    Skips everything after labeling and perform clustering using DBSCAN on labeled high-occurance waveforms. 
     
     Parameters
     ----------
@@ -658,9 +707,6 @@ def run_DBSCAN_evaluation(wf_ho, wf0, ts0,
     labels_to_evaluate = hypes["pdf_GD"]["labels_to_evaluate"] 
     db_eps = hypes["DBSCAN"]["db_eps"] 
     db_min_sample = hypes["DBSCAN"]["db_min_sample"] 
-    similarity_measure = hypes["DBSCAN"]["similarity_measure"] 
-    similarity_thresh = hypes["DBSCAN"]["similarity_threshold"]
-    assumed_model_varaince = hypes["DBSCAN"]["assumed_model_varaince"]
     dim_of_wf = hypes["preprocess"]["dim_of_wf"]
 
 

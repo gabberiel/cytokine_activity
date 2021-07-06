@@ -13,11 +13,11 @@
    "labeling": {
       "similarity_measure": "corr",
       "ssq_downsample": 2,
-      "similarity_thresh": 0.7,
+      "similarity_thresh": 0.71,
       "assumed_model_varaince": 0.7,
       "n_std_threshold": 0.05,
-      "t0_baseline_SD": 5,
-      "time_baseline_MU": 5,
+      "t0_baseline_SD": 9,
+      "time_baseline_MU": 9,
       "k_SD": 1,
       "SD_min": 0.001,
       "relative_EV": true
@@ -61,14 +61,14 @@
    },
    "evaluation": {
       "SD_min_eval": 0.01,
-      "k_SD_eval": 1.5,
+      "k_SD_eval": 2.5,
       "clustering_method": "k-means",
       "similarity_threshold": 0.72,
       "assumed_model_varaince": 0.5,
       "similarity_measure": "corr",
-      "k_clusters": 10,
+      "k_clusters": null,
       "db_eps": 0.01,
-      "db_min_sample": 100
+      "db_min_sample": 40
    },
    "marginal_likelihood": {
       "MC_sample_size": 128
@@ -77,12 +77,12 @@
       "similarity_threshold": 0.1,
       "assumed_model_varaince": 0.7,
       "similarity_measure": "ssq",
-      "db_eps": 4,
+      "db_eps": 10,
       "db_min_sample": 3
    },
    "Results": {
       "Responders": [
-         "_finalBaseline_10min_LPS_10min_KCl_10min_210617_142447",
+         "_finalBaseline_10min_LPS_10min_KCl_10min_210617_103421",
          "_finalBaseline_10min_LPS_10min_KCl_10min_210617_142447",
          "_finalBaseline_10min_Saline_10min_KCl_10min_210617_122538",
          "_finalBaseline_10min_Saline_10min_KCl_10min_210617_122538"

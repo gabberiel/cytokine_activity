@@ -1,3 +1,8 @@
+'''
+Functions for loading MATLAB files, to create/load CVAE-model and running "CVAE-Gradient-descent".
+
+'''
+
 import time
 import warnings
 import numpy as np
@@ -11,9 +16,10 @@ from plot_functions_wf import plot_encoded
 
 
 def load_mat_file(path_to_file, matlab_key, verbose=1):
-    """
-    Load waveform- or timestamps-matlab file specified by "path_to_file" and returns it as numpy array.
-    Files saved locally on Asus-computer have matlab_key='waveforms'
+    '''
+    Loads MATLAB file specified by "path_to_file" which is saved withthe and returns it as numpy array. \\
+    Files is assumed to be saved with key="matlab_key". \\
+    key should be "waveforms" or "timestamps".
 
     Parameters
     ----------
@@ -23,7 +29,7 @@ def load_mat_file(path_to_file, matlab_key, verbose=1):
             key as specified when saving file in MATLAB.
             Either 'waveforms' or 'timestamps'
     verbose : integer
-            > 0 => prints about progress.
+            >0 => prints about progress.
 
     Returns
     -------
@@ -31,14 +37,15 @@ def load_mat_file(path_to_file, matlab_key, verbose=1):
                (number_of_waveforms, 1) array_like
             Numpy version of loaded matlab matrix. 
 
-    """
+    '''
     if verbose > 0:
-        print('\n Loading matlab'+ matlab_key +' files... \n' )
+        print('Loading matlab-'+ matlab_key +' file... \n' )
     # Load matlab
     mat_file = loadmat(path_to_file)[matlab_key]
+    
     if verbose > 0:
         print(f'{matlab_key} loaded succesfully... \n')
-        print(f'Shape of {matlab_key}: {mat_file.shape}.')
+        print(f'Shape of {matlab_key} : {mat_file.shape}.')
     return mat_file
 
 

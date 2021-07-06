@@ -1,5 +1,18 @@
+'''
+Contains functions related to calculating event-rates and labeling waveforms.
+
+Functions:
+    * get_event_rates()
+        (timestamps, labels) --> (event-rate)
+    * __get_EV_label()
+        (event-rate) --> (label)
+    * __get_EV_stats()
+        (event-rate, t-period) --> (ev-mean, ev-std)
+    * get_ev_labels()
+        (waveforms, timestamps) --> (labels)
+'''
+
 import time
-import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 from wf_similarity_measures import wf_correlation, similarity_SSQ
@@ -141,9 +154,9 @@ def __get_EV_label(event_rate, hypes):
     return ev_label
 
 def __get_EV_stats(event_rate, start_time=10*60, 
-                     end_time=90*60, 
-                     compare_to_theshold=None,
-                     conv_width=5):
+                   end_time=90*60, 
+                   compare_to_theshold=None,
+                   conv_width=5):
     '''
     Get event-rate mean and standard deviation for a specified time-period.
     If "compare_to_threshold" is not None, then the EV is compared to thresh to see if we have a "response". \\
@@ -186,6 +199,7 @@ def __get_EV_stats(event_rate, start_time=10*60,
     time_above_thresh : float
         How much time in seconds that the EV is above thresh.
     '''
+
     T = end_time-start_time # Length of time interval in seconds
 
     EV_local = event_rate[start_time:end_time] # Event-rate under time-period of interest.
@@ -214,17 +228,22 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
         * Use similarity_measure to cluster wavefomes assuming each observation as "candidate-wf".
         * Calculate event-rate from resulting "similarity-cluster".
         * Calculate the change in event rate at time of injection as well as mean/variance for the three periods. 
-        * get ev_labels using the threshold: 
+        * Get ev_labels using the threshold: 
 
                 ``post-injection-mean > pre-injection-mean + k * max(SD_min, SD_baseline)``
 
          for at least 1/3 of the post-injection time period.
+
+    In practise that is, for each CAP:
+        * First : ``similarity-boolean-vector <-- wf_correlation(wf_std..)`` / ``similarity_SSQ(wf_std..)``
+        * Secnodly :  ``Event-rate <-- get_event_rates(similarity-boolean-vector..)``
+        * Finally, ``EV-label <-- __get_EV_label(Event-rate..)``
     
     Parameters
     ----------
         wf_std : (number_of_waveforms, dim_of_waveforms) array_like 
             Standardised/Preprocessed waveforms to label with ev_labels.
-        timestaps : (number_of_waveforms, ) array_like 
+        timestamps : (number_of_waveforms, ) array_like 
             Vector containing timestamp for each waveform in seconds from started recording.
         hypes : .json file
             Containing the hyperparameters:
@@ -237,7 +256,9 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
                 assumed_model_varaince : float
                     The  model variance assumed in ssq-similarity measure. i.e variance in N(x_candidate,sigma^2*I)  
         saveas : ``None`` or String.
-            If Not ``None``
+            If saveas is not ``None``:
+                ev_labels : saved as, "saveas" + ".npy" \\
+                ev_stats_tot : saved as, "saveas" + "tests_tot.npy"
 
     Returns
     -------
@@ -250,36 +271,35 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
     Saves:
     ------
     If saveas is not ``None``:
-        ev_labels : saved as, "saveas" + ".npy"
+        ev_labels : saved as, "saveas" + ".npy" \\
         ev_stats_tot : saved as, "saveas" + "tests_tot.npy"
     '''
-    print('Initiating event-rate labeling \n')
+    print('Initiating event-rate labeling.. \n')
 
     # *** Extract hyperparameters from json file: **
     similarity_measure = hypes["labeling"]["similarity_measure"]
     assumed_model_varaince = hypes["labeling"]["assumed_model_varaince"]
-    # n_std_threshold = hypes["labeling"]["n_std_threshold"]
     threshold = hypes["labeling"]["similarity_thresh"]
-    ssq_downsample = hypes["labeling"]["ssq_downsample"]
+    ssq_downsample = hypes["labeling"]["ssq_downsample"]       # Downsample waveforms to speed up analysis using "ssq"
     start_time = hypes["experiment_setup"]["start_time"] 
     end_time = hypes["experiment_setup"]["end_time"] 
     # ***********************************************
     
     n_wf = wf_std.shape[0]
-    ev_labels = np.zeros((3,n_wf))
-    ev_stats_tot = np.zeros((2,n_wf))
+    ev_labels = np.zeros((3, n_wf))         # Store Labels
+    ev_stats_tot = np.zeros((2, n_wf))      # Store Total ev mean and standard deviation
 
     ii = 0
     t0 = time.time()
     if similarity_measure=='corr':
         print(f'Using Correlation as similarity measure...')
         print(f'threshold : {threshold}')
-        # print(f'n_std_threshold : {n_std_threshold} \n')
         sub_steps = 1000
         prev_substep = 0
 
-        #wf_downsampled = wf_std/assumed_model_varaince # Will no longer be normalised--not suitible for corr..??
-        for sub_step in np.arange(sub_steps,n_wf,sub_steps):
+        for sub_step in np.arange(sub_steps, n_wf, sub_steps):
+            # This sub_step approach is used to speed up computations with mat-mult.
+            # Can however not use all wf for matmult since this creates memory issues.. (allocates to much memory.)
             i_range = np.arange(prev_substep,sub_step)
             correlations = wf_correlation(i_range, wf_std)
             for corr_vec in correlations.T:
@@ -287,23 +307,25 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
                 event_rates = get_event_rates(timestamps[:,0], hypes, labels=bool_labels, consider_only=1)
                 
                 ev_labels[:,ii] = __get_EV_label(event_rates, hypes)
-                tot_mean, tot_std = __get_EV_stats(event_rates, start_time=start_time*60, 
-                                                    end_time=end_time*60)
+                tot_mean, tot_std = __get_EV_stats(event_rates, start_time=start_time * 60, 
+                                                    end_time=end_time * 60)
                 ev_stats_tot[:,ii] = np.array((tot_mean, tot_std)).reshape(2,)
                 ii +=1
+
             prev_substep = sub_step            
-            if ii%(sub_steps*10)==0:
+            if ii % (sub_steps*10) == 0:
                 print(f'On waveform {ii} in event-rate labeling')        
                 ti = time.time()
-                ETA_t =  n_wf * (ti-t0)/(ii) - (ti-t0) 
+                ETA_t =  n_wf * (ti - t0) / (ii) - (ti - t0) 
                 print(f'ETA: {round(ETA_t)} seconds.. \n')
 
     if similarity_measure=='ssq':
         print(f'Using Sum of squares (gaussian annulus theorem) as similarity measure. Paramterers:')
         print(f'assumed_model_varaince = {assumed_model_varaince}')
-        # print(f'n_std_threshold = {n_std_threshold}')
         print(f'Epsilon = {threshold} \n')
+
         if assumed_model_varaince is not False:
+            # Divide by assumed variance. Allows for more/less similarity within "similarity-clusters"
             wf_downsampled = wf_std[:,::ssq_downsample]/assumed_model_varaince # 0.5 in CVAE atm. 
         else:
             wf_downsampled = wf_std[:,::ssq_downsample] 
@@ -320,6 +342,7 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
             event_rates = get_event_rates(timestamps[:,0], hypes, labels=bool_labels, consider_only=1)
             
             ev_labels[:,ii] = __get_EV_label(event_rates, hypes)
+
             tot_mean, tot_std = __get_EV_stats(event_rates, 
                                                  start_time=start_time*60, 
                                                  end_time=end_time*60)
@@ -332,76 +355,8 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
                 print(f'ETA: {round(ETA_t)} seconds.. \n')
     if saveas is not None:
         np.save(saveas, ev_labels)
-        np.save(saveas+'tests_tot', ev_stats_tot)
+        np.save(saveas + 'stats_tot', ev_stats_tot)
         print(f'EV_labels succesfully saved as : {saveas}')
 
     return ev_labels, ev_stats_tot
-
-
-if __name__ == "__main__":
-    '''
-    ######## TESTING: #############
-    Shape of waveforms: (136259, 141).
-    Shape of timestamps: (136259, 1).
-    OBS takes about 6.4 milliseconds to call "get_event_rates()" (mean of 100 runs)
-    '''
-
-    import numpy as np
-    from scipy.io import loadmat
-    import matplotlib.pyplot as plt
-    import time
-    from preprocess_wf import standardise_wf
-    print()
-    print('Loading matlab files...')
-    print()
-    wf_name = '../matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
-    ts_name = '../matlab_files/gg_timestamps.mat'
-
-    waveforms = loadmat(wf_name)
-    #print(f' keys of matlab file: {waveforms.keys()}')
-    waveforms = waveforms['waveforms']
-    timestamps = loadmat(ts_name)['timestamps']
-    print('MATLAB files loaded succesfully...')
-    print()
-    print(f'Shape of waveforms: {waveforms.shape}.')
-    print()
-    print(f'Shape of timestamps: {timestamps.shape}.')
-    print()
-    assert waveforms.shape[0] == timestamps.shape[0], 'Missmatch of waveforms and timestamps shape.'   
-    wf_std = standardise_wf(waveforms) 
-    get_ev_labels(wf_std,timestamps,threshold=0.001,saveas=None, similarity_measure='ssq')
-
-    quit()
-
-    # CREATE LABELS FOR TESTS
-    labels = np.zeros((waveforms.shape[0]))
-    first_injection_time = 30*60
-    second_injection_time = 60*60
-
-    labels[timestamps[:,0] < first_injection_time] = 1
-    labels[(first_injection_time < timestamps[:,0]) & (timestamps[:,0] < second_injection_time)] = 2
-    labels[timestamps[:,0] > second_injection_time] = 3
-
-    # Create test linear timestamps
-    time_test = np.arange(0,60*60*1.5,60*60*1.5/136259)
-
-
-
-    start = time.time()
-    # ------------------------------------------------------------------------------------
-    # --------------------- TEST FUNCTIONS: ----------------------------
-    # ------------------------------------------------------------------------------------
-    runs_for_time = 1
-    for i in range(runs_for_time):
-        event_rates = get_event_rates(timestamps[:,0],labels,bin_width=1)
-        __get_EV_label(event_rates, hypes)
-        #delta, ev_stats = __delta_ev_measure__(event_rates)
-        #mean_,std_ = __get_average_ev__(ev_stats)
-        
-    end = time.time()
-    print(f' Mean time for calculating event_rate : {(end-start)/runs_for_time * 1000} ms')
-    print(f'event rates shape: {event_rates.shape}')
-
-    #plot_event_rates(event_rates,timestamps,conv_width=100)
-    plt.show()
 

@@ -1,8 +1,11 @@
 '''
-OBS! OLD version where VAE is used instead of CVAE..
+OBS! OBS! OBS! OBS! OBS! OBS! OBS! OBS! OBS! OBS! OBS! OBS! OBS!  
+OLD version where VAE is used instead of CVAE..
 
-This is still imported in "load_and_GD_funs()", but not used in analysis..
-The functions therefore not sufficiently documented with docstings etc..
+This is still imported in "load_and_GD_funs()", but not used in any analysis and is not tested if it still runs..
+
+
+The functions here are therefore not documented with docstings etc..
 
 '''
 import tensorflow as tf

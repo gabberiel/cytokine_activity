@@ -156,6 +156,8 @@ path = 'preprocessed/'; % KI
 
 files = dir([path, '*.mat']); 
 start_string_of_file = 'Baseline_10min_LPS_10min_KCl_10min_210617_142447';
+start_string_of_file = 'Baseline_10min_LPS_10min_KCl_10min_210617_103421';
+
 start_string_of_file = 'Baseline_10min_Saline_10min_KCl_10min_210617_122538';
 
 first10000 = false; % true => Only save first 10000 observations
@@ -206,8 +208,8 @@ end
 
 %% Find final waveform/timestamp results using all channels
 all_data = all_wf;
-n_channel_thresh = 7; % Out of 15
+n_channel_thresh = 11; % Out of 15
 [waveforms, timestamps] = multiple_channels_threshold(all_data, n_channel_thresh);
 
-save(['preprocessed2/','ts_final',start_string_of_file], 'timestamps', '-double')
-save(['preprocessed2/','wf_final',start_string_of_file], 'waveforms', '-double')
+save(['preprocessed2/','ts_final2',start_string_of_file], 'timestamps', '-double')
+save(['preprocessed2/','wf_final2',start_string_of_file], 'waveforms', '-double')

@@ -1,6 +1,8 @@
 '''
-Evaluation of cytokine candidates to find "responders".
-File is run after training in main. 
+Main script for Evaluation of cytokine candidates to find "responders".
+
+File should be run after "main_train.py".
+The evaluation assumes that the the resulting .npy files from main_train.py exists.
 
 '''
 import numpy as np
@@ -13,12 +15,14 @@ from evaluation import find_reponders, eval_candidateCAP_on_multiple_recordings
 
 responder_directory = '../numpy_files/cytokine_candidates/' # path to saved numpy result files.
 
-save_main_candidates_CAPs = True
-load_saved_candidate = True
+save_main_candidates_CAPs = True 
+
+eval_on_multiple_recordings = False
+load_saved_candidate = False
 
 verbose = True
 training_start_title = 'zanos_0702' # 'HereWeGoAgain'   # Specify title of the "run" to evaluate.
-training_start_title = 'chan_pre_proced_KI' # 'HereWeGoAgain'   # Specify title of the "run" to evaluate.
+training_start_title = 'all_channels_2_KI' # 'HereWeGoAgain'   # Specify title of the "run" to evaluate.
 
 end_string = 'auto_assesment.npy'   # This is how the files were saved. 
 
@@ -41,38 +45,42 @@ with open('hypes/' + training_start_title + '.json', 'r') as f:
 # ****************************************************************************
 # ** Find the responders from the files saved by "run_evaluation()" in main **
 # ****************************************************************************
+if not load_saved_candidate:
+    # Runs evaluation. Otherwise, assumes the intension is to only load stored CAP-candodate and 
+    # Evaluate over multiple recordings. (Later in script.)
+    saveas = 'figures/Responders/' + training_start_title
+    responders, main_candidates = find_reponders(responder_directory, hypes, 
+                                                start_string=training_start_title, 
+                                                end_string=end_string,
+                                                specify_recordings=specify_recording, 
+                                                saveas=saveas, 
+                                                verbose=verbose, 
+                                                return_main_candidates=True)
+    if save_main_candidates_CAPs:
+        saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title
+        np.save(saveas_responder_caps + '.npy', main_candidates)
 
-saveas = 'figures/Responders/' + training_start_title
-responders, main_candidates = find_reponders(responder_directory, hypes, 
-                                             start_string=training_start_title, 
-                                             end_string=end_string,
-                                             specify_recordings=specify_recording, 
-                                             saveas=saveas, 
-                                             verbose=verbose, 
-                                             return_main_candidates=True)
-if save_main_candidates_CAPs:
-    saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title
-    np.save(saveas_responder_caps + '.npy', main_candidates)
-quit()
 # ****************************************************************************
 # ***** Use CAP as candidate over multiple different recordings  *************
 # ****************************************************************************
-# Can either load a saved CAP-candidates in specified path or use the found "main_candidates" from above.
-if load_saved_candidate:
-    recording_candidate = '_finalBaseline_10min_LPS_10min_KCl_10min_210617_103421'
-    unique_start_string = training_start_title
+'''
+See how the event-rate is of a found CAP-candidate over multiple different recordings.
+This to see if there is any similarities of CAPs in between different mice.
+Can either load saved CAP-candidates in specified path or use the found "main_candidates" from above.
+'''
+if eval_on_multiple_recordings:
+    if load_saved_candidate:
+        # Do not use candidates from above, but a previously saved result. 
+        recording_candidate = '_finalBaseline_10min_LPS_10min_KCl_10min_210617_103421'
+        unique_start_string = training_start_title
 
-    path_to_cytokine_candidate = '../numpy_files/responder_CAPs/'+unique_start_string
-    main_candidates = np.load(path_to_cytokine_candidate + '.npy', allow_pickle=True)
-else:
-    candidate_CAP = main_candidates[0]   # Select one of the found CAP-candidates. 
-    plt.plot(candidate_CAP)
-    plt.show()
+        path_to_cytokine_candidate = '../numpy_files/responder_CAPs/'+unique_start_string
+        main_candidates = np.load(path_to_cytokine_candidate + '.npy', allow_pickle=True)
 
-for candidate_CAP in main_candidates:
-    saveas2 = 'figures/cap_eval/aaa' + recording_candidate
-    eval_candidateCAP_on_multiple_recordings(candidate_CAP, hypes,
-                                         file_name=specify_recording,
-                                         saveas=saveas2, 
-                                         verbose=verbose)
+    for candidate_CAP in main_candidates:
+        saveas2 = 'figures/cap_eval/aaa' + recording_candidate
+        eval_candidateCAP_on_multiple_recordings(candidate_CAP, hypes,
+                                            file_name=specify_recording,
+                                            saveas=saveas2, 
+                                            verbose=verbose)
 

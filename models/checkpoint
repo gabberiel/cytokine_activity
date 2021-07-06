@@ -1,2 +1,2 @@
-model_checkpoint_path: "zanos_0702R10_Exp2_7.20.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15"
-all_model_checkpoint_paths: "zanos_0702R10_Exp2_7.20.16_BALBC_TNF(0.5ug)_IL1B(35ngperkg)_15"
+model_checkpoint_path: "all_channels_2_KI_final2Baseline_10min_Saline_10min_KCl_10min_210617_122538"
+all_model_checkpoint_paths: "all_channels_2_KI_final2Baseline_10min_Saline_10min_KCl_10min_210617_122538"

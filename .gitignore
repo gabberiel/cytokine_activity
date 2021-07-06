@@ -4,6 +4,7 @@ figures
 figures_tests
 MATLAB/preprocessed
 MATLAB/preprocessed2
+MATLAB/data_sandpit
 MATLAB/unused
 MATLAB/Figures
 .DS_Store

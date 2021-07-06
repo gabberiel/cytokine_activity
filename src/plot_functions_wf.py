@@ -1,3 +1,7 @@
+'''
+Functions for plotting. 
+
+'''
 import numpy as np
 import matplotlib.pyplot as plt
 import preprocess_wf
@@ -29,13 +33,12 @@ plt.rc('legend', fontsize=16)    # legend fontsize
 def plot_decoded_latent(decoder, resolution=6, saveas=None, verbose=1, ev_label=None):
     '''
     Takes (resolution x resolution) samples from grid in latent space and plots the decoded x-mean.
-    We assume x ~ N(mu_x,I). The functions then does as follows:
+    We assume x ~ N(mu_x, c*I). The functions then does as follows:
         * sample z. (takes values in evenly spaced grid.)
-        * Use decoder to get mu_x = f(z;theta)
+        * Use decoder to get mu_x = f(z; theta)
         * Plot mu_x in grid-subplots
 
-
-    Will show plot if verbose=1.
+    Will show plot if verbose = 1. \\
     Will save figure if saveas is a valid path.
 
     If ev_label is None then it is assumed that the encoder is part of a VAE
@@ -96,11 +99,11 @@ def plot_decoded_latent(decoder, resolution=6, saveas=None, verbose=1, ev_label=
 
 def plot_encoded(encoder, data, saveas=None, verbose=1, ev_label=None, title=None):
     '''
-    Display a 2D plot of the latent space mean. 
-    Will show plot if verbose=1.
-    Will save figure if saveas is a valid path.
+    Display a 2D plot of the latent space mean. \\
+    Will show plot if verbose=1. \\
+    Will save figure if saveas is a valid path. \\
 
-    If ev_label is None then it is assumed that the encoder is part of a VAE
+    If ev_label is ``None`` then it is assumed that the encoder is part of a VAE
     Otherwise a CVAE.
 
     Parameters
@@ -110,16 +113,18 @@ def plot_encoded(encoder, data, saveas=None, verbose=1, ev_label=None, title=Non
     data : (num_of_wf, size_of_wf) array_like
         Data to be visualised in laten space.
     saveas : 'path/to/save_fig' string_like
-        if None then the figure is not saved
+        if ``None`` then the figure is not saved
     verbose : integer_like
         verbose=1 => plt.show()
-    ev_label : (num_of_wf, label_dim) array_like or None
+    ev_label : (num_of_wf, label_dim) array_like or ``None``
         Determens if a vae or cvae model is used.
 
     '''
     if ev_label is not None:
+        # Assumes CVAE
         z_mean, _, _  = encoder([data, ev_label])
     else:
+        # Assumes VAE (old)
         z_mean, _, _  = encoder(data)
     z_mean = z_mean.numpy()
     assert z_mean.shape[-1] == 2, 'PLOT ONLY POSSIBLE FOR 2D LATENT SPACE'
@@ -138,16 +143,26 @@ def plot_encoded(encoder, data, saveas=None, verbose=1, ev_label=None, title=Non
         plt.show()
 
 
-def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
+def plot_rawrec(rawrec, sample_freq=8000, saveas=None, verbose=False, title=None):
     '''
     Plot of raw recording before MATLAB preprocessing.
     Assumes downsampled (5) raw_rec such that the sample frequency is 8000 Hz.
 
     Parameters
     ----------
+    rawrec : (n_samples, ) array_like
+        The raw recoding data
+    sample_freq : int. 
+        Sample Frequency to define time-axis.
+    saveas : 'path/to/save_fig' string_like
+        if ``None`` then the figure is not saved
+    verbose : integer_like
+        verbose=1 => plt.show()
+    title : string, or ``None``.
+        if ``None`` => No title
 
     '''
-    timeline = np.arange(0,rawrec.shape[0]) /sample_freq /60 # Timeline in minutes
+    timeline = np.arange(0, rawrec.shape[0]) /sample_freq /60 # Timeline in minutes
     plt.plot(timeline, rawrec)#, c=labels)
     plt.xlabel("Time (min)")
     # plt.ylabel("Voltage ($\mu V$)")
@@ -158,9 +173,25 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None,verbose=False,title=None):
     if verbose==True:
         plt.show()
 
-def plot_waveforms_grid(waveforms,N, saveas=None,verbose=False,title=None):
+def plot_waveforms_grid(waveforms, N, saveas=None, verbose=False, title=None):
     ''' 
-    Plot N x N grid of observed CAP-waveforms. 
+    Plot N x N grid of observed CAP-waveforms as : 
+        ``waveforms(i) for i in range(N^2)``.
+
+    args:
+    -----
+    waveforms : (n_wf, dim_wf)
+        Waveforms / CAPs to use for plot. \\
+        OBS! Must have n_wf >= N^2
+    N : int
+        Grid size. Plots N^2 waveforms.
+    saveas : 'path/to/save_fig' string_like
+        if ``None`` then the figure is not saved
+    verbose : integer_like
+        verbose=1 => plt.show()
+    title : string, or ``None``.
+        if ``None`` => No title
+
     '''
     num_wf = waveforms.shape[0]
     wf_dim = waveforms.shape[-1]
@@ -180,21 +211,36 @@ def plot_waveforms_grid(waveforms,N, saveas=None,verbose=False,title=None):
         
 def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
     ''' 
+    
     If labels are given, then the meadian of each waveform-cluster is ploted. 
     x_axis assumes each waveform is 3.5ms long.
+
+    args:
+    -----
+    waveforms : (n_wf, dim_wf)
+        Waveforms / CAPs to use for plot. \\
+        OBS! Must have n_wf >= N^2
+    labels : (n_wf, 3)
+        Grid size. Plots N^2 waveforms.
+    saveas : 'path/to/save_fig' string_like
+        if ``None`` then the figure is not saved
+    verbose : integer_like
+        verbose=1 => plt.show()
+    title : string, or ``None``.
+        if ``None`` => No title
     '''
     num_wf = waveforms.shape[0]
     wf_dim = waveforms.shape[-1]
     if labels is not None:
         t_axis = np.arange(0,3.49,3.5/wf_dim)
 
-        for cluster in labels:
+        for cluster in np.unique(labels):
             wf_clust = waveforms[labels==cluster]
-            plt.plot(t_axis.T,np.median(wf_clust,axis=0).T)# ,color = (0.7,0.7,0.7),lw=0.2)
+            plt.plot(t_axis.T, np.median(wf_clust, axis=0).T)# ,color = (0.7,0.7,0.7),lw=0.2)
     #plt.plot(time,np.median(waveforms[ind,:,0],axis=0),color = (0.2,0.2,0.2),lw=1)
     else: 
-        t_axis = np.arange(0,3.49,3.5/wf_dim)*np.ones((num_wf,1))
-        plt.plot(t_axis.T,waveforms.T,lw=2)#, color =  (0.2,0.6,0.6))
+        t_axis = np.arange(0, 3.49, 3.5 / wf_dim) * np.ones((num_wf, 1))
+        plt.plot(t_axis.T, waveforms.T, lw=2)#, color =  (0.2,0.6,0.6))
     plt.xlabel('Time $(ms)$')
     # plt.ylabel('Voltage $(\mu V)$')
     if title is not None:
@@ -336,34 +382,43 @@ def plot_similar_wf(candidate_idx, waveforms, bool_labels,
 def plot_event_rates(event_rates, timestamps, 
                      conv_width=100, 
                      saveas=None, verbose=True, 
-                     cluster=None,title=None, 
+                     cluster=None, title=None, 
                      plot_label=None):
     '''
-    Plots event rates by smoothing kernel average of width "conv_width".
-    convolution done including boundary effects but returns vector of same size.
+    Plots event rates for each "waveform-cluster".
+    A smoothing kernel is applied of width "conv_width".
+    The convolution will result in some boundary effects, therefore
+    the plot removes "conv_width" from start and end of event-rate plots.
 
     Parameters
     ----------
     event_rates: (total_time_in_seconds, number_of_clusters) array_like
             Number of occurances of labeled waveforms in each one second window during time
             of recording. 
+
+    timestamps : (n_waceforms_of_interest, ) array_like
+        timestamps of the waveforms of interest. 
+        Only used to define end time of event-rate plot.
+
     conv_width: Integer_like
-            Size of smoothing kernel window for plotting
-    noise :  integer_like
-        Integers encoding which cluster is to be considered as noise.
-       ((( qqq: old If "-1" is in clusters it is interpreted as noise. )))
-        If noise is None, then all event_rates is plotted in the same way..
+            Size of smoothing kernel window.
+    saveas : 'path/to/save_fig' string_like _or_ None
+            If None then the figure is not saved
+    verbose : Boolean
+        True => plt.show()
+
     Returns
     -------
+    None
     '''
+
     end_time = timestamps[-1]
-    number_of_obs = event_rates[:,0].shape[0]
-    #time_of_recording_in_seconds = event_rates[:,0].shape[0]
+    number_of_obs = event_rates[:, 0].shape[0]
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
 
-    for i,ev in enumerate(event_rates.T):
-        smothed_ev = np.convolve(ev,conv_kernel,'same')
+    for i, ev in enumerate(event_rates.T):
+        smothed_ev = np.convolve(ev, conv_kernel,'same')
         if cluster is not None:
             # Smaller linewidth... 
             plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], label=plot_label, linestyle='-',lw=1) 
@@ -372,6 +427,7 @@ def plot_event_rates(event_rates, timestamps,
     
     plt.xlabel('Time of Recording (min)')
     plt.ylabel('Event-Rate (CAPs/sec)')
+
     if title is None: 
         plt.title('Event-Rate')
     else:
@@ -382,21 +438,30 @@ def plot_event_rates(event_rates, timestamps,
         plt.show()
 
 
-def plot_amplitude_hist(waveforms, saveas=None,verbose=True):
+def plot_amplitude_hist(waveforms, saveas=None, verbose=True):
     """
     Plots histogram distribution of min/max - amplitude of 
     CAP-waveforms. 
     Mainly used to determine amplitide thresholds. 
+
+    args:
+    -----
+    waveforms : (n_wf, dim_wf) array_like
+        Waveforms to find distribution of max/min amplitudes.
+    saveas : 'path/to/save_fig' string_like _or_ None
+        If None then the figure is not saved
+    verbose : Boolean
+        True => plt.show()
     """
     max_amps = np.max(waveforms,axis=1)
     min_amps = np.min(waveforms,axis=1)
 
     print(f'shape of max_amps: {max_amps.shape}')
-    plt.hist(max_amps,bins=100,density=False)
-    plt.hist(min_amps,bins=100,density=False)
+    plt.hist(max_amps, bins=100, density=False)
+    plt.hist(min_amps, bins=100, density=False)
 
-    plt.xlabel('Max Amplitude')
-    plt.title('Distribution Max amplitudes')
+    plt.xlabel('Max/Min Amplitude')
+    plt.title('Distribution Max/Min Amplitudes')
     if saveas is not None:
         plt.savefig(saveas+'tot_mean_ev',dpi=150)
     if verbose:

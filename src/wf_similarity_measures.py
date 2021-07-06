@@ -1,30 +1,38 @@
+'''
+Functions for similarity measure between waveforms.
+
+Functions:
+    * wf_correlation()
+        (candidate_idx, waveforms) --> (correlations)
+    * similarity_SSQ()
+        (candidate_idx, waveforms) --> (similarity-Boolean)
+'''
 import numpy as np
 import warnings
 import matplotlib.pyplot as plt
 
-def wf_correlation(main_idx,std_waveforms):
+def wf_correlation(candidate_idx, std_waveforms):
     '''
     Waveform similarity measure based on correlation. 
-    Computes the correlation between the different standardised std_waveforms and the main_idx-waveform.
+    Computes the correlation between the different standardised std_waveforms and the candidate_idx-waveform.
 
     Parameters
     ----------
+        candidate_idx : integer_like
+            Specifices which waveform to get event rate from. 
         std_waveforms : (number_of_std_waveforms, size_of_waveform) array_like
             standardised waveforms. (mean subtracted and devided by variance)
-        
-        main_idx : integer_like
-            Specifices which waveform to get event rate from. 
     
     Returns
     -------
         correlations : (number_of_std_waveforms, 1) array_like
             Corr(wf, std_waveforms) 
     '''
+    assert np.isnan(np.sum(std_waveforms))==False, '[wf_correlation()] Nans in "waveforms"'
     
-    correlations = np.matmul(std_waveforms,std_waveforms[main_idx,:].T) / (std_waveforms.shape[-1]-1)
+    correlations = np.matmul(std_waveforms , std_waveforms[candidate_idx,:].T) / (std_waveforms.shape[-1] - 1)
     
-    assert np.isnan(np.sum(std_waveforms))==False, 'Nans in "waveforms"'
-    assert np.isnan(np.sum(correlations))==False, 'Nans in "correlations"'
+    assert np.isnan(np.sum(correlations))==False, '[wf_correlation()] Nans in "correlations"'
 
     return correlations
 
@@ -35,37 +43,45 @@ def similarity_SSQ(candidate_idx, waveforms, epsilon=0.1, standardised_input=Tru
     H0: All observations (i.e waveforms) are assumed to be distributed as N(μ_x, σ^2*I),
     where mu_x is the candidate wavefrom specified by candidate_idx. 
 
-    Annulus theorem: A n-dimensional spherical gaussian has all but at most 3*exp{−cnε^2} 
+    Annulus theorem: \\
+    A n-dimensional spherical gaussian has all but at most 3*exp{−cnε^2} 
     of the probability mass in the annulus: n(1−ε) <= ||x|| <= n(1+ε). for some fixed constant c. \\
     The similarity check is however simply: ||x|| <= n(1+ε)
+
     OBS: extremely time-consuming to do for all waveforms...
 
     Parameters
     ----------
     candidate_idx : integer
-        ...
+        Specifies the index of the waveform which is assumed to be candidate for mean.
     wavefroms : (num_of_wf, dim_of_waveforms) array_like
-        
+        All waveforms used for similarity evaluation.
     epsilon : float
         parameter for test-statistic.. ish
+    standardised_input : Boolean
+        Whether the input is assumed to be standardised. 
+        ``True`` => "ssq" is applied to input as it is. \\
+        ``False`` => candidate_standardised / (np.var(candidate_wf)) before
+        "ssq" is applied.
 
     Returns
     -------
-    similarity_evaluation : (num_of_wf,) array_like - Booleon
-        True for similar waveforms
+    (similarity_evaluation, upper_buond)
+        similarity_evaluation : (num_of_wf,) array_like - Boolean
+            True for similar waveforms
+        upper_buond : scalar
+            Theoretical convergence rate of mass towards annulus
     '''
     n = waveforms.shape[1]
     upper_buond = 3*np.exp(-n*(epsilon**2)) # Theoretical convergence rate of mass towards annulus
     candidate_wf = waveforms[candidate_idx,:]
     candidate_standardised = waveforms - candidate_wf # Mean shifted
-    # assert np.sum(candidate_standardised[candidate_idx,:]) == 0, 'Mean shift in ssq not correct'
-    # TODO: Which type of variance to use..? 
+
     if standardised_input is not True:
-        candidate_standardised = candidate_standardised / (np.var(candidate_wf)) # All elements now assumed to be iid N(0,var)
-    #print(candidate_standardised.shape)
+        # All waveforms are after this assumed to be iid N(0, var*I)
+        candidate_standardised = candidate_standardised / (np.var(candidate_wf)) 
     # Sum of Squares:
     ssq = np.sum(np.square(candidate_standardised),axis=1) # Under H0, we should have: (n(1-epsilon) < ssq < n(1+epsilon)), with prob. = 1 as n --> inf.
-    # similarity_evaluation = (n*(1-epsilon) < ssq ) & ( ssq < n*(1+epsilon)) # Those waveform s.t. ssq/sqrt(n) is close to 1 is assumed to be in the same cluster..
     similarity_evaluation =  ssq < n*(1+epsilon) # Those waveform s.t. ssq/sqrt(n) is close to 1 is assumed to be in the same cluster..
     
     return similarity_evaluation, upper_buond
@@ -86,8 +102,8 @@ if __name__ == "__main__":
     wf_path = '../../matlab_files/wfR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
     ts_path = '../../matlab_files/tsR10_6.30.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_05'
 
-    waveforms =  load_mat_file(wf_path,'waveforms')
-    timestamps = load_mat_file(ts_path,'timestamps')
+    waveforms =  load_mat_file(wf_path, 'waveforms')
+    timestamps = load_mat_file(ts_path, 'timestamps')
 
     assert waveforms.shape[0] == timestamps.shape[0], 'Missmatch of waveforms and timestamps shape.'
     # CREATE LABELS FOR TESTS
