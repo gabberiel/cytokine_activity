@@ -37,7 +37,7 @@ This results in an array of waveforms with corresponding timestamps.
 ## More Info
 The script ``main_visualisations.m``, is containing cells for plotting and evaluating the different parts of the preprocessing. High-pass filter, cardiac/neurally-enhanced signal, thresholds etc.
 
-The ``readme_visualisations.pdf`` file is a short powerpoint presenting visualisations of the different steps in the preprocessing. 
+The ``readme_visualisations.pdf`` file is a short powerpoint presenting visualisations of the different steps in the preprocessing together with some results from the python code. 
 
 Main steps in **Adaptive threshold:**
   
