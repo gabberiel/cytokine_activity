@@ -3,23 +3,27 @@ Contains functions related to calculating event-rates and labeling waveforms.
 
 Functions:
     * get_event_rates()
-        (timestamps, labels) --> (event-rate)
+        (timestamps, "cluster"-labels) --> (event-rate)
+    
     * __get_EV_label()
         (event-rate) --> (label)
+    
     * __get_EV_stats()
-        (event-rate, t-period) --> (ev-mean, ev-std)
+        (event-rate, time-period) --> (ev-mean, ev-std)
+    
     * get_ev_labels()
-        (waveforms, timestamps) --> (labels)
+        (waveforms, timestamps) --> (EV-labels)
 '''
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from wf_similarity_measures import wf_correlation, similarity_SSQ
 
 def get_event_rates(timestamps, hypes, labels=None, consider_only=None):
     '''
-    Calculates event rate of labeled waveforms in Hz or as fraction of total event-rate. 
+    Calculates event rate of labeled waveforms in Hz or as fraction of total event-rate.
+    ( Depending on boolean parameter "hypes['labeling']['relative_EV']". )
     This by counting the number of CAP-occurances in a sliding one-second window of the 
     corresponding timestamps for each label. 
 
@@ -40,11 +44,12 @@ def get_event_rates(timestamps, hypes, labels=None, consider_only=None):
 
     labels : (number_of_waveforms, ) array_like or ``None``
             If ``None``: Total event-rate is returned. \\
-            Else: Integer or Boolean valued vector -- encoding which custer each timestampt-waveform belongs to. \\
-            If Boolean values, then "consider_only"=1 will show event-rate for all "True-labeled" waveforms. 
+            Else: Integer or Boolean valued vector -- encoding which custer each timestamped-waveform belongs to. \\
+            If Boolean values, then "consider_only"=1 will result in event-rate for all "True-labeled" waveforms. \\
+            If Integer values, then "consider_only"=None will result in an event rate for each unique integer-value. 
 
     consider_only : ``None`` or integer
-        If ``None``: Loops through all different clusters from "labels". \\
+        If ``None``: Loops through all different clusters (integer values) from "labels". \\
         If integer : Only considers the label equal to "consider_only"
 
     Returns
@@ -59,6 +64,7 @@ def get_event_rates(timestamps, hypes, labels=None, consider_only=None):
     
     bin_edges = np.arange(0, timestamps[-1] + 1 ,1) # Must include rightmost edge in "np.histogram"
     if labels is None:
+        # Return total event-rate.
         event_rate_results = np.histogram(timestamps, bin_edges)[0]
         return event_rate_results.reshape(-1,1)
 
@@ -78,7 +84,7 @@ def get_event_rates(timestamps, hypes, labels=None, consider_only=None):
 
     if relative_EV:
         tot_ev = np.histogram(timestamps, bin_edges)[0]
-        conv_width  = 10
+        conv_width  = 100
         conv_kernel = np.ones((conv_width))* 1/conv_width
         tot_smoothed_EV = np.convolve(np.squeeze(tot_ev), conv_kernel, 'same')
         non_zero_idx = tot_smoothed_EV > 0
@@ -89,7 +95,7 @@ def get_event_rates(timestamps, hypes, labels=None, consider_only=None):
 
 def __get_EV_label(event_rate, hypes):
     '''
-    Returns a label as a vector with 3 dimensions. The three values corresponds to:
+    Returns a label as an one-hot vector with 3 dimensions. The three values corresponds to:
     "increase after first injection", "increase after second injection", "consant" -- respectively.
 
     For each injection time, as specified in hypes.json, the input is labeled as 
@@ -190,14 +196,14 @@ def __get_EV_stats(event_rate, start_time=10*60,
     else: 
         ( MU_local, SD_local )
     where: 
-    MU_local : float
-        Mean event rate of considered period
-    SD_local : float
-        Mean Standard deviation of considered period
-    response : booleon
-        True is the event-rate of specified period is larger than thesh for 1/3 of the period. 
-    time_above_thresh : float
-        How much time in seconds that the EV is above thresh.
+        MU_local : float
+            Mean event rate of considered period
+        SD_local : float
+            Mean Standard deviation of considered period
+        response : booleon
+            True is the event-rate of specified period is larger than thesh for 1/3 of the period. 
+        time_above_thresh : float
+            How much time in seconds that the EV is above thresh.
     '''
 
     T = end_time-start_time # Length of time interval in seconds
@@ -280,7 +286,7 @@ def get_ev_labels(wf_std, timestamps, hypes, saveas=None):
     similarity_measure = hypes["labeling"]["similarity_measure"]
     assumed_model_varaince = hypes["labeling"]["assumed_model_varaince"]
     threshold = hypes["labeling"]["similarity_thresh"]
-    ssq_downsample = hypes["labeling"]["ssq_downsample"]       # Downsample waveforms to speed up analysis using "ssq"
+    ssq_downsample = hypes["labeling"]["ssq_downsample"]       # Downsample waveforms to speed up analysis using "ssq". Set to 1 if no downsampling.
     start_time = hypes["experiment_setup"]["start_time"] 
     end_time = hypes["experiment_setup"]["end_time"] 
     # ***********************************************

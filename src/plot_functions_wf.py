@@ -4,22 +4,8 @@ Functions for plotting.
 '''
 import numpy as np
 import matplotlib.pyplot as plt
-import preprocess_wf
 
-'''
-SMALL_SIZE = 22
-MEDIUM_SIZE = 24
-BIGGER_SIZE = 28
-plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
-plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
-plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
-plt.rc("figure", figsize=(10, 8))
-'''
-
+# Specify Fontsizes:
 plt.rcParams.update({'font.size': 18})
 #plt.rc('figure', titlesize=44)
 plt.rc('axes', labelsize=16)
@@ -27,8 +13,7 @@ plt.rc('axes', titlesize=18)
 plt.rc('ytick', labelsize=11) 
 plt.rc('xtick', labelsize=11)
 plt.rc('legend', fontsize=16)    # legend fontsize
-# plt.rc(set_minor_formatter(FormatStrFormatter('% 1.2f'))
-# plt.rc("figure", figsize=(10, 8))
+
 
 def plot_decoded_latent(decoder, resolution=6, saveas=None, verbose=1, ev_label=None):
     '''
@@ -48,12 +33,16 @@ def plot_decoded_latent(decoder, resolution=6, saveas=None, verbose=1, ev_label=
     ----------
     decoder : keras.Model class_instance
         Decoder part of VAE/CVAE
+    
     resolution : integer
         Spacing of latent space grid.
+    
     saveas : 'path/to/save_fig' string_like
         if None then the figure is not saved
+    
     verbose : integer_like
         verbose>0 => plt.show()
+    
     ev_label : (num_of_wf, label_dim) array_like or None
         Determens if a vae or cvae model is used.
 
@@ -61,7 +50,7 @@ def plot_decoded_latent(decoder, resolution=6, saveas=None, verbose=1, ev_label=
     -----
     Sample (z1,z2) in grid [-2,2] x [-2,2] . 
 
-    z1,z2 in R^2 --- decoder --> waveform in R^141
+    z1,z2 in R^2 --- decoder --> waveform in R^waveform_dim
 
     '''
     print('\nConstructing plot of decoded latent space...\n')
@@ -97,7 +86,7 @@ def plot_decoded_latent(decoder, resolution=6, saveas=None, verbose=1, ev_label=
         plt.show()
 
 
-def plot_encoded(encoder, data, saveas=None, verbose=1, ev_label=None, title=None):
+def plot_encoded(encoder, data, labels_to_plot=[0,1], saveas=None, verbose=1, ev_label=None, title=None):
     '''
     Display a 2D plot of the latent space mean. \\
     Will show plot if verbose=1. \\
@@ -110,12 +99,21 @@ def plot_encoded(encoder, data, saveas=None, verbose=1, ev_label=None, title=Non
     ----------
     encoder : keras.Model class_instance
         Encoder part of VAE
+    
     data : (num_of_wf, size_of_wf) array_like
         Data to be visualised in laten space.
+
+    labels_to_plot : list.
+        label-index to plot. \\
+        [0,1] => both injections. \\
+        [0] => first injection. etc. \\
+    
     saveas : 'path/to/save_fig' string_like
         if ``None`` then the figure is not saved
+    
     verbose : integer_like
         verbose=1 => plt.show()
+    
     ev_label : (num_of_wf, label_dim) array_like or ``None``
         Determens if a vae or cvae model is used.
 
@@ -127,9 +125,9 @@ def plot_encoded(encoder, data, saveas=None, verbose=1, ev_label=None, title=Non
         # Assumes VAE (old)
         z_mean, _, _  = encoder(data)
     z_mean = z_mean.numpy()
-    assert z_mean.shape[-1] == 2, 'PLOT ONLY POSSIBLE FOR 2D LATENT SPACE'
+    assert z_mean.shape[-1] == 2, '[plot_encoded] PLOT ONLY POSSIBLE FOR 2D LATENT SPACE'
     labels = ['First','Second']
-    for label_on in [0,1]:
+    for label_on in labels_to_plot:
         z_mean_labeled = z_mean[ev_label[:,label_on]==1]
         plt.scatter(z_mean_labeled[:, 0], z_mean_labeled[:, 1], label=labels[label_on])
     plt.xlabel("$\mu_{1}$")
@@ -152,12 +150,16 @@ def plot_rawrec(rawrec, sample_freq=8000, saveas=None, verbose=False, title=None
     ----------
     rawrec : (n_samples, ) array_like
         The raw recoding data
+    
     sample_freq : int. 
         Sample Frequency to define time-axis.
+    
     saveas : 'path/to/save_fig' string_like
         if ``None`` then the figure is not saved
+    
     verbose : integer_like
         verbose=1 => plt.show()
+    
     title : string, or ``None``.
         if ``None`` => No title
 
@@ -183,12 +185,16 @@ def plot_waveforms_grid(waveforms, N, saveas=None, verbose=False, title=None):
     waveforms : (n_wf, dim_wf)
         Waveforms / CAPs to use for plot. \\
         OBS! Must have n_wf >= N^2
+    
     N : int
         Grid size. Plots N^2 waveforms.
+    
     saveas : 'path/to/save_fig' string_like
         if ``None`` then the figure is not saved
+    
     verbose : integer_like
         verbose=1 => plt.show()
+    
     title : string, or ``None``.
         if ``None`` => No title
 
@@ -209,23 +215,27 @@ def plot_waveforms_grid(waveforms, N, saveas=None, verbose=False, title=None):
     if verbose==True:
         plt.show()
         
-def plot_waveforms(waveforms,labels=None,saveas=None,verbose=False,title=None):
+def plot_waveforms(waveforms, labels=None, saveas=None, verbose=False, title=None):
     ''' 
     
     If labels are given, then the meadian of each waveform-cluster is ploted. 
     x_axis assumes each waveform is 3.5ms long.
 
-    args:
-    -----
+    Parameters:
+    ----------
     waveforms : (n_wf, dim_wf)
         Waveforms / CAPs to use for plot. \\
         OBS! Must have n_wf >= N^2
+    
     labels : (n_wf, 3)
         Grid size. Plots N^2 waveforms.
+    
     saveas : 'path/to/save_fig' string_like
         if ``None`` then the figure is not saved
+    
     verbose : integer_like
         verbose=1 => plt.show()
+    
     title : string, or ``None``.
         if ``None`` => No title
     '''
@@ -318,22 +328,29 @@ def plot_similar_wf(candidate_idx, waveforms, bool_labels,
 
     Parameters
     ----------
-        candidate_idx : integer
-            index of main-waveform
-        waveforms : (number_of_waveforms, size_of_waveform) array_like
-            waveforms -- should be standardised
-        bool_labels : (number_of_waveforms,) boolean_type
-            labels of True/False as if they belong to same class as the main-waveform (baased on "threshold")
-        threshold : float
-            Threshold used when labeling waveforms
-        saveas : 'path/to/save_fig' string_like _or_ None
-            If None then the figure is not saved
-        verbose : Boolean
-            True => plt.show()
-        show_clustered : boolean
-            True => All similar waveforms are plotted as "gray background".
-        return_cand : Boolean
-            True => mean of candidate waveform is returned.
+    candidate_idx : integer
+        index of main-waveform
+    
+    waveforms : (number_of_waveforms, size_of_waveform) array_like
+        waveforms -- should be standardised
+    
+    bool_labels : (number_of_waveforms,) boolean_type
+        labels of True/False as if they belong to same class as the main-waveform (baased on "threshold")
+    
+    threshold : float
+        Threshold used when labeling waveforms
+    
+    saveas : 'path/to/save_fig' string_like _or_ None
+        If None then the figure is not saved
+    
+    verbose : Boolean
+        True => plt.show()
+    
+    show_clustered : boolean
+        True => All similar waveforms are plotted as "gray background".
+    
+    return_cand : Boolean
+        True => mean of candidate waveform is returned.
 
     Returns
     -------
@@ -357,11 +374,11 @@ def plot_similar_wf(candidate_idx, waveforms, bool_labels,
     mean_wf = np.mean(waveforms[bool_labels],axis=0)
     #plt.figure()
     if show_clustered:
-        plt.plot(time,waveforms[bool_labels].T,color = (0.6,0.6,0.6),lw=0.5)
-        plt.plot(time,mean_wf,color = (1,0,0),lw=1, label='Mean')
-        plt.plot(time,waveforms[candidate_idx,:],color = (0.1,0.1,0.1),lw=1, label='Candidate')
+        plt.plot(time, waveforms[bool_labels].T, color=(0.6,0.6,0.6), lw=0.5)
+        plt.plot(time, mean_wf, color = (1,0,0), lw=1, label='Mean')
+        plt.plot(time, waveforms[candidate_idx,:], color = (0.1,0.1,0.1), lw=1, label='Candidate')
     else:    
-        plt.plot(time,mean_wf,lw=3) #, label='Cluster '+str(cluster))
+        plt.plot(time, mean_wf, lw=3) #, label='Cluster '+str(cluster))
 
     plt.xlabel('Time $(ms)$')
     # plt.ylabel('Voltage $(\mu V)$')
@@ -376,14 +393,15 @@ def plot_similar_wf(candidate_idx, waveforms, bool_labels,
         plt.show()
     if return_cand:
         return mean_wf
-    #plt.close()
+    
 
       
-def plot_event_rates(event_rates, timestamps, 
+def plot_event_rates(event_rates, timestamps, hypes, 
                      conv_width=100, 
+                     tot_EV=False,
+                     linewidth=2, 
                      saveas=None, verbose=True, 
-                     cluster=None, title=None, 
-                     plot_label=None):
+                     title='Event-Rate'):
     '''
     Plots event rates for each "waveform-cluster".
     A smoothing kernel is applied of width "conv_width".
@@ -402,36 +420,55 @@ def plot_event_rates(event_rates, timestamps,
 
     conv_width: Integer_like
             Size of smoothing kernel window.
+    
+    tot_EV : Boolean
+        True if total event-rate is to be plotted. This input is used to make sure that the y-label
+        is correct when a relative event-rate is used in analysis. 
+    
+    linewidth : Integer
+        linewidth in plot.
+    
     saveas : 'path/to/save_fig' string_like _or_ None
             If None then the figure is not saved
+    
     verbose : Boolean
         True => plt.show()
+    
+    title : string.
+        Title of plot
 
     Returns
     -------
     None
     '''
+    relative_EV = hypes['labeling']['relative_EV']  # Used for y-label
+    injection_t_period = hypes['experiment_setup']['injection_t_period']  # Used for y-label
 
     end_time = timestamps[-1]
     number_of_obs = event_rates[:, 0].shape[0]
     time = np.arange(0,end_time,end_time/number_of_obs) / 60 # To minutes
     conv_kernel = np.ones((conv_width))* 1/conv_width
-
-    for i, ev in enumerate(event_rates.T):
+    max_ev = 0
+    for ev in event_rates.T:
         smothed_ev = np.convolve(ev, conv_kernel,'same')
-        if cluster is not None:
-            # Smaller linewidth... 
-            plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], label=plot_label, linestyle='-',lw=1) 
-        else:
-            plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], label=plot_label, linestyle='-',lw=2) 
-    
-    plt.xlabel('Time of Recording (min)')
-    plt.ylabel('Event-Rate (CAPs/sec)')
+        plt.plot(time[conv_width:-conv_width].T, smothed_ev[conv_width:-conv_width], linestyle='-', lw=linewidth)
+        max_ev_prel = np.max(smothed_ev)
+        if max_ev < max_ev_prel:
+            max_ev = max_ev_prel
+            
+    # Plot lines at injection times:        
+    plt.vlines(injection_t_period, 0, max_ev, linestyles='--', colors='k')
+    plt.vlines(injection_t_period*2, 0, max_ev, linestyles='--', colors='k')
 
-    if title is None: 
-        plt.title('Event-Rate')
+    plt.xlabel('Time of Recording (min)')
+
+    if (not relative_EV) or tot_EV:
+        plt.ylabel('Event-Rate (CAPs/sec)')
     else:
-        plt.title(title)
+        plt.ylabel('Fraction of tot EV')
+
+    plt.title(title)
+
     if saveas is not None:
         plt.savefig(saveas, dpi=150)
     if verbose:
@@ -448,8 +485,10 @@ def plot_amplitude_hist(waveforms, saveas=None, verbose=True):
     -----
     waveforms : (n_wf, dim_wf) array_like
         Waveforms to find distribution of max/min amplitudes.
+    
     saveas : 'path/to/save_fig' string_like _or_ None
         If None then the figure is not saved
+    
     verbose : Boolean
         True => plt.show()
     """
@@ -468,7 +507,7 @@ def plot_amplitude_hist(waveforms, saveas=None, verbose=True):
         plt.show()
 
 
-def plot_event_rate_stats_hist(ev_stats_tot,saveas=None,verbose=False):
+def plot_event_rate_stats_hist(ev_stats_tot, saveas=None, verbose=False):
     """
     Plots histrogram-distribution of mean event-rate and
     standard deviation obtained during the labeling of CAPs.

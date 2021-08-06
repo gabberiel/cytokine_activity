@@ -1,21 +1,30 @@
-% Visualise and plot different parts of preprocessing
+% Visualise and plot different parts of the preprocessing.
 
 %% Load Individual file.
 close all; clear all; clc;
 % datafile='preprocessed/Baseline_10min_LPS_10min_KCl_10min_210617_142447A-003.mat'
-datafile= 'preprocessed/Baseline_10min_LPS_10min_KCl_10min_210617_103421A-003.mat'
+% datafile= 'preprocessed/Baseline_10min_LPS_10min_KCl_10min_210617_103421A-003.mat'
+%datafile= 'preprocessed/Baseline_10min_Saline_10min_KCl_10min_210617_122538A-000.mat'
+
+% datafile= 'preprocessed/210715_30min_baseline_30min_SALINE_injection_30min_KCl_mouse2_210715_131453A-000.mat'
+datafile = 'preprocessed/210715_30min_baseline_30min_ZYA_injection_30min_KCl_mouse1_210715_105653A-000_second.mat'
 
 nr = NeuralRecording(datafile);
-% nr_2 =  NeuralRecording(datafile);
-% Do this for zanos data: (Not KI-data, this is already in uV.)
+
+nr2 = NeuralRecording(datafile);
+% Do this for zanos data: (Not KI-data, which is already in uV.)
 % nr.apply_gain(20);  % gain of 50 in mV so multiply by 20 to convert to uV
-%% apply Butterworth high-pass filter on nr_2
-nr.hpf(10);
-% Downsample both
+
+%% apply Butterworth high-pass filter and possebly downsample.
+nr.hpf(60);
+nr2.hpf(200);
 Nd = 1; 
 nr.downsample(Nd);
-% nr_2.downsample(Nd);
+nr2.downsample(Nd);
+
+
 %% Adaptive threshold
+
 usewavelets = true;  % threshold the wavelet transform of the signal
 num_std = 3;         % number of standard deviations for the threshold
 wdur = 1501 / 8000; % 1501 / 8000 = 188ms  % SO-CFAR window duration in seconds 
@@ -26,40 +35,49 @@ threshType = 4;
 nr.adaptive_threshold(usewavelets, num_std, wdur, gdur, usedownsampled, alignmentmode, threshType);
 % nr_2.adaptive_threshold(usewavelets, num_std, wdur, gdur, usedownsampled, alignmentmode, threshType);
 
-%% Plot range of Raw-recording
+%% Plot specified time-period (range) of Raw-recording (with or without hpf)
 close all;
-fig_path = 'Figures/Preprocessing/';
+fig_path = 'Figures/Preprocessing/raw_rec/';
 fig_name = 'raw_rec_';
-range_to_plot = [21000:23000];
+% range_to_plot = [1:70e6];
+range_to_plot = [220000:300000] + 0e6;
 
-X = nr.data.Data(range_to_plot,1);
+X = nr.data.Data(range_to_plot, 1);
 T = nr.data.Time(range_to_plot); % 
 fontsize = 18;
-fig = figure(1);
-
-plot(T,X);
-% axis([-1500 1500])
-xlabel('Time [sec]','interpret','Latex','FontSize',fontsize);
+figure(1);
+plot(T ./ 60, X);
+xlabel(['Time [min]'], 'interpret', 'Latex', 'FontSize', fontsize);
 ylabel('Voltage [$\mu V$]','interpret','Latex','FontSize',fontsize);
-title('Raw Recording','FontSize',fontsize)
-saveas(gcf,[fig_path, fig_name, datafile(14:end-4), '.png'])
+title('Raw Recording, hpf=10','FontSize',fontsize)
+saveas(gcf,[fig_path, fig_name, datafile(14:end-4), '_1', '.png'])
 
-%% Plot Pre/post hpf-filter
+X2 = nr2.data.Data(range_to_plot,1);
+T2 = nr2.data.Time(range_to_plot); % 
+figure(2);
+plot(T2 ./ 60,X2);
+% axis([-1500 1500])
+xlabel('Time [min]','interpret','Latex','FontSize',fontsize);
+ylabel('Voltage [$\mu V$]','interpret','Latex','FontSize',fontsize);
+title('Raw Recording hpf=60','FontSize',fontsize)
+saveas(gcf,[fig_path, fig_name, datafile(14:end-4), '_2', '.png'])
+
+%% Plot Signal Pre/post hpf-filter for specified time-period.
 close all; 
-range_to_plot = [20000:100000];
+range_to_plot = [20000:100000] + 1000000;
 figure(1)
 fig_path = 'Figures/Preprocessing/hpf/';
 fig_name = 'hpf_10Hz';
 freq = 2.09;
-sin_breath = sin(-0.4 + 2 * pi * freq * nr_2.data.Time(range_to_plot) ) * 20 ;
-plot(nr_2.data.Time(range_to_plot),nr_2.data.Data(range_to_plot))
+sin_breath = sin(-0.4 + 2 * pi * freq * nr2.data.Time(range_to_plot) ) * 20 ;
+plot(nr2.data.Time(range_to_plot),nr2.data.Data(range_to_plot))
 hold on
-% plot(nr_2.data.Time(range_to_plot),sin_breath, 'linewidth', 4)
-% legend('Raw Signal', 'Breathing : 126 bpm ')
-%xlabel('Time, [sec]')
-%ylabel('\mu V')
-%title('Before High Pass Filter.')
-%saveas(gcf,[fig_path, fig_name, '_pre_hpf.png'])
+%plot(nr2.data.Time(range_to_plot),sin_breath, 'linewidth', 4)
+%legend('Raw Signal', 'Breathing : 126 bpm ')
+xlabel('Time, [sec]')
+ylabel('\mu V')
+title('Before High Pass Filter.')
+% saveas(gcf,[fig_path, fig_name, '_pre_hpf.png'])
 
 hold on
 %figure(2)
@@ -70,13 +88,14 @@ ylabel('\mu V')
 %title('After High Pass Filter.')
 
 title('Effect of High Pass Filter.')
-saveas(gcf,[fig_path, fig_name, '_both.png'])
+% saveas(gcf,[fig_path, fig_name, '_both.png'])
 
 
-%% Plot Thresholds using so_cfar:
+%% Plot Threshold-Values using the so_cfar - filter.
+
 close all;
-range_to_plot = [40000:200000];
-range_to_plot = [20000:23000];
+%range_to_plot = [40000:200000];
+range_to_plot = [25000:28000] + 1e5;
 
 fig_path = 'Figures/Preprocessing/thresholds/';
 fig_name = 'both_thresholds_small_range_incl_raw';
@@ -110,11 +129,12 @@ ylabel('Wavlet convolved, No unit.')
 title('Example of Adaptive Threshold.')
 saveas(gcf,[fig_path, fig_name, '.png'])
 
-%% Get data to compare threshold pre/post injections
+%% Compare threshold Value pre/post injections.
+
 close all;
 fig_path = 'Figures/Preprocessing/thresholds/';
 fig_name = 'pre_vs_post_injection_neural_';
-t_sec = 10*60;
+t_sec = 30*60;
 
 % Get data to compare threshold pre/post injections
 t_idx = round(t_sec / nr.dt); 
@@ -147,26 +167,29 @@ saveas(gcf,[fig_path, fig_name, datafile(14:end-4), '.png'])
 close all;
 fontsize = 18;
 
-i_wf = 4003;
+i_wf = 2003;
 fig_path = 'Figures/Preprocessing/';
 fig_name = 'extracted_caps_in_raw_3';
-i_pre = 53;
-i_post = 53;
+
+[N_CAPs, CAP_dim] = size(nr.waveforms.X);
+% Specify length of neural event: (in # of indicies.)
+i_pre = round(CAP_dim / 2);
+i_post = i_pre;
 
 event_idx = round(nr.waveforms.timestamps(i_wf) / nr.dt);
-region_range = 8000;
+region_range = 2000;
 region_data = nr.datadec.Data([(event_idx - region_range ) :(event_idx + region_range+1)], 1);
 region_t = [(nr.waveforms.timestamps(i_wf) - region_range*nr.dt) ...
     :nr.dt:(nr.waveforms.timestamps(i_wf) + (region_range+1)*nr.dt)];
 hold on
 plot(region_t, region_data)
-for i_wf = 3900:4104
+for i_wf = i_wf:i_wf+5
     event_idx = round(nr.waveforms.timestamps(i_wf) / nr.dt);
     wf_t = [(nr.waveforms.timestamps(i_wf) - i_pre*nr.dt) ...
         :nr.dt:(nr.waveforms.timestamps(i_wf) + i_post*nr.dt)];
     %wf_t = [0:nr.dt:((i_pre+i_post)*nr.dt)];
     wf = nr.datadec.Data([(event_idx - i_pre ) :(event_idx + i_post)], 1);
-    plot(wf_t, wf, 'r', 'linewidth', 2)
+    plot(wf_t , wf, 'linewidth', 2)
 end
 xlabel('Time (sec)','interpret','Latex','FontSize',fontsize);
 ylabel('Voltage $\mu V$','interpret','Latex','FontSize',fontsize);
@@ -176,40 +199,45 @@ title('Example of Neural Event in Raw Recording','FontSize',fontsize)
 saveas(gcf,[fig_path, fig_name, '.png'])
 
 %% Plot of Waveforms using multiple electrodes
+% "all_data" is created in cell in MAIN_preprocess.m
+
 close all;
 fontsize = 18;
 
-i_wf = 4;
-i_electrode = 1;
+i_wf = 2;
+i_electrode = 15;
 fig_path = 'Figures/Preprocessing/';
 fig_name = 'extracted_caps_in_raw_3';
 i_pre = 53;
 i_post = 53;
 
-event_idx = round(all_ts(i_wf, i_electrode) / nr.dtdec);
+event_idx = round(all_data(i_electrode).ts(i_wf) / nr.dtdec);
 region_range = 2000;
-electrode_data = all_wf(i_wf + 10000*(i_electrode-1), :)
+
+
+electrode_data = all_data(i_electrode).wf(i_wf, :)
 region_data = nr.datadec.Data([(event_idx - region_range ) :(event_idx + region_range+1)], 1);
-region_t = [(nr.waveforms.timestamps(i_wf) - region_range*nr.dtdec) ...
-    :nr.dtdec:(nr.waveforms.timestamps(i_wf) + (region_range+1)*nr.dtdec)];
+region_t = [(all_data(i_electrode).ts(i_wf) - region_range*nr.dtdec) ...
+    :nr.dtdec:(all_data(i_electrode).ts(i_wf) + (region_range+1)*nr.dtdec)];
 hold on
-% plot(region_t, region_data)
 colors = [];
 for ii = 1:15
     colors = [colors; [1/15 * ii, 1 - 1/15*ii, 1/15 * ii]];
 end
-colors = ['b', 'k', 'r', 'g', 'y', 'c', 'm']
+colors = ['b', 'k', 'r', 'g', 'y', 'c', 'm'];
 
-for i_wf = 1:10
+
+i_wf_ = i_wf;
+for i_wf = i_wf_:i_wf_+4
     %wf_t = [0:nr.dtdec:((i_pre+i_post)*nr.dtdec)];
     color_i = 0
-    for i_electrode = i_electrode % [1:2:14]
+    for i_electrode = [1:2:14]
         color_i = color_i + 1;
-        event_idx = round(all_ts(i_wf, i_electrode) / nr.dtdec);
-        wf_t = [(all_ts(i_wf, i_electrode) - i_pre*nr.dtdec) ...
-        :nr.dtdec:(all_ts(i_wf, i_electrode) + i_post*nr.dtdec)];
-        wf = all_wf(i_wf + 10000*(i_electrode-1), :);
-        if all_ts(i_wf, i_electrode) < 0.33
+        event_idx = round(all_data(i_electrode).ts(i_wf) / nr.dtdec);
+        wf_t = [(all_data(i_electrode).ts(i_wf) - i_pre*nr.dtdec) ...
+        :nr.dtdec:(all_data(i_electrode).ts(i_wf) + i_post*nr.dtdec)];
+        wf = all_data(i_electrode).wf(i_wf, :);
+        if all_data(i_electrode).ts(i_wf) < 0.33
             plot(wf_t, wf, 'linewidth', 2, 'Color', colors(color_i))
         end
         %plot([1:length(wf)], wf, 'linewidth', 2)
@@ -217,8 +245,8 @@ for i_wf = 1:10
 
     end
 end
+plot(region_t, region_data)
 legend('1', '3', '5', '7', '9', '11', '13')
-
 xlabel('Time (sec)','interpret','Latex','FontSize',fontsize);
 ylabel('Voltage $\mu V$','interpret','Latex','FontSize',fontsize);
 % title('Extracted CAP','FontSize',fontsize)
@@ -227,7 +255,11 @@ title('Example of Neural Event in Raw Recording','FontSize',fontsize)
 
 
 %% Compare extracted CAPs for each channel at specific time-point.
-% "all_wf" and "all_ts" are loaded from cell in MAIN_preprocess
+% Does not run ATM
+% "all_wf" and "all_ts" Needs to be modified using :
+%all_data(i_channel).ts(CAP_idx);
+%all_data(i_channel).wf(CAP_idx, :);
+% "all_data" is created in cell in MAIN_preprocess.m
 close all;
 fontsize = 18;
 
@@ -235,9 +267,17 @@ fig_path = 'Figures/Preprocessing/compare_channels/';
 fig_name = 'extracted_caps_at_specific_time_t_';
 i_pre = 53;
 i_post = 53;
-t_CAP = 1.50; % Seconds..
+t_CAP = 10.50; % Seconds..
 
-diff_times = all_ts - t_CAP;
+n_channels = length(all_data);
+[~, dim_waveforms] = size(all_data(1).wf);
+all_t = [];
+for i = 1:n_channels
+ all_t = [all_t, all_data(i).ts];
+end
+diff_times = all_t - t_CAP;
+%diff_times = all_data(:).ts - t_CAP;
+
 [val_of_closest_CAP, idx_of_closest_CAP] = min ( abs(diff_times), [], 1 );
 
 chan_with_found_CAP = abs(val_of_closest_CAP - min(val_of_closest_CAP)) < 0.005;
@@ -247,19 +287,21 @@ chan_with_found_CAP = abs(val_of_closest_CAP - min(val_of_closest_CAP)) < 0.005;
 hold on
 find_t = true;
 colors = ['b', 'k', 'r', 'g', 'y', 'c', 'm'];
-channels = ['01', '03', '05', '07', '09', '11', '13'];
+channels = ['01','02', '03','04', '05','06', '07','08', '09','10', '11','12', '13','14', '15'];
 color_i = 0;
 for channel = 1:7
     if chan_with_found_CAP(channel)
         color_i = color_i +1;
         if find_t
-           t_CAP_local = all_ts(idx_of_closest_CAP(channel), channel);
+           t_CAP_local = all_data(channel).ts(idx_of_closest_CAP(channel));
            wf_t = [(t_CAP_local - i_pre*nr.dtdec) : nr.dtdec : (t_CAP_local + i_post*nr.dtdec)];
 
         end
-        wf = all_wf(idx_of_closest_CAP(channel) + 10000*(channel-1), :);
+        wf = all_data(channel).wf(idx_of_closest_CAP(channel), :);
         chan_text_idx = channel*2-1;
-        txt = ['Chan=', num2str(channels(chan_text_idx:chan_text_idx+1))];
+        txt = ['Chan=', num2str(channels(channel))];
+        %idx_col = mod(color_i,2);
+
         plot(wf_t, wf, 'linewidth', 2, 'Color', colors(color_i), 'DisplayName',txt)
     end
 end
@@ -267,8 +309,10 @@ end
 legend show
 xlabel('Time (sec)','interpret','Latex','FontSize',fontsize);
 ylabel('Voltage $\mu V$','interpret','Latex','FontSize',fontsize);
+
 title(['CAPs at t=', num2str(t_CAP), ' sec. N_channels=',num2str(sum(chan_with_found_CAP(1:7)) ...
         ) ],'FontSize',fontsize, 'interpret','Latex')
+
 saveas(gcf,[fig_path, fig_name,num2str(t_CAP), '.png'])
 
 

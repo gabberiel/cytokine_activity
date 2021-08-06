@@ -1,7 +1,7 @@
 {
    "Commentary": "Using: smaller minamp_threshold, relative_EV and  'corr'.",
    "dir_and_files": {
-      "start_string": "third_test_KI",
+      "start_string": "fourth_test_KI",
       "matlab_dir": "MATLAB/preprocessed2"
    },
    "experiment_setup": {

@@ -95,7 +95,7 @@ if __name__ == "__main__":
     from load_and_GD_funs import load_mat_file
     from preprocess_wf import standardise_wf
     from event_rate_funs import get_event_rates, __new_ev_labeling__
-    from plot_functions_wf import plot_similar_wf, plot_event_rates
+    from plot_functions_wf import plot_similar_wf
 
     with open('../hypes/test_runs.json', 'r') as f:
         hypes = json.load(f)

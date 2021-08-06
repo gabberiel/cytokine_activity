@@ -1,6 +1,15 @@
 '''
 Functions for loading MATLAB files, to create/load CVAE-model and running "CVAE-Gradient-descent".
 
+Functions:
+    * load_mat_file()
+        (path_to_file, matlab_key) --> (mat_file)
+    
+    * get_pdf_model()
+        (waveforms, ev_label) --> (keras.models)
+    
+    * run_pdf_GD()
+        (waveforms, cvae, ev_labels) --> (hpdp)
 '''
 
 import time
@@ -17,7 +26,7 @@ from plot_functions_wf import plot_encoded
 
 def load_mat_file(path_to_file, matlab_key, verbose=1):
     '''
-    Loads MATLAB file specified by "path_to_file" which is saved withthe and returns it as numpy array. \\
+    Loads MATLAB file specified by "path_to_file" and returns it as numpy array. \\
     Files is assumed to be saved with key="matlab_key". \\
     key should be "waveforms" or "timestamps".
 
@@ -25,9 +34,11 @@ def load_mat_file(path_to_file, matlab_key, verbose=1):
     ----------
     path_to_file : 'path/to/file.mat' string_type
             Path to saved .mat file
+    
     matlab_key : string_type
-            key as specified when saving file in MATLAB.
+            key as specified when saving wf/ts-files in MATLAB.
             Either 'waveforms' or 'timestamps'
+    
     verbose : integer
             >0 => prints about progress.
 
@@ -55,12 +66,13 @@ def get_pdf_model(data_train, hypes, ev_label=None,path_to_weights=None,
     Initiates or continues training of cvae/vae-model depending on existance of path_to_weights-file.
 
     If ev_label is ``None`` the it assumes a VAE-model.
-    Otherwise Conditional-VAE
+    Otherwise Conditional-VAE.
     
     Parameters
     ----------
     data_train : (num_train_data_pts, dim_of_waveform) array_like
             CAP-waveforms to train model on
+    
     hypes : .json file
             Containing the hyperparameters:
                 latent_dim : integer
@@ -69,21 +81,27 @@ def get_pdf_model(data_train, hypes, ev_label=None,path_to_weights=None,
                         number of epochs in training.
                 batch_size : integer
                         number of samples in each SGD step.
+    
     ev_label : (num_train_data_pts, 3) array_like or ``None``
             one-hot representation of labels for each CAP-waveform in CVAE.
             If no labels are given, then function assumes that a VAE is to be used.
 
     path_to_weights : string or ``None``
             specifies path to saved model-weights if any.
+    
     continue_train : boolean
             determines if the training should continue or not if pretrained model exists
+    
     verbose : integer
-            level of verbosity
+            level of verbosity. \\
+                >0 => Prints \\
+                >1 => history-Loss is plotted.
     ... 
 
     Returns
     -------
-    encoder, decoder, cvae/vae : keras model classes.
+    (encoder, decoder, cvae/vae) : tuple
+        keras model classes.
 
     """
     latent_dim = hypes["cvae"]["latent_dim"]
@@ -134,10 +152,11 @@ def get_pdf_model(data_train, hypes, ev_label=None,path_to_weights=None,
         if verbose>1:
             plt.plot(history.history['loss'])
             plt.show() 
+            
     if ev_label is None:
-         return encoder,decoder,vae 
+         return encoder, decoder, vae 
     else:
-         return encoder,decoder,cvae 
+         return encoder, decoder, cvae 
 
 
 
@@ -149,18 +168,21 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
             view_GD_result=False, 
             encoder=None):
     '''
-    Function to be called for running grandient decent of pdf using cvae.
+    Function to be called for running CVEA-Gradient Descent.
 
-    Encoder needed if view_GD_results is True.
+    Encoder input is needed if view_GD_results is True.
 
     Parameters
     ----------
     waveforms : (number_of_wf, dim_of_wf) array_like
         Only used to initiate GD if "path_to_hpdp" does not exist.
+    
     cvae : kera.Model class_instance
         Fully trained CVAE/VAE model. 
+    
     ev_labels : (number_of_wf, 3) array_like or ``None``
         If ``None``, then VAE is assumed. Otherwise CVAE
+    
     hypes : .json file
             Containing the hyperparameters:
                 m,gamma,eta : integer/floats
@@ -170,12 +192,16 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
                 downsample_threshold : integer
                     If the number of waveforms with a given labele is > downsample_threshold,
                     then every 4th wf is used. This to speed up computations.
+    
     path_to_hpdp : 'path/to/hpdp.npy'
         If ``None`` then "data_points" is used to start GD.
+    
     verbose : boolean
         verbosity of code..
+    
     view_GD_result : boolean
         If True, then the encoded latent space is plotted before/after GD is performed for each label
+    
     encoder : ``None`` or keras.Model instance
         Used for plotting.
         Must be passed if view_GD_result is True.
@@ -194,11 +220,14 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
     ev_label_corr_shape_list = []
 
     for label_on in labels_to_evaluate: # Either 0, 1 (or 2)
-        waveforms_increase = waveforms[ev_labels[:,label_on]==1]
+        waveforms_increase = waveforms[ev_labels[:, label_on]==1]
 
-        print(f'waveforms_increase injection {label_on+1} : {waveforms_increase.shape}\n')
+        print(f'waveforms_increase injection {label_on + 1} : {waveforms_increase.shape}\n')
 
         if waveforms_increase.shape[0] == 0:
+            # No waveform with specified label. Create datapoint of zeros to keep code running. 
+            # Some result is needed.. The added zeros-datapoint will not make a differens in final results.
+
             waveforms_increase = np.append(np.zeros((1, dim_of_wf)), waveforms_increase).reshape((1, dim_of_wf))
             ev_label_corr_shape = np.zeros((waveforms_increase.shape[0], 3))
             ev_label_corr_shape[:, label_on] = 1
@@ -206,8 +235,8 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
             print(f'No waveforms with increased event rate at injection {label_on + 1} was found.')
             print(f'This considering the recording {matlab_file}')
 
-        elif waveforms_increase.shape[0] > downsample_threshold: # Speed up process during param search..
-            waveforms_increase = waveforms_increase[::4, :]
+        elif waveforms_increase.shape[0] > downsample_threshold: # Speed up computations during param search..
+            waveforms_increase = waveforms_increase[::4, :]      # Only use every 4th datapoint (CAP)
             ev_label_corr_shape = np.zeros((waveforms_increase.shape[0], 3))
             ev_label_corr_shape[:, label_on] = 1
 
@@ -222,34 +251,20 @@ def run_pdf_GD(waveforms, cvae, ev_labels, hypes,
 
         hpdp_list.append(hpdp)
         ev_label_corr_shape_list.append(ev_label_corr_shape)
-        if view_GD_result:
-            encoded_hpdp_title = 'Visualisation of the Latent Variable Mean.'
-            save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
-            print(f'Visualising decoded latent space of hpdp... \n')
-            plt.figure(1)
-            plot_encoded(encoder, waveforms, saveas=save_figure+'_encoded_ho_wf'+str(label_on),
-                         verbose=1, ev_label=ev_labels, title=encoded_hpdp_title) 
-            plt.figure(2)
-            plot_encoded(encoder, hpdp, saveas=save_figure+'_encoded_hpdp'+str(label_on), 
-                        verbose=1, ev_label=ev_label_corr_shape, title=encoded_hpdp_title)
+
     if view_GD_result:
-        plt.figure(3)
+        # Visualisation of the Latent Variable Mean pre/post Gradient Descent.
+
+        save_figure = 'figures/encoded_decoded/' + unique_string_for_figs
+        plt.figure(1)
+        plot_encoded(encoder, waveforms, saveas=save_figure+'_encoded_ho_wf'+str(label_on),
+                         verbose=0, ev_label=ev_labels, title='Latent Variable Mean - Pre GD')
+        plt.figure(2)
         for i in range(2):
-            plot_encoded(encoder, hpdp_list[i], saveas=None, 
-                        verbose=0, ev_label=ev_label_corr_shape_list[i], title=encoded_hpdp_title)
+            plot_encoded(encoder, hpdp_list[i], labels_to_plot=[i], saveas=None, 
+                        verbose=0, ev_label=ev_label_corr_shape_list[i], title='Latent Variable Mean - Post GD')
         plt.show()
-    # view_GD_result = False  # TODO: REMOVE!!!
-    if view_GD_result:     
-        continue_to_Clustering = input('Continue to Clustering? (yes/no) :')
-        all_fine = False
-        while all_fine is False:
-            if continue_to_Clustering == 'no':
-                exit()
-            elif continue_to_Clustering == 'yes':
-                print('Continues to "run_GD"')
-                all_fine = True
-            else:
-                continue_to_Clustering = input('Invalid input, continue to Clustering? (yes/no) :')
+    
     return hpdp_list
 
 def __pdf_GD__(vae, data_points,hypes, 
@@ -266,12 +281,16 @@ def __pdf_GD__(vae, data_points,hypes,
     ----------
     vae : kera.Model class_instance
         Fully trained CVAE/VAE model. 
+    
     data_points : (number_of_wf, dim_of_wf) array_like
         Only used to initiate GD if "path_to_hpdp" does not exist.
+    
     ev_labels : (number_of_wf, 3) array_like or None
         If None, then VAE is assumed. Otherwise CVAE
+    
     m,gamma,eta : integer/floats
         Parameters for GD of pdf
+    
     path_to_hpdp : 'path/to/hpdp.npy'
         If None then "data_points" is used to start GD.
 
@@ -337,12 +356,11 @@ def __pdf_GD__(vae, data_points,hypes,
 
 def __cluster_CVAE__(cvae, x, label, eta, gamma, m):
     ''' 
-    CVAE version..
     Gradient decent iterations used in "__pdf_GD__()". 
     
     '''
     count = 0
-    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
+    assert np.isnan(np.sum(x))==False, '[__cluster_CVAE__] Nans in input data..'
     for i in range(m):
         # Estimate time of loop, (ETA).
         if i==0:
@@ -370,11 +388,13 @@ def __cluster_CVAE__(cvae, x, label, eta, gamma, m):
 
 def __cluster__(vae, x, eta, gamma, m):
     '''
-    VAE-version... TODO: DELETE? 
-    The Gradient decent loop used in "__pdf_GD__()". 
+    VAE-version... OLD! 
+    The Gradient decent loop used in "__pdf_GD__()" if VAE. 
+
     '''
     count = 0
-    assert np.isnan(np.sum(x))==False, 'Nans in input data..'
+    assert np.isnan(np.sum(x))==False, '[__cluster__] Nans in input data..'
+
     for i in range(m):
         # Estimate time of loop, (ETA).
         if i==0:
@@ -393,33 +413,3 @@ def __cluster__(vae, x, eta, gamma, m):
 
     return x
 
-
-if __name__ == "__main__":
-    '''
-    ######## TESTING: #############
-    '''
-
-    path_to_wf = 'matlab_files/gg_waveforms-R10_IL1B_TNF_03.mat'
-    path_to_ts = 'matlab_files/gg_timestamps.mat'
-    path_to_weights = 'models/main_funs'
-
-    waveforms, mean, std = load_waveforms(path_to_wf,'waveforms', verbose=1)
-    timestamps = load_timestamps(path_to_ts,'gg_timestamps',verbose=1)
-    
-    
-    # ********************** PLOTS *******************************************
-    if False:
-        for i in range(10):
-            plt.plot(waveforms[i])
-        plt.show()
-        plt.plot(timestamps[1:-1:100])
-        plt.show()
-    # ************************************************************************
-
-    encoder,decoder,vae = get_pdf_model(waveforms[:1000], hypes, path_to_weights=path_to_weights, 
-                                        continue_train=False, verbose=1)
-    
-    
-    path_to_hpdp = "numpy_hpdp/second_run"
-    
-    hpdp = __pdf_GD__(vae, waveforms[:1000],hypes, path_to_hpdp=path_to_hpdp,verbose=1)

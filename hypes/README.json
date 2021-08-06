@@ -2,7 +2,7 @@
     "Commentary": "This json file is meant to explain each of the hyperparameters in the hypes.json files. ",
     "OBS": "It can be that some older .josn files are outdated in terms of structure.. They can still be run but has to be restructured into this format. ",
     "dir_and_files": {
-       "start_string": "string : Name of Run (title of json file..) .",
+       "start_string": "string : Name of Run (title of json file..). ",
        "matlab_dir": "string : Path to directory of saved waveforms and timestamps (.mat files) for recordings. "
     },
     "experiment_setup": {
@@ -55,11 +55,11 @@
     "evaluation": {
        "SD_min_eval": "scalar > 0 :The minimum standard deviation in definition of 'responder'.",
        "k_SD_eval": "scalar > 0 :Number of standard deviations that EV has to increase after injection to be a 'responder'",
-       "clustering_method": "Either 'k-means' or 'dbscan'. Used in 'run_visual_evaluation()'" ,
+       "clustering_method": "Either 'k-means' or 'dbscan'. Only used in 'run_visual_evaluation()'. " ,
        "similarity_threshold": " Using 'corr' => min correlation. Using 'ssq' => epsilon in Gaussian annulus theorem.",
        "assumed_model_varaince": "The assumed variance for wf ssq- similarity measure during evaluation. Set to smaller value than in 'labeling'.. this forces the 'similar wf' to be more similar in the evaluation than in labeling",
        "similarity_measure": "Either 'ssq' or 'corr'. This defines which similarity measure that is used for wf.",
-       "k_clusters": "int. or None. : Constant number of cluster, if k-means is chosen for clustering..",
+       "k_clusters": "int. or None. : # of clusters if k-means. None => 'Persistent Homology' approach using DBSCAN (This require manual input of epsilon during run..). ",
        "db_eps": "Param for DB-scan if that is chosen for clustering..",
        "db_min_sample": "Param for DB-scan if that is chosen for clustering.."
     },

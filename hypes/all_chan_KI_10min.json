@@ -1,0 +1,125 @@
+{
+   "Commentary": "More unique timestamps in All-channel-threshold..",
+   "dir_and_files": {
+      "start_string": "all_chan_KI_10min",
+      "matlab_dir": "MATLAB/preprocessed2"
+   },
+   "experiment_setup": {
+      "injection_t_period": 10,
+      "start_time": 1,
+      "end_time": 30,
+      "t_delay_post_injection": 0
+   },
+   "labeling": {
+      "similarity_measure": "corr",
+      "ssq_downsample": 1,
+      "similarity_thresh": 0.7,
+      "assumed_model_varaince": 0.7,
+      "n_std_threshold": 0.05,
+      "t0_baseline_SD": 5,
+      "time_baseline_MU": 5,
+      "k_SD": 0.2,
+      "SD_min": 0.001,
+      "relative_EV": true
+   },
+   "preprocess": {
+      "standardise_waveforms": true,
+      "standardise_type": "var",
+      "maxamp_threshold": 150,
+      "minamp_threshold": -5,
+      "ev_thresh_procentage": true,
+      "ev_thresh_fraction": 0.005,
+      "desired_num_of_samples": null,
+      "dim_of_wf": 107
+   },
+   "preprocess_for_eval": {
+      "desired_num_of_samples": null
+   },
+   "pdf_GD": {
+      "m": 10000,
+      "gamma": 0.002,
+      "eta": 0.0005,
+      "labels_to_evaluate": [
+         0,
+         1
+      ],
+      "downsample_threshold": 6000
+   },
+   "cvae": {
+      "latent_dim": 2,
+      "label_dim": 3,
+      "nr_epochs": 80,
+      "batch_size": 128,
+      "dense_net_nodes": [
+         120,
+         100,
+         80,
+         40
+      ],
+      "activation": "relu",
+      "model_variance": 0.5
+   },
+   "evaluation": {
+      "SD_min_eval": 0.005,
+      "k_SD_eval": 1.0,
+      "clustering_method": "k-means",
+      "similarity_threshold": 0.8,
+      "assumed_model_varaince": 0.5,
+      "similarity_measure": "corr",
+      "k_clusters": 10,
+      "db_eps": 0.005,
+      "db_min_sample": 100
+   },
+   "marginal_likelihood": {
+      "MC_sample_size": 128
+   },
+   "DBSCAN": {
+      "similarity_threshold": 0.1,
+      "assumed_model_varaince": 0.7,
+      "similarity_measure": "ssq",
+      "db_eps": 4,
+      "db_min_sample": 3
+   },
+   "Results": {
+      "Responders": [
+         "_final2Baseline_10min_LPS_10min_KCl_10min_210617_103421",
+         "_final2Baseline_10min_LPS_10min_KCl_10min_210617_103421",
+         "_final2Baseline_10min_LPS_10min_KCl_10min_210617_142447",
+         "_final2Baseline_10min_LPS_10min_KCl_10min_210617_142447",
+         "_final2Baseline_10min_Saline_10min_KCl_10min_210617_122538",
+         "_final2Baseline_10min_Saline_10min_KCl_10min_210617_122538"
+      ],
+      "labels": [
+         [
+            1,
+            0,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ],
+         [
+            1,
+            0,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ],
+         [
+            1,
+            0,
+            0
+         ],
+         [
+            0,
+            1,
+            0
+         ]
+      ]
+   }
+}

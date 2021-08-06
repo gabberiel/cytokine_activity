@@ -1,16 +1,15 @@
-# ************************************************************
-# Running visualisations of workflow. 
-# Results -- tuning hyper params etc.
-# ************************************************************
+'''
+Running visualisations of different steps workflow. 
+For model assessment and tuning hyper-params etc.
+
+************************************************************
+'''
 
 import numpy as np
 import matplotlib.pyplot as plt
 import json
-from os import execlp, path, scandir, sys
-from scipy.io import matlab
-from scipy.spatial.distance import cdist
-from scipy import stats
-from statsmodels.tsa.stattools import acf
+from os import path, scandir, sys
+
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.graphics.tsaplots import plot_pacf
 
@@ -26,31 +25,35 @@ from evaluation import  marginal_log_likelihood
 # **************** WHAT TO PLOT: ************************
 verbose_main = True   # Wether to show or just save figures
 
-plot_raw_CAPs = False
-plot_similar_CAPs = True
-plot_ev_stats = False
-plot_ho_TOT_EVs = False
-plot_ho_EVs = False
-view_encoded_latent = False
-view_decoded_latent = False   
-plot_simulatated_path_from_model = False
-plot_wf_and_ev_for_the_different_ev_labels = False
-plot_acf_pacf = False
-evaluate_probabilities = False
+plot_raw_CAPs = False        # Grid of 16 examples of observed CAPs and one of these as full figure.
+plot_similar_CAPs = False    # Plot example of event-rate and similarity cluster (both normalised and in microV) for a CAP.
+plot_ev_stats = False        # Histogram of Mean and standard-deviation of event-rates for a recording.
+plot_TOT_EV = False          # Total Event-Rate for recordings.
+plot_ho_TOT_EVs = False      # Total Event-Rate for recordings after ev-threshold. 
+plot_ho_EVs = False          # Plot example of event-rate and similarity cluster (normalised) for a CAP after EV-threshold.
+view_encoded_latent = False   # Plot CAPs encoded as points in latent-space.
+view_decoded_latent = False   # Takes (6 x 6) samples from grid in latent space and plots the decoded x-mean.
+plot_simulatated_path_from_model = False     # Plots example waveform together with the corresponding predicted mean using the cvae 
+                                             # and a samples from the model distribution: x_sim ~ N(mean, cvae_var*I)
+plot_wf_and_ev_for_the_different_ev_labels = False   # Example of similarity clusters and corresponding ev for CAPs that has been labeled
+                                                    # as "increase_after_first-" and "increase_after_second-" injection. 
+plot_acf_pacf = False         # ACF and PACF for CVAE-model noise some example-CAPs.
+evaluate_probabilities = False  # Estimation of log-likelihood for responders or random samples using importance sampling.
+
 # ************************************************
 directory = '../matlab_files'
 directory = 'MATLAB/preprocessed2'
 figures_directory = 'figures_main_vis/'
 
-training_start_title = 'chan_pre_proced_KI' # 'HereWeGoAgain'   # Specify title of the "run" to use.
+training_start_title = 'all_chan_KI_10min' # 'HereWeGoAgain'   # Specify title of the "run" to use.
 
-rec_start_string = '_final' # Baseline_10min_LPS_10min_KCl_10min_210617_142447A-001' #_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
+rec_start_string = '_final2Baseline' # Baseline_10min_LPS_10min_KCl_10min_210617_142447A-001' #_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 # rec_start_string = '\\ts_Baseline_10min_LPS_10min_KCl_10min_210617_142447A-011' # Baseline_10min_LPS_10min_KCl_10min_210617_142447A-001' #_6.28.16_BALBC_IL1B(35ngperkg)_TNF(0.5ug)_03' # Since each recording has two files in directory (waveforms and timestamps)-- this is solution to only get each recording once.
 
 # ************************************************************
 # ******************** Hyperparameters ****************************
 # ************************************************************
-with open('hypes/' + training_start_title+'.json', 'r') as f:
+with open('hypes/' + training_start_title + '.json', 'r') as f:
     hypes = json.load(f)
 # *****************************************************
 
@@ -59,7 +62,8 @@ responder_rec_list = hypes["Results"]["Responders"]   # The found responders fro
 for entry in scandir(directory):
     # Uncomment the next line if you only want to consider the found responders from the evaluation. (saved in .json file)
     # rec_start_string = '\\ts' + responder_rec_list[responder_count] 
-    if entry.path.startswith(directory + '/ts' + rec_start_string):    # Find unique recording string. tsR10 for all cytokine injections, tsR12 for saline. 
+    file_name = directory + '/ts' + rec_start_string
+    if entry.name.startswith('ts' + rec_start_string):    # Find unique recording string. tsR10 for all cytokine injections, tsR12 for saline. 
         matlab_file = entry.path[len(directory+'\\ts'):-len('.mat')]    # extract only the matlab_file name from string.
         print('\n'+'*'*40)
         print(f'Starting analysis on recording : {matlab_file} \n')
@@ -77,6 +81,8 @@ for entry in scandir(directory):
         saveas_raw_CAPs = figures_directory + 'raw_CAPs/' + unique_for_figs
         saveas_similar_CAPs = figures_directory + 'similar_CAPs/' + unique_for_figs
         saveas_ev_stats = figures_directory + 'event_rate_stats/' + unique_for_figs
+        saveas_TOT_HO_EV = figures_directory + 'TOT_EV/' + unique_for_figs
+        saveas_TOT_HO_EV = figures_directory + 'TOT_EV/HO_' + unique_for_figs
         saveas_ho_EVs = figures_directory + 'event_rate_labels/' + unique_for_figs
         saveas_vae_result = figures_directory + 'encoded_decoded/' + unique_for_figs
         saveas_simulatated_path_from_model = figures_directory + 'model_assessment/' + unique_for_figs
@@ -95,17 +101,23 @@ for entry in scandir(directory):
         if load_data:
             waveforms = load_mat_file(path_to_matlab_wf, 'waveforms', verbose=1)
             timestamps = load_mat_file(path_to_matlab_ts, 'timestamps', verbose=1)
+
         # ************************************************************
         # ******************** Plot "raw" CAPs ***********************
         # ************************************************************
         if plot_raw_CAPs:
+            plt.figure(1)
             plot_waveforms_grid(waveforms, 4, saveas=saveas_raw_CAPs,
-                                verbose=verbose_main, title=None)
-            plt.close()
+                                verbose=False, title=None)
+            plt.figure(2)
             plot_waveforms(waveforms[3,:], labels=None, 
                            saveas=saveas_raw_CAPs+'_zoomed', 
-                           verbose=verbose_main, title='CAP-waveform')
-            plt.close()
+                           verbose=False, title='CAP-waveform')
+            if verbose_main:
+                plt.show()
+            else:
+                plt.close()
+
         # ************************************************************
         # ******************** Preprocess ****************************
         # ************************************************************
@@ -122,6 +134,7 @@ for entry in scandir(directory):
 
         # Standardise wavefroms: 
         waveforms = preprocess_wf.standardise_wf(waveforms, hypes)
+
         # ************************************************************
         # ******************** Plot "similar" CAPs ***********************
         # ************************************************************
@@ -143,15 +156,16 @@ for entry in scandir(directory):
                     correlations = wf_correlation(i, waveforms)
                     bool_labels = correlations > epsilon
                 event_rates = get_event_rates(timestamps, hypes, labels=bool_labels, consider_only=1)
+                tot_event_rates = get_event_rates(timestamps, hypes, labels=None, consider_only=1)
                 plt.figure(1) 
                 plot_similar_wf(i, waveforms, bool_labels, 
                                 saveas=saveas+'_wf'+str(i) + '_thresh_' + str(epsilon).replace('.', '_'), 
-                                verbose=False, 
+                                verbose=False,
                                 title=title_similarity)
                 if not verbose_main:
                     plt.close()
                 plt.figure(2) 
-                plot_event_rates(event_rates, timestamps, 
+                plot_event_rates(event_rates, timestamps, hypes,
                                  saveas=saveas+'_ev'+str(i) + '_thresh_' + str(epsilon).replace('.', '_'), 
                                  verbose=False) 
                 plt.figure(3) 
@@ -159,19 +173,32 @@ for entry in scandir(directory):
                                 saveas=saveas+'non_normalised_wf'+str(i) + '_thresh_' + str(epsilon).replace('.', '_'), 
                                 verbose=False, 
                                 title=title_similarity)
+                
                 if verbose_main:
                     plt.show()
                 plt.close()
             #except:
             #    print('\nOBSOBS!\nNot enough waveforms to plot the specified indicies...')
+        if plot_TOT_EV:
+            
+            tot_event_rates = get_event_rates(timestamps, hypes, labels=None, consider_only=1)
+            saveas = saveas_TOT_HO_EV
+            plt.figure(4) 
+            plot_event_rates(tot_event_rates, timestamps, hypes,
+                                saveas=saveas, 
+                                verbose=False, title='Total Event-Rate') 
+            if verbose_main:
+                plt.show()
+            plt.close()
 
         # ************************************************************
         # ******************** Event-rate Labeling *******************
         # ************************************************************
+
         if path.isfile(path_to_EVlabels+'.npy'):
             print(f'\n Loading saved EV-labels from {path_to_EVlabels} \n')
-            ev_labels = np.load(path_to_EVlabels+'.npy')
-            ev_stats_tot = np.load(path_to_EVlabels+'tests_tot.npy') 
+            ev_labels = np.load(path_to_EVlabels + '.npy')
+            ev_stats_tot = np.load(path_to_EVlabels + 'stats_tot.npy') 
         else:
             print(f'OBS: did not find {path_to_EVlabels}... \n \
                     Visualisation Recuires saved files by "main_train.py" ')
@@ -196,9 +223,11 @@ for entry in scandir(directory):
 
         if plot_ho_TOT_EVs:
             ev_ho = get_event_rates(ts_ho, hypes )
+            saveas = saveas_TOT_HO_EV
             KI_channel = matlab_file[-5:]
-            plot_event_rates(ev_ho, ts_ho, verbose=verbose_main, plot_label=KI_channel)
-            # plt.close()
+            plot_event_rates(ev_ho, ts_ho, hypes, saveas=saveas, 
+                             verbose=verbose_main)
+            plt.close()
 
         # Plotting EV etc. done for High occurance CAPs... :
         if plot_ho_EVs:
@@ -215,24 +244,25 @@ for entry in scandir(directory):
             try:
                 for i in [10,400,800]:
                     if similarity_measure == 'ssq':
-                        wf_ho_ssq = wf_ho / assumed_variance
-                        bool_labels, _ = similarity_SSQ(i, wf_ho_ssq, epsilon=epsilon, standardised_input=True)
-                        event_rates = get_event_rates(ts_ho, hypes, labels=bool_labels, consider_only=1)
+                        wf_ho = wf_ho / assumed_variance
+                        bool_labels, _ = similarity_SSQ(i, wf_ho, epsilon=epsilon, standardised_input=True)
                     elif similarity_measure == 'corr':
                         correlations = wf_correlation(i, wf_ho)
                         bool_labels = correlations > epsilon
+                        
+                    event_rates = get_event_rates(ts_ho, hypes, labels=bool_labels, consider_only=1)
                     plt.figure(1) 
-                    plot_similar_wf(i, wf_ho_ssq, bool_labels, saveas=saveas+'_wf'+str(i), verbose=False, title=title_similarity)
-                    if not verbose_main:
-                        plt.close()
+                    plot_similar_wf(i, wf_ho, bool_labels, saveas=saveas+'_wf'+str(i), verbose=False, title=title_similarity)
+
                     plt.figure(2) 
-                    plot_event_rates(event_rates, ts_ho, saveas=saveas+'_ev'+str(i), 
+                    plot_event_rates(event_rates, ts_ho, hypes, saveas=saveas+'_ev'+str(i), 
                                      verbose=False) 
                     if verbose_main:
                         plt.show()
                     plt.close()
-            except:
-                print('\nOBSOBS!\nNot enough waveforms to plot the specified indicies...')
+            except Exception as e:
+                print('\n[plot_ho_EVs] \nOBSOBS!\nMost Likely not enough waveforms to plot the specified indicies...')
+                print(f'Full error : {e}')
         # ************************************************************
         # ******************** Train/Load model **********************
         # ************************************************************
@@ -270,6 +300,7 @@ for entry in scandir(directory):
             plot_encoded(encoder, wf_ho, saveas=saveas_vae_result+'_encoded_ho_wf',
                          verbose=verbose_main, ev_label=ev_label_ho, title=encoded_hpdp_title)
             plt.close()
+
         if view_decoded_latent:
             plot_decoded_latent(decoder, saveas=saveas_vae_result+'_decoded_constant', 
                                 verbose=verbose_main, ev_label=np.array((0, 0, 1)).reshape((1, 3)))
@@ -282,34 +313,46 @@ for entry in scandir(directory):
         # ******** Plot examples of event-rates from EV_labeles ******
         # ************************************************************
         if plot_wf_and_ev_for_the_different_ev_labels:
+            similarity_measure = hypes["labeling"]["similarity_measure"]
+            epsilon = hypes["labeling"]["similarity_thresh"]
             # threshold = 0.6
             idx_increase_after_first = np.where(ev_labels[0, :] == 1)
             idx_increase_after_second = np.where(ev_labels[1, :] == 1)
             idx_constant_throughout = np.where(ev_labels[2, :] == 1)
             
-            for cluster in [0, 1]:
-                idx_increase = np.where(ev_labels[cluster, :] == 1)
-                saveas = saveas_wf_and_ev_for_the_different_ev_labels + 'cluster_' + str(cluster)
-                print(f'plotting wf and ev for cluster : {cluster}')    # 0="increase after first", 1="increase after second"
+            for injection in [0, 1]:
+                idx_increase = np.where(ev_labels[injection, :] == 1)[0]
+                saveas = saveas_wf_and_ev_for_the_different_ev_labels + 'injection_' + str(injection)
+                print(f'plotting wf and ev for injection : {injection}')    # 0="increase after first", 1="increase after second"
                 assumed_variance = hypes["labeling"]["assumed_model_varaince"]
-                waveforms_ssq = waveforms/assumed_variance
                 try:
-                    for i in idx_increase[0][10, 40, 80]:
-                        bool_labels, _ = similarity_SSQ(i, waveforms_ssq, epsilon=0.1, standardised_input=True)
+                    for i in idx_increase[[10, 40, 80]]:
+                        if similarity_measure == 'ssq':
+                            waveforms_ = waveforms/assumed_variance
+                            bool_labels, _ = similarity_SSQ(i, waveforms_, epsilon=epsilon, standardised_input=True)
+                        elif similarity_measure == 'corr':
+                            waveforms_ = waveforms
+                            correlations = wf_correlation(i, waveforms_)
+                            bool_labels = correlations > epsilon
+                        
                         event_rates = get_event_rates(timestamps[:, 0], hypes, labels=bool_labels, consider_only=1)
                         # delta_ev, ev_stats = __delta_ev_measure__(event_rates)
+                        plt.figure(1)
                         plot_similar_wf(i, waveforms, bool_labels,
                                         saveas=saveas+'_wf_'+str(i),
-                                        verbose=verbose_main)
-                        if not verbose_main:
-                            plt.close()
-                        plot_event_rates(event_rates, timestamps,
+                                        verbose=False)
+                        
+                        plt.figure(2)
+                        plot_event_rates(event_rates, timestamps, hypes,
                                          saveas=saveas+'_wf_'+str(i)+'_ev', 
-                                         verbose=verbose_main)
-                        if not verbose_main:
+                                         verbose=False)
+                        if verbose_main:
+                            plt.show()
+                        else:
                             plt.close()
-                except:
-                    print('\nOBSOBS! Not enough waveforms were found  to plot the specified indicies..')
+                except Exception as e:
+                    print('\n[plot_wf_and_ev_for_the_different_ev_labels] \nOBSOBS!\nMost Likely not enough waveforms to plot the specified indicies...')
+                    print(f'Full error : {e}')
         # Assming we have loaded the standardised waveforms : std_waveforms
         # 
         # import matplotlib.gridspec as gridspec
@@ -347,7 +390,7 @@ for entry in scandir(directory):
             use_responders = True
             saveas_responder_caps = '../numpy_files/responder_CAPs/' + training_start_title
             responder_CAPs = np.load(saveas_responder_caps + '.npy')
-            responder_labels = hypes["Results"]["labels"]
+            responder_labels = np.asarray(hypes["Results"]["labels"])
 
             N_evals = 1000
             probs = []
@@ -385,5 +428,6 @@ for entry in scandir(directory):
                 print(f'mean of likelihood = {np.mean(probs)}, for responder CAPs. (mean of 10 runs.)')
             
         responder_count += 1
-plt.legend()
-plt.show()
+
+
+print('Done...')

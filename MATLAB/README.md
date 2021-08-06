@@ -20,14 +20,14 @@ Main script: ```MAIN_preprocess.m```.
 
 2. Gain of 20 is applied to achieve the units of micro-Volt for Zanos recordings, not KI.
 
-3. High-pass filter is applied (parameter set to 10). Removing small frequencies, assumed unrelated to neural-events. 
+3. High-pass filter is applied (parameter set to 10 in Zanos work).
 
 4. Downsampling, ( Zanos recodings where preprocessed with Nd=5.)
 
 5. Adaptive threshold. Uses wavelet transform to enhance neural-events (1ms scale) and cardiac-events (5ms scale) seperately. 
 A local in time noise-level is estimated using a sliding window (so-cfar filter) and individual events are extracted from a 
-threshold based on the local noise-level. Neural-events that co-occure with cardiac-events are disregarded. 
-This results in an array of waveforms with corresponding timestamps.
+threshold, based on the local noise-level. Neural-events that co-occure with cardiac-events are disregarded. 
+This results in an array of waveforms and an array of corresponding timestamps.
 
 6. Removeal of non-unique timestamps. 
 

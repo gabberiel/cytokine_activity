@@ -51,3 +51,26 @@ def runDBSCAN(wf_embedded, db_eps=2, db_min_sample=2):
     
 
     return labels
+
+
+'''
+# #####################%%%%%%%%%%%%¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤###################
+# TODO: TESTS OF T-SNE + DBSCAN Approach TODO TODO TODO TODO TODO TODO
+# Runs t-SNE dimensionallity reduction on waveforms and clusters the 
+# 2-dim manyfold using DBSCAN. 
+
+tsne_wf = runTSNE(wf0[0:55000, :], reduced_dim=2, verbose=True)
+# tsne_wf = np.load('aa.npy')
+persistent_hom = []
+eps_range =  np.arange(1.5, 10, 0.2)
+for epsilon in eps_range:
+    labels = runDBSCAN(tsne_wf,  db_eps=epsilon, db_min_sample=100)
+    n_clusters = np.sum(np.unique(labels)) - 1
+    persistent_hom.append( n_clusters )
+plt.plot(eps_range, persistent_hom)
+plt.show()
+event_rate_results = get_event_rates(timestamps[0:55000], hypes, labels=labels, consider_only=None)
+plot_event_rates(event_rate_results, timestamps[0:55000], conv_width=10)    
+
+# #####################%%%%%%%%%%%%¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤###################
+'''
